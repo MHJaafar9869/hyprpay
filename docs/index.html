@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>hyprpay/payments — one interface, every gateway</title>
+<meta name="description" content="A self-contained, multi-gateway payment SDK for PHP. One clean interface over CyberSource Unified Checkout, Fawry, Paymob and PayLink — deterministic, idempotent, exact-money, PHPStan level max." />
+<meta name="color-scheme" content="dark" />
+
+<!-- Open Graph -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content="hyprpay/payments — one interface, every gateway" />
+<meta property="og:description" content="A self-contained, multi-gateway payment SDK for PHP. CyberSource, Fawry, Paymob & PayLink behind a single contract." />
+<meta property="og:url" content="https://mhjaafar9869.github.io/hyprpay/" />
+<meta name="twitter:card" content="summary_large_image" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./assets/style.css" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0d10'/%3E%3Ctext x='16' y='23' font-family='monospace' font-size='20' font-weight='700' text-anchor='middle' fill='%23d6ff3f'%3E%C2%A4%3C/text%3E%3C/svg%3E" />
+<script>document.documentElement.className = "js";</script>
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="nav">
+  <a class="brand" href="#top" aria-label="hyprpay payments home">
+    <span class="brand-mark" aria-hidden="true">¤</span>
+    <span class="brand-name">hyprpay<span class="brand-slash">/</span>payments</span>
+  </a>
+  <nav class="nav-links" aria-label="Primary">
+    <a href="#features">Design</a>
+    <a href="#gateways">Gateways</a>
+    <a href="#matrix">Operations</a>
+    <a href="#start">Quick&nbsp;start</a>
+    <a class="nav-cta" href="https://github.com/MHJaafar9869/hyprpay">GitHub&nbsp;↗</a>
+  </nav>
+</header>
+
+<main id="top">
+
+  <!-- ─────────────────────────  HERO  ───────────────────────── -->
+  <section class="hero">
+    <div class="hero-grid" aria-hidden="true"></div>
+    <p class="kicker reveal" data-d="0">PHP&nbsp;·&nbsp;Payment SDK&nbsp;·&nbsp;v0.1.0&nbsp;·&nbsp;MIT</p>
+    <h1 class="hero-title">
+      <span class="reveal" data-d="1">One clean interface.</span>
+      <span class="reveal" data-d="2">Every payment <em>gateway</em>.</span>
+    </h1>
+    <p class="hero-sub reveal" data-d="3">
+      A self-contained, multi-gateway payment SDK for PHP. A factory resolves the right
+      driver, a swappable HTTP transport does the talking, and one contract covers
+      <b>CyberSource&nbsp;Unified&nbsp;Checkout</b>, <b>Fawry</b>, <b>Paymob</b> and <b>PayLink</b>.
+    </p>
+
+    <div class="hero-cta reveal" data-d="4">
+      <button class="copy" id="copy-install" data-copy="composer require hyprpay/payments">
+        <span class="copy-prompt">$</span>
+        <code>composer require hyprpay/payments</code>
+        <span class="copy-icon" aria-hidden="true">⧉</span>
+        <span class="copy-done" aria-hidden="true">copied</span>
+      </button>
+      <a class="btn-ghost" href="#start">Read the quick start →</a>
+    </div>
+
+    <ul class="hero-stats reveal" data-d="5">
+      <li><b>4</b><span>gateways, one contract</span></li>
+      <li><b>0</b><span>vendor SDK deps</span></li>
+      <li><b>max</b><span>PHPStan level, no baseline</span></li>
+      <li><b>90+</b><span>Pest tests, network-free</span></li>
+    </ul>
+  </section>
+
+  <!-- ─────────────────────────  MARQUEE  ───────────────────────── -->
+  <div class="ticker" aria-hidden="true">
+    <div class="ticker-track">
+      <span>DETERMINISTIC BODIES</span><span class="dot">¤</span>
+      <span>IDEMPOTENT WRITES</span><span class="dot">¤</span>
+      <span>EXACT MINOR UNITS</span><span class="dot">¤</span>
+      <span>PORTS &amp; ADAPTERS</span><span class="dot">¤</span>
+      <span>RAW REST · NO VENDOR SDKS</span><span class="dot">¤</span>
+      <span>FRAMEWORK-AGNOSTIC CORE</span><span class="dot">¤</span>
+      <span>DETERMINISTIC BODIES</span><span class="dot">¤</span>
+      <span>IDEMPOTENT WRITES</span><span class="dot">¤</span>
+      <span>EXACT MINOR UNITS</span><span class="dot">¤</span>
+      <span>PORTS &amp; ADAPTERS</span><span class="dot">¤</span>
+      <span>RAW REST · NO VENDOR SDKS</span><span class="dot">¤</span>
+      <span>FRAMEWORK-AGNOSTIC CORE</span><span class="dot">¤</span>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────  FEATURES  ───────────────────────── -->
+  <section id="features" class="section">
+    <div class="section-head reveal">
+      <span class="section-no">01</span>
+      <h2>Built like infrastructure,<br />not a wrapper.</h2>
+      <p>Domain-driven layers keep the business rules clean and the network at arm's length.</p>
+    </div>
+
+    <div class="cards">
+      <article class="card reveal">
+        <span class="card-no">/01</span>
+        <h3>Domain-driven layering</h3>
+        <p>A pure <code>Domain</code> of contracts, commands, results, value objects and enums; a thin <code>Application</code> factory; and an <code>Infrastructure</code> layer for drivers &amp; Laravel adapters. Dependencies point inward — the core never touches the framework.</p>
+      </article>
+      <article class="card reveal">
+        <span class="card-no">/02</span>
+        <h3>Factory + one interface</h3>
+        <p>Resolve any gateway through <code>PaymentGatewayFactory</code> and program against a single <code>PaymentGatewayInterface</code>. Unsupported operations throw <code>UnsupportedOperationException</code>, so the surface is identical everywhere.</p>
+      </article>
+      <article class="card reveal">
+        <span class="card-no">/03</span>
+        <h3>Ports &amp; adapters</h3>
+        <p>The <code>HttpClient</code> and <code>CredentialResolver</code> ports live in the Domain; adapters live in Infrastructure. Ship the retrying Laravel transport in production, swap the in-memory fake in tests — bind only the port you want to replace.</p>
+      </article>
+      <article class="card reveal">
+        <span class="card-no">/04</span>
+        <h3>Raw REST, no vendor SDKs</h3>
+        <p>Every driver speaks the gateway's REST API directly and signs its own requests — CyberSource HMAC HTTP-Signature, Fawry SHA-256, Paymob HMAC-SHA512, PayLink HMAC-SHA256. No heavy third-party gateway dependencies.</p>
+      </article>
+      <article class="card reveal">
+        <span class="card-no">/05</span>
+        <h3>Deterministic &amp; idempotent</h3>
+        <p>Request bodies are built without hidden <code>uniqid()</code>/<code>time()</code>, so identical inputs produce byte-for-byte identical requests. Every write carries an idempotency key routed to the gateway's native dedup — retries are safe.</p>
+      </article>
+      <article class="card reveal">
+        <span class="card-no">/06</span>
+        <h3>Exact money, strict types</h3>
+        <p>Amounts are carried as minor units and never rounded. PHPStan runs at <b>level max with a zero baseline</b>, formatted with Pint, refactor-checked with Rector, and covered by 90+ database-free Pest tests.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────  GATEWAYS  ───────────────────────── -->
+  <section id="gateways" class="section">
+    <div class="section-head reveal">
+      <span class="section-no">02</span>
+      <h2>Four gateways.<br />One <em>PaymentGatewayInterface</em>.</h2>
+      <p>Each driver extends <code>AbstractPaymentGateway</code> and implements the same fat contract.</p>
+    </div>
+
+    <div class="gateways">
+      <article class="gw reveal" style="--gw:var(--cyber)">
+        <header><span class="gw-tag">CyberSource</span><span class="gw-sig">HMAC HTTP-Signature</span></header>
+        <h3>Unified Checkout</h3>
+        <p>Mint a capture context for the widget, charge the transient token, run 3-DS payer-auth, and vault instruments for MIT/CIT stored credentials.</p>
+        <footer>capture context · charge · 3-DS · TMS vault</footer>
+      </article>
+      <article class="gw reveal" style="--gw:var(--fawry)">
+        <header><span class="gw-tag">Fawry</span><span class="gw-sig">SHA-256</span></header>
+        <h3>Hosted &amp; reference</h3>
+        <p>Start a hosted checkout — card, wallet, pay-at-Fawry, MyFawry or instalment — and redirect the payer or hand back a reference code.</p>
+        <footer>hosted · card · wallet · pay-at-Fawry</footer>
+      </article>
+      <article class="gw reveal" style="--gw:var(--paymob)">
+        <header><span class="gw-tag">Paymob</span><span class="gw-sig">HMAC-SHA512</span></header>
+        <h3>Iframe flow</h3>
+        <p>Runs the auth → order → payment-key handshake in one call and returns the iframe URL. Integration &amp; iframe ids come from credentials or per-call options.</p>
+        <footer>auth → order → payment key → iframe</footer>
+      </article>
+      <article class="gw reveal" style="--gw:var(--paylink)">
+        <header><span class="gw-tag">PayLink</span><span class="gw-sig">HMAC-SHA256</span></header>
+        <h3>Invoice link</h3>
+        <p>Create an invoice, redirect to the hosted checkout, and reconcile later by invoice id. Supports settle, refund, void and reverse-authorization.</p>
+        <footer>invoice · settle · refund · reverse</footer>
+      </article>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────  MATRIX  ───────────────────────── -->
+  <section id="matrix" class="section">
+    <div class="section-head reveal">
+      <span class="section-no">03</span>
+      <h2>The operation matrix.</h2>
+      <p>What each driver supports. Anything unsupported throws — the surface never lies.</p>
+    </div>
+
+    <div class="matrix-wrap reveal">
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th scope="col">Operation</th>
+            <th scope="col"><span class="d cyber"></span>CyberSource&nbsp;UC</th>
+            <th scope="col"><span class="d fawry"></span>Fawry</th>
+            <th scope="col"><span class="d paymob"></span>Paymob</th>
+            <th scope="col"><span class="d paylink"></span>PayLink</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row"><code>createCheckoutSession</code></th><td class="y">capture context</td><td class="y">hosted / card / wallet</td><td class="y">iframe flow</td><td class="y">invoice link</td></tr>
+          <tr><th scope="row"><code>charge</code> <small>(transient token)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
+          <tr><th scope="row"><code>capture</code></th><td class="y">✓</td><td class="y">Auth/Capture</td><td class="y">✓</td><td class="y">settle</td></tr>
+          <tr><th scope="row"><code>refund</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+          <tr><th scope="row"><code>void</code></th><td class="y">✓</td><td class="y">cancel auth</td><td class="y">✓</td><td class="y">✓</td></tr>
+          <tr><th scope="row"><code>reverseAuthorization</code></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td></tr>
+          <tr><th scope="row"><code>enroll</code> / <code>validatePayerAuth</code> <small>(3-DS)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
+          <tr><th scope="row"><code>vault</code> / <code>chargeStoredCredential</code></th><td class="y">TMS · MIT/CIT</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
+          <tr><th scope="row"><code>getTransaction</code> / <code>searchTransaction</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+          <tr><th scope="row"><code>verifyWebhook</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────  QUICK START  ───────────────────────── -->
+  <section id="start" class="section">
+    <div class="section-head reveal">
+      <span class="section-no">04</span>
+      <h2>From zero to charged.</h2>
+      <p>The provider auto-registers the factory and ports. Inject the factory — no service location, no <code>new</code>.</p>
+    </div>
+
+    <div class="start-grid">
+      <div class="steps reveal">
+        <ol>
+          <li>
+            <h4><span>1</span> Install</h4>
+            <div class="code sm"><pre><code><span class="c"># Composer auto-discovers the service provider</span>
+composer require hyprpay/payments</code></pre></div>
+          </li>
+          <li>
+            <h4><span>2</span> Configure <small>(optional)</small></h4>
+            <div class="code sm"><pre><code>php artisan vendor:publish <span class="p">\</span>
+  --tag=gateway-config</code></pre></div>
+          </li>
+          <li>
+            <h4><span>3</span> Reconcile from the CLI</h4>
+            <div class="code sm"><pre><code>php artisan gateway:reconcile:fawry <span class="p">\</span>
+  ORDER-124 ORDER-125</code></pre></div>
+            <p class="steps-note">Exits non-zero if any id can't be reconciled — drops straight into a scheduler or CI health check.</p>
+          </li>
+        </ol>
+      </div>
+
+      <figure class="code big reveal" aria-label="Charging an invoice with the SDK">
+        <figcaption>
+          <span class="win"><i></i><i></i><i></i></span>
+          <span class="file">app/Actions/ChargeInvoice.php</span>
+        </figcaption>
+<pre><code><span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Command\ChargeRequest</span>;
+<span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\ValueObject\Money</span>;
+<span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Enum\GatewayName</span>;
+<span class="k">use</span> <span class="t">Hyprpay\Payments\Application\PaymentGatewayFactory</span>;
+
+<span class="k">final readonly class</span> <span class="t">ChargeInvoice</span>
+{
+    <span class="c">// Type-hint the factory; Laravel injects it.</span>
+    <span class="k">public function</span> <span class="fn">__construct</span>(
+        <span class="k">private</span> <span class="t">PaymentGatewayFactory</span> <span class="v">$gateways</span>,
+    ) {}
+
+    <span class="k">public function</span> <span class="fn">handle</span>(<span class="k">string</span> <span class="v">$tokenFromWidget</span>): <span class="k">void</span>
+    {
+        <span class="v">$gateway</span> = <span class="v">$this</span>-&gt;gateways-&gt;<span class="fn">make</span>(
+            <span class="t">GatewayName</span>::<span class="cn">CybersourceUnifiedCheckout</span>,
+        );
+
+        <span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="k">new</span> <span class="t">ChargeRequest</span>(
+            <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>,
+            <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'EGP'</span>), <span class="c">// 100.00, exact</span>
+            <span class="a">orderReference:</span> <span class="s">'ORDER-123'</span>,     <span class="c">// = idempotency key</span>
+        ));
+
+        <span class="k">if</span> (<span class="v">$result</span>-&gt;success) {
+            <span class="c">// $result->status, ->transactionId, ->raw</span>
+        }
+    }
+}</code></pre>
+      </figure>
+    </div>
+
+    <p class="start-foot reveal">
+      Retries are safe by construction: bodies are deterministic and every write carries an
+      idempotency key — routed to <code>v-c-idempotency-key</code>, <code>merchantRefNum</code>,
+      <code>merchant_order_id</code> or an <code>Idempotency-Key</code> header, per gateway.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────  CTA  ───────────────────────── -->
+  <section class="cta reveal">
+    <h2>Program against one contract.<br />Let the factory pick the driver.</h2>
+    <div class="cta-row">
+      <a class="btn-solid" href="https://github.com/MHJaafar9869/hyprpay">Star on GitHub&nbsp;↗</a>
+      <a class="btn-ghost" href="https://packagist.org/packages/hyprpay/payments">View on Packagist&nbsp;↗</a>
+    </div>
+    <p class="req">Requires PHP&nbsp;<code>^8.2</code> · illuminate/support&nbsp;&amp;&nbsp;illuminate/http&nbsp;<code>^10 | ^11 | ^12 | ^13</code></p>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="foot-brand">
+    <span class="brand-mark" aria-hidden="true">¤</span>
+    <span>hyprpay/payments</span>
+  </div>
+  <nav class="foot-links" aria-label="Footer">
+    <a href="https://github.com/MHJaafar9869/hyprpay">GitHub</a>
+    <a href="https://packagist.org/packages/hyprpay/payments">Packagist</a>
+    <a href="https://github.com/MHJaafar9869/hyprpay/blob/main/README.md">Docs</a>
+    <a href="https://github.com/MHJaafar9869/hyprpay/blob/main/LICENSE">MIT License</a>
+  </nav>
+  <p class="foot-note">Domain-driven · ports &amp; adapters · deterministic · exact money.</p>
+</footer>
+
+<script>
+  // Progressive-enhancement: reveal on scroll, honoring reduced-motion.
+  (function () {
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var els = document.querySelectorAll('.reveal');
+    if (reduce || !('IntersectionObserver' in window)) {
+      els.forEach(function (el) { el.classList.add('in'); });
+    } else {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+        });
+      }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+      els.forEach(function (el) { io.observe(el); });
+    }
+
+    // Copy the install command.
+    var btn = document.getElementById('copy-install');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        var text = btn.getAttribute('data-copy');
+        var done = function () { btn.classList.add('is-copied'); setTimeout(function () { btn.classList.remove('is-copied'); }, 1600); };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done).catch(done);
+        } else { done(); }
+      });
+    }
+  })();
+</script>
+</body>
+</html>
