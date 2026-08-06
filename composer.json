@@ -4,6 +4,12 @@
     "type": "library",
     "version": "0.1.0",
     "license": "MIT",
+    "homepage": "https://mhjaafar9869.github.io/hyprpay/",
+    "support": {
+        "docs": "https://mhjaafar9869.github.io/hyprpay/",
+        "source": "https://github.com/MHJaafar9869/hyprpay",
+        "issues": "https://github.com/MHJaafar9869/hyprpay/issues"
+    },
     "keywords": [
         "payments",
         "gateway",
