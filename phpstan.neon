@@ -1,0 +1,8 @@
+parameters:
+    level: max
+
+    paths:
+        - src
+
+    # Treat PHPDoc types as certain to reduce false positives.
+    treatPhpDocTypesAsCertain: false

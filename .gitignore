@@ -1,0 +1,17 @@
+/vendor/
+composer.phar
+
+# Tooling caches
+/.phpunit.cache
+.phpunit.result.cache
+.pint.cache
+
+# Environment / local
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+/.idea
+/.vscode
+.DS_Store

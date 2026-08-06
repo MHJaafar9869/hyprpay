@@ -1,0 +1,70 @@
+{
+    "name": "hyprpay/payments",
+    "description": "Self-contained multi-gateway payment SDK. Drivers: CyberSource Unified Checkout, Fawry, Paymob, PayLink.",
+    "type": "library",
+    "version": "0.1.0",
+    "license": "MIT",
+    "keywords": [
+        "payments",
+        "gateway",
+        "cybersource",
+        "fawry",
+        "paymob",
+        "paylink"
+    ],
+    "require": {
+        "php": "^8.2",
+        "ext-json": "*",
+        "illuminate/console": "^10.0 || ^11.0 || ^12.0 || ^13.0",
+        "illuminate/http": "^10.0 || ^11.0 || ^12.0 || ^13.0",
+        "illuminate/support": "^10.0 || ^11.0 || ^12.0 || ^13.0",
+        "psr/log": "^3.0"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.24",
+        "pestphp/pest": "^3.0",
+        "phpstan/phpstan": "^2.1",
+        "rector/rector": "^2.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "Hyprpay\\Payments\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Hyprpay\\Payments\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Hyprpay\\Payments\\Infrastructure\\GatewayServiceProvider"
+            ]
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "format": "pint",
+        "format:test": "pint --test",
+        "rector": "rector",
+        "rector:dry": "rector --dry-run",
+        "analyse": "phpstan analyse --memory-limit=2G",
+        "analyse:baseline": "phpstan analyse --memory-limit=2G --generate-baseline",
+        "check": [
+            "@format:test",
+            "@rector:dry",
+            "@analyse",
+            "@test"
+        ]
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "phpstan/extension-installer": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
