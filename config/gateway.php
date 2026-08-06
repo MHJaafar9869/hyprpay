@@ -62,8 +62,10 @@ return [
     |--------------------------------------------------------------------------
     |
     | Used by ConfigCredentialResolver when no explicit GatewayCredentials are
-    | passed to the factory. In a multi-tenant host application, bind a custom
-    | CredentialResolver that reads per-tenant credentials instead.
+    | passed to the factory — a single set per gateway by default. To source
+    | credentials dynamically (from a database, a secrets vault, or per-tenant/
+    | per-merchant), pass them explicitly to the factory or bind a custom
+    | CredentialResolver.
     |
     | The shared secret is the base64-encoded REST shared secret exactly as
     | issued by CyberSource; it is base64-decoded before HMAC signing.

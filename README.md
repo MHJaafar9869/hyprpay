@@ -92,7 +92,7 @@ use Hyprpay\Payments\Domain\Contract\CredentialResolver;
 use Hyprpay\Payments\Domain\Contract\HttpClient;
 
 $this->app->bind(HttpClient::class, MyHttpClient::class);
-$this->app->bind(CredentialResolver::class, PerTenantCredentialResolver::class);
+$this->app->bind(CredentialResolver::class, MyCredentialResolver::class);
 ```
 
 ### A sample per gateway
@@ -219,7 +219,8 @@ final readonly class StartPaylinkCheckout
 }
 ```
 
-Passing explicit per-tenant credentials (multi-tenant friendly):
+Passing credentials explicitly per call — this skips the resolver, so it works for
+any dynamic source (a one-off override, per-merchant, per-tenant, …):
 
 ```php
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
