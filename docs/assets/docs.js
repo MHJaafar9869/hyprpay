@@ -20,9 +20,10 @@
   /* scroll-spy: the active action is the last one whose top has crossed the
      threshold — with a guard so hitting the page bottom always lights the last
      section (short trailing sections can never reach the top on their own). */
-  var THRESHOLD = 120, ticking = false;
+  var THRESHOLD = 120, ticking = false, spyLocked = false;
   function updateSpy() {
     ticking = false;
+    if (spyLocked) return; // a tree click pins the active item until the next real scroll gesture
     var current = null, i;
     for (i = 0; i < sections.length; i++) {
       if (sections[i].hidden) continue;
@@ -55,6 +56,7 @@
     // when the user switches gateway, jump to the top of the new action set
     // ('instant' overrides the page's CSS smooth-scroll so it lands immediately)
     if (userInitiated) window.scrollTo({ top: 0, behavior: 'instant' });
+    spyLocked = false;
     updateSpy();
   }
 
@@ -72,7 +74,14 @@
 
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', onScroll);
-  links.forEach(function (l) { l.addEventListener('click', function () { setActive(l.getAttribute('data-spy')); }); });
+  // A tree click pins that item as active (no flicker while it smooth-scrolls there);
+  // a genuine scroll gesture releases the pin and resumes the spy.
+  ['wheel', 'touchmove', 'keydown'].forEach(function (evt) {
+    window.addEventListener(evt, function () { spyLocked = false; }, { passive: true });
+  });
+  links.forEach(function (l) {
+    l.addEventListener('click', function () { setActive(l.getAttribute('data-spy')); spyLocked = true; });
+  });
 
   select('cyber');
   updateSpy();
