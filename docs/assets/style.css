@@ -141,11 +141,7 @@ code:not(pre code) {
   place-items: center;
   width: 30px; height: 30px;
   border-radius: 0;
-  background: var(--accent);
-  color: #10130a;
-  font-family: var(--mono);
-  font-weight: 700;
-  font-size: 19px;
+  background: var(--accent) url(logo.svg) center / 100% 100% no-repeat;
   box-shadow: 0 0 22px rgba(214, 255, 63, 0.35);
 }
 .brand-name { font-family: var(--mono); font-size: 15px; letter-spacing: -0.01em; }
@@ -590,7 +586,7 @@ code:not(pre code) {
   gap: 20px 40px;
 }
 .foot-brand { display: inline-flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 14px; }
-.foot-brand .brand-mark { width: 26px; height: 26px; font-size: 16px; box-shadow: none; }
+.foot-brand .brand-mark { width: 26px; height: 26px; font-size: 12px; box-shadow: none; }
 .foot-links { display: flex; flex-wrap: wrap; gap: 22px; }
 .foot-links a { font-size: 14px; color: var(--muted); transition: color 0.2s; }
 .foot-links a:hover { color: var(--accent); }

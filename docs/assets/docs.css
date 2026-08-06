@@ -88,20 +88,29 @@
   text-overflow: ellipsis;
 }
 .tree li a::before {
-  /* branch node */
+  /* branch tick */
   content: "";
   position: absolute;
   left: -1px; top: 50%;
   width: 10px; height: 1px;
   background: var(--line);
+  transform: translateY(-50%);
 }
 .tree li a:hover { color: var(--text); }
 .tree li a.active {
   color: var(--accent);
-  border-left-color: var(--accent);
   background: rgba(214, 255, 63, 0.06);
 }
-.tree li a.active::before { background: var(--accent); }
+/* active marker: an arrow instead of a vertical bar */
+.tree li a.active::before {
+  content: "▸";
+  left: 1px;
+  width: auto; height: auto;
+  background: none;
+  color: var(--accent);
+  font-size: 11px;
+  line-height: 1;
+}
 
 /* ═══════════════  CENTER — content  ═══════════════ */
 .doc { min-width: 0; padding-bottom: 80px; }

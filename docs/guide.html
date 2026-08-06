@@ -11,14 +11,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="./assets/style.css" />
 <link rel="stylesheet" href="./assets/docs.css" />
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='0' fill='%230b0d10'/%3E%3Ctext x='16' y='23' font-family='monospace' font-size='20' font-weight='700' text-anchor='middle' fill='%23d6ff3f'%3E%C2%A4%3C/text%3E%3C/svg%3E" />
+<link rel="icon" href="./assets/logo.svg" />
 </head>
 <body>
 <div class="grain" aria-hidden="true"></div>
 
 <header class="nav">
   <a class="brand" href="./index.html" aria-label="hyprpay payments home">
-    <span class="brand-mark" aria-hidden="true">¤</span>
+    <span class="brand-mark" aria-hidden="true"></span>
     <span class="brand-name">hyprpay<span class="brand-slash">/</span>payments</span>
   </a>
   <nav class="nav-links" aria-label="Primary">
@@ -42,7 +42,7 @@
 
   <!-- ═══════════  LEFT: one entry per action  ═══════════ -->
   <aside class="tree" aria-label="Actions">
-    <p class="tree-title">§ Actions</p>
+    <p class="tree-title">≡ Actions</p>
     <ul class="tree-flat">
       <li data-gws="cyber fawry paymob paylink"><a href="#overview" data-spy="overview">Overview</a></li>
       <li data-gws="cyber fawry paymob paylink"><a href="#create-checkout" data-spy="create-checkout">Create checkout</a></li>
@@ -65,7 +65,7 @@
   <main class="doc">
 
     <div class="gw-context" id="gw-context" style="--g:var(--cyber)">
-      <span class="name"><span class="cd"></span><span data-ctx="name">CyberSource Unified Checkout</span></span>
+      <span class="name"><span data-ctx="name">CyberSource UC</span></span>
       <span class="meta">Signing · <b data-ctx="sign">HMAC HTTP-Signature</b></span>
       <span class="meta">Checkout returns · <span data-ctx="ret">jwt (capture context)</span></span>
     </div>
@@ -305,10 +305,10 @@
   <aside class="gw-nav" aria-label="Choose a gateway">
     <p class="gw-nav-title">◱ Gateway</p>
     <ul role="tablist" aria-orientation="vertical">
-      <li role="presentation"><button class="gw-opt" role="tab" data-gw="cyber"   aria-selected="true"  style="--g:var(--cyber)"><span class="gd"></span>CyberSource UC</button></li>
-      <li role="presentation"><button class="gw-opt" role="tab" data-gw="fawry"   aria-selected="false" style="--g:var(--fawry)"><span class="gd"></span>Fawry</button></li>
-      <li role="presentation"><button class="gw-opt" role="tab" data-gw="paymob"  aria-selected="false" style="--g:var(--paymob)"><span class="gd"></span>Paymob</button></li>
-      <li role="presentation"><button class="gw-opt" role="tab" data-gw="paylink" aria-selected="false" style="--g:var(--paylink)"><span class="gd"></span>PayLink</button></li>
+      <li role="presentation"><button class="gw-opt" role="tab" data-gw="cyber"   aria-selected="true"  style="--g:var(--cyber)">CyberSource UC</button></li>
+      <li role="presentation"><button class="gw-opt" role="tab" data-gw="fawry"   aria-selected="false" style="--g:var(--fawry)">Fawry</button></li>
+      <li role="presentation"><button class="gw-opt" role="tab" data-gw="paymob"  aria-selected="false" style="--g:var(--paymob)">Paymob</button></li>
+      <li role="presentation"><button class="gw-opt" role="tab" data-gw="paylink" aria-selected="false" style="--g:var(--paylink)">PayLink</button></li>
     </ul>
     <p class="gw-nav-note">Switching a gateway rescopes the actions on the left and the examples in the center to that driver.</p>
   </aside>
@@ -316,7 +316,7 @@
 </div>
 
 <footer class="foot">
-  <div class="foot-brand"><span class="brand-mark" aria-hidden="true">¤</span><span>hyprpay/payments</span></div>
+  <div class="foot-brand"><span class="brand-mark" aria-hidden="true"></span><span>hyprpay/payments</span></div>
   <nav class="foot-links" aria-label="Footer">
     <a href="./index.html">Home</a>
     <a href="https://github.com/MHJaafar9869/hyprpay">GitHub</a>
@@ -329,7 +329,7 @@
 <script>
   (function () {
     var GW = {
-      cyber:   { name: 'CyberSource Unified Checkout', enumCase: 'CybersourceUnifiedCheckout', hue: 'var(--cyber)',   sign: 'HMAC HTTP-Signature', ret: 'jwt (capture context)' },
+      cyber:   { name: 'CyberSource UC', enumCase: 'CybersourceUnifiedCheckout', hue: 'var(--cyber)',   sign: 'HMAC HTTP-Signature', ret: 'jwt (capture context)' },
       fawry:   { name: 'Fawry',   enumCase: 'Fawry',   hue: 'var(--fawry)',   sign: 'SHA-256',     ret: 'redirectUrl (hosted page)' },
       paymob:  { name: 'Paymob',  enumCase: 'Paymob',  hue: 'var(--paymob)',  sign: 'HMAC-SHA512', ret: 'redirectUrl (iframe)' },
       paylink: { name: 'PayLink', enumCase: 'Paylink', hue: 'var(--paylink)', sign: 'HMAC-SHA256', ret: 'redirectUrl (invoice)' }
