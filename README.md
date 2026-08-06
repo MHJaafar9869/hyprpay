@@ -90,8 +90,15 @@ use Hyprpay\Payments\Domain\Contract\CredentialResolver;
 use Hyprpay\Payments\Domain\Contract\HttpClient;
 
 $this->app->bind(HttpClient::class, MyHttpClient::class);
-$this->app->bind(CredentialResolver::class, PerTenantCredentialResolver::class);
+$this->app->bind(CredentialResolver::class, MyCredentialResolver::class);
 ```
+
+`MyHttpClient` and `MyCredentialResolver` are your own classes — each implements the
+port interface it is bound to (`HttpClient` sends the outbound gateway requests;
+`CredentialResolver` supplies the per-gateway credentials). Both bindings are optional:
+out of the box the SDK binds a retrying Laravel HTTP adapter (`LaravelHttpClient`, with
+optional rate-limiting/logging decorators) and a config-driven `ConfigCredentialResolver`,
+so bind only the port you want to replace.
 
 ### A sample per gateway
 
