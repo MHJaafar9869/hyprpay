@@ -47,7 +47,7 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  overflow-x: hidden;
+  overflow-x: clip; /* clip, not hidden — keeps <html> the scroll root so sticky + anchor jumps behave */
 }
 
 /* atmospheric wash behind everything */
@@ -79,8 +79,11 @@ code, pre { font-family: var(--mono); }
 /* ── layout helpers ───────────────────────────────────────── */
 .section {
   max-width: var(--maxw);
-  margin: 0 auto;
-  padding: clamp(72px, 11vw, 148px) 24px 0;
+  /* spacing lives in the top MARGIN (outside the box) so an anchor jump
+     lands on the section's content edge, not below a wall of padding. */
+  margin: clamp(72px, 11vw, 148px) auto 0;
+  padding: 0 24px;
+  scroll-margin-top: 84px; /* clear the sticky nav (~64px) + a little breathing room */
 }
 
 .section-head { max-width: 720px; margin-bottom: 54px; }
@@ -91,7 +94,7 @@ code, pre { font-family: var(--mono); }
   letter-spacing: 0.28em;
   color: var(--accent);
   border: 1px solid var(--line-2);
-  border-radius: 999px;
+  border-radius: 0;
   padding: 5px 13px;
   margin-bottom: 22px;
 }
@@ -111,7 +114,7 @@ code:not(pre code) {
   font-size: 0.86em;
   background: var(--ink-3);
   border: 1px solid var(--line);
-  border-radius: 5px;
+  border-radius: 0;
   padding: 1px 6px;
   color: #d7dbe4;
 }
@@ -137,7 +140,7 @@ code:not(pre code) {
   display: grid;
   place-items: center;
   width: 30px; height: 30px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--accent);
   color: #10130a;
   font-family: var(--mono);
@@ -153,7 +156,7 @@ code:not(pre code) {
 .nav-cta {
   color: var(--text) !important;
   border: 1px solid var(--line-2);
-  border-radius: 999px;
+  border-radius: 0;
   padding: 7px 15px;
 }
 .nav-cta:hover { border-color: var(--accent); background: rgba(214, 255, 63, 0.07); }
@@ -214,7 +217,7 @@ code:not(pre code) {
   color: var(--text);
   background: var(--ink-2);
   border: 1px solid var(--line-2);
-  border-radius: 12px;
+  border-radius: 0;
   padding: 14px 18px;
   cursor: pointer;
   position: relative;
@@ -252,7 +255,7 @@ code:not(pre code) {
   margin: 58px 0 0;
   padding: 0;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 0;
   overflow: hidden;
   background: var(--line);
 }
@@ -306,7 +309,7 @@ code:not(pre code) {
   position: relative;
   background: linear-gradient(180deg, var(--ink-2), var(--ink-1));
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 0;
   padding: 30px 26px 28px;
   transition: border-color 0.25s, transform 0.25s var(--ease), background 0.25s;
   overflow: hidden;
@@ -348,7 +351,7 @@ code:not(pre code) {
   position: relative;
   background: var(--ink-1);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 0;
   padding: 26px 26px 24px;
   overflow: hidden;
   transition: transform 0.25s var(--ease), border-color 0.25s;
@@ -377,7 +380,7 @@ code:not(pre code) {
   text-transform: uppercase;
   color: var(--gw);
   border: 1px solid color-mix(in oklab, var(--gw) 40%, transparent);
-  border-radius: 999px;
+  border-radius: 0;
   padding: 4px 11px;
 }
 .gw-sig { font-family: var(--mono); font-size: 11.5px; color: var(--faint); letter-spacing: 0.04em; }
@@ -401,7 +404,7 @@ code:not(pre code) {
 /* ── matrix table ─────────────────────────────────────────── */
 .matrix-wrap {
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 0;
   overflow-x: auto;
   background: var(--ink-1);
 }
@@ -437,7 +440,8 @@ code:not(pre code) {
 .matrix tr:last-child th, .matrix tr:last-child td { border-bottom: 0; }
 .matrix td.y { color: #cdd3dd; font-family: var(--mono); font-size: 12.5px; }
 .matrix td.n { color: var(--faint); text-align: center; }
-.matrix td:not(:first-child) { text-align: center; }
+.matrix td:not(:first-child),
+.matrix thead th:not(:first-child) { text-align: center; }
 
 .d { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
 .d.cyber { background: var(--cyber); box-shadow: 0 0 10px var(--cyber); }
@@ -462,7 +466,7 @@ code:not(pre code) {
 .steps h4 span {
   display: grid; place-items: center;
   width: 26px; height: 26px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--ink-3);
   border: 1px solid var(--line-2);
   font-family: var(--mono); font-size: 13px; color: var(--accent);
@@ -474,7 +478,7 @@ code:not(pre code) {
 .code {
   background: var(--ink-1);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
 }
 .code pre {
@@ -539,7 +543,7 @@ code:not(pre code) {
   position: absolute; inset: 0;
   z-index: -1;
   margin: 0 24px;
-  border-radius: 24px;
+  border-radius: 0;
   border: 1px solid var(--line);
   background:
     radial-gradient(700px 300px at 50% 0%, rgba(214,255,63,0.10), transparent 70%),
@@ -560,7 +564,7 @@ code:not(pre code) {
   font-weight: 600;
   font-size: 15px;
   padding: 14px 24px;
-  border-radius: 12px;
+  border-radius: 0;
   transition: transform 0.2s var(--ease), box-shadow 0.2s;
   box-shadow: 0 0 0 rgba(214,255,63,0);
 }
@@ -568,7 +572,7 @@ code:not(pre code) {
 .cta .btn-ghost {
   padding: 14px 24px;
   border: 1px solid var(--line-2);
-  border-radius: 12px;
+  border-radius: 0;
 }
 .cta .btn-ghost:hover { border-color: var(--accent); }
 .req { margin: 28px 0 0; font-size: 13.5px; color: var(--faint); }
