@@ -1,5 +1,7 @@
 # hyprpay/payments
 
+[![CI](https://github.com/MHJaafar9869/hyprpay/actions/workflows/ci.yml/badge.svg)](https://github.com/MHJaafar9869/hyprpay/actions/workflows/ci.yml)
+
 A self-contained, multi-gateway payment SDK for PHP. One clean interface, a factory
 that resolves the right driver, and a swappable HTTP transport — with four gateways
 built in: **CyberSource Unified Checkout**, **Fawry**, **Paymob**, and **PayLink**.
