@@ -53,6 +53,7 @@
       <li data-gws="cyber paylink"><a href="#reverse-authorization" data-spy="reverse-authorization">Reverse authorization</a></li>
       <li data-gws="cyber fawry paymob paylink"><a href="#get-transaction" data-spy="get-transaction">Get transaction</a></li>
       <li data-gws="cyber fawry paymob paylink"><a href="#search-transaction" data-spy="search-transaction">Search transaction</a></li>
+      <li data-gws="cyber fawry paymob paylink"><a href="#reconcile" data-spy="reconcile">Reconcile</a></li>
       <li data-gws="cyber fawry paymob paylink"><a href="#verify-webhook" data-spy="verify-webhook">Verify webhook</a></li>
       <li data-gws="cyber"><a href="#enroll-payer-auth" data-spy="enroll-payer-auth">Enroll payer auth</a></li>
       <li data-gws="cyber"><a href="#validate-payer-auth" data-spy="validate-payer-auth">Validate payer auth</a></li>
@@ -217,7 +218,7 @@
       <p class="doc-sig"><span class="fn">getTransaction</span>(id): <span class="rt">TransactionSnapshot</span></p>
       <p>Fetches the authoritative status by gateway transaction id. Returns a
          <code>TransactionSnapshot</code> with a normalized <code>PaymentStatus</code>, the amount and the
-         order reference. The Artisan reconcile commands wrap this call.</p>
+         order reference. The Reconcile action below batches this lookup across many ids.</p>
       <div class="code">
 <pre><code><span class="v">$snapshot</span> = <span class="v">$gateway</span>-&gt;<span class="fn">getTransaction</span>(<span class="s">'7040000000000000001'</span>);
 
@@ -235,6 +236,61 @@
 <pre><code><span class="v">$snapshot</span> = <span class="v">$gateway</span>-&gt;<span class="fn">searchTransaction</span>(<span class="s">'ORDER-124'</span>);
 
 <span class="c">// same TransactionSnapshot, resolved from your reference</span></code></pre>
+      </div>
+    </section>
+
+    <section id="reconcile" class="doc-section" data-gws="cyber fawry paymob paylink">
+      <p class="doc-eyebrow">After the payment</p>
+      <h2>Reconcile</h2>
+      <p class="doc-sig"><span class="fn">reconcile</span>(GatewayName, ids): <span class="rt">ReconciliationOutcome[]</span></p>
+      <p>Reconcile a batch of transaction ids against this gateway in one call. Each id is fetched via
+         <code>getTransaction</code> and returned as a <code>ReconciliationOutcome</code> — a failed lookup
+         is captured as an error instead of aborting the batch, so every id is accounted for. Inject the
+         <code>TransactionReconciler</code> use-case; it's registered in the container.</p>
+
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$outcomes</span> = <span class="v">$reconciler</span>-&gt;<span class="fn">reconcile</span>(<span class="t">GatewayName</span>::<span class="cn">CybersourceUnifiedCheckout</span>, [
+    <span class="s">'7040000000000000001'</span>,
+]);
+
+<span class="k">foreach</span> (<span class="v">$outcomes</span> <span class="k">as</span> <span class="v">$outcome</span>) {
+    <span class="c">// $outcome->reconciled(), $outcome->snapshot?->status, $outcome->error</span>
+}</code></pre>
+        </div>
+      </div>
+      <div class="gw-variant" data-gw="fawry">
+        <div class="code">
+<pre><code><span class="v">$outcomes</span> = <span class="v">$reconciler</span>-&gt;<span class="fn">reconcile</span>(<span class="t">GatewayName</span>::<span class="cn">Fawry</span>, [
+    <span class="s">'ORDER-124'</span>, <span class="s">'ORDER-125'</span>,
+]);
+
+<span class="k">foreach</span> (<span class="v">$outcomes</span> <span class="k">as</span> <span class="v">$outcome</span>) {
+    <span class="c">// $outcome->reconciled(), $outcome->snapshot?->status, $outcome->error</span>
+}</code></pre>
+        </div>
+      </div>
+      <div class="gw-variant" data-gw="paymob">
+        <div class="code">
+<pre><code><span class="v">$outcomes</span> = <span class="v">$reconciler</span>-&gt;<span class="fn">reconcile</span>(<span class="t">GatewayName</span>::<span class="cn">Paymob</span>, [
+    <span class="s">'123456789'</span>,
+]);
+
+<span class="k">foreach</span> (<span class="v">$outcomes</span> <span class="k">as</span> <span class="v">$outcome</span>) {
+    <span class="c">// $outcome->reconciled(), $outcome->snapshot?->status, $outcome->error</span>
+}</code></pre>
+        </div>
+      </div>
+      <div class="gw-variant" data-gw="paylink">
+        <div class="code">
+<pre><code><span class="v">$outcomes</span> = <span class="v">$reconciler</span>-&gt;<span class="fn">reconcile</span>(<span class="t">GatewayName</span>::<span class="cn">Paylink</span>, [
+    <span class="s">'INV-0001'</span>,
+]);
+
+<span class="k">foreach</span> (<span class="v">$outcomes</span> <span class="k">as</span> <span class="v">$outcome</span>) {
+    <span class="c">// $outcome->reconciled(), $outcome->snapshot?->status, $outcome->error</span>
+}</code></pre>
+        </div>
       </div>
     </section>
 
