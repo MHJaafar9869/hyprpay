@@ -33,7 +33,6 @@
     <a href="#features">Design</a>
     <a href="#gateways">Gateways</a>
     <a href="#matrix">Operations</a>
-    <a href="#start">Quick&nbsp;start</a>
     <a href="./guide.html">Docs</a>
     <a class="nav-cta" href="https://github.com/MHJaafar9869/hyprpay">GitHub&nbsp;↗</a>
   </nav>
@@ -305,34 +304,6 @@ composer require hyprpay/payments</code></pre></div>
   <p class="foot-note">Domain-driven · ports &amp; adapters · deterministic · exact money.</p>
 </footer>
 
-<script>
-  // Progressive-enhancement: reveal on scroll, honoring reduced-motion.
-  (function () {
-    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var els = document.querySelectorAll('.reveal');
-    if (reduce || !('IntersectionObserver' in window)) {
-      els.forEach(function (el) { el.classList.add('in'); });
-    } else {
-      var io = new IntersectionObserver(function (entries) {
-        entries.forEach(function (e) {
-          if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
-        });
-      }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
-      els.forEach(function (el) { io.observe(el); });
-    }
-
-    // Copy the install command.
-    var btn = document.getElementById('copy-install');
-    if (btn) {
-      btn.addEventListener('click', function () {
-        var text = btn.getAttribute('data-copy');
-        var done = function () { btn.classList.add('is-copied'); setTimeout(function () { btn.classList.remove('is-copied'); }, 1600); };
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(done).catch(done);
-        } else { done(); }
-      });
-    }
-  })();
-</script>
+<script src="./assets/app.js"></script>
 </body>
 </html>
