@@ -239,11 +239,11 @@ everywhere.
 
 | Operation | CyberSource UC | Fawry | Paymob | PayLink |
 | --- | :---: | :---: | :---: | :---: |
-| `createCheckoutSession` | ✅ capture context | ✅ hosted / card / wallet / pay-at-Fawry | ✅ iframe flow | ✅ invoice link |
+| `createCheckoutSession` | ✅ capture context | ✅ hosted / card / wallet / pay-at-Fawry / MyFawry / instalment | ✅ iframe flow | ✅ invoice link |
 | `charge` (transient token) | ✅ | — | — | — |
-| `capture` | ✅ | — | — | ✅ (settle) |
+| `capture` | ✅ | ✅ (Auth/Capture) | ✅ | ✅ (settle) |
 | `refund` | ✅ | ✅ | ✅ | ✅ |
-| `void` | ✅ | — | ✅ | ✅ |
+| `void` | ✅ | ✅ (cancel auth) | ✅ | ✅ |
 | `reverseAuthorization` | ✅ | — | — | ✅ |
 | `enrollPayerAuth` / `validatePayerAuth` (3-DS) | ✅ | — | — | — |
 | `vaultInstrument` / `chargeStoredCredential` | ✅ (TMS, MIT/CIT) | — | — | — |

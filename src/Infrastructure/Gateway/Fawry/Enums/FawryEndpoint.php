@@ -16,6 +16,8 @@ enum FawryEndpoint
     case HostedInit;
     case Charge;
     case Refund;
+    case PaymentCapture;
+    case PaymentCancel;
     case StatusV2;
 
     /**
@@ -36,6 +38,12 @@ enum FawryEndpoint
             self::Refund => $testMode
                 ? 'https://atfawry.fawrystaging.com/ECommerceWeb/Fawry/payments/refund'
                 : 'https://www.atfawry.com/ECommerceWeb/Fawry/payments/refund',
+            self::PaymentCapture => $testMode
+                ? 'https://atfawry.fawrystaging.com/ECommerceWeb/api/payment/capture'
+                : 'https://www.atfawry.com/ECommerceWeb/api/payment/capture',
+            self::PaymentCancel => $testMode
+                ? 'https://atfawry.fawrystaging.com/ECommerceWeb/api/payment/cancel'
+                : 'https://www.atfawry.com/ECommerceWeb/api/payment/cancel',
             self::StatusV2 => $testMode
                 ? 'https://atfawry.fawrystaging.com/ECommerceWeb/Fawry/payments/status/v2'
                 : 'https://www.atfawry.com/ECommerceWeb/Fawry/payments/status/v2',

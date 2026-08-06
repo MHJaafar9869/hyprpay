@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hyprpay\Payments\Infrastructure\Gateway\Paymob;
 
 use Hyprpay\Payments\Domain\AbstractPaymentGateway;
+use Hyprpay\Payments\Domain\Command\CaptureRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
@@ -29,9 +30,10 @@ use Hyprpay\Payments\Infrastructure\Support\Value;
  *
  * Implements the operations Paymob's Accept API provides: starting a payment via
  * {@see createCheckoutSession()} (the auth-token → order → payment-key → iframe flow),
- * refunding, voiding, looking up a transaction (order inquiry), and verifying the
- * HMAC-SHA512 transaction webhook. Capture, reversal, payer-auth, and vaulting are not
- * part of this flow and inherit {@see AbstractPaymentGateway}'s unsupported behaviour.
+ * capturing an authorization, refunding, voiding, looking up a transaction by Paymob
+ * order id ({@see getTransaction()}) or by the merchant order id ({@see searchTransaction()}),
+ * and verifying the HMAC-SHA512 transaction webhook. Reversal, payer-auth, and vaulting
+ * are not part of this flow and inherit {@see AbstractPaymentGateway}'s unsupported behaviour.
  *
  * Requests are built deterministically from the caller's inputs — the Paymob
  * `merchant_order_id` is the caller's order reference with no random suffix — so a
@@ -107,6 +109,34 @@ final class PaymobGateway extends AbstractPaymentGateway
     }
 
     /**
+     * Capture funds on a previously authorized Paymob transaction.
+     *
+     * Applies to transactions created against an auth-only (authorization) integration;
+     * the captured amount is the request's amount in minor units, so a smaller amount
+     * performs a partial capture. Mirrors {@see void()}: the outcome is derived from
+     * Paymob's `error_occured` flag rather than a status string.
+     */
+    public function capture(CaptureRequest $request): PaymentResult
+    {
+        $response = $this->client->post(
+            '/acceptance/capture',
+            ['transaction_id' => $request->transactionId, 'amount_cents' => $request->money->minorAmount],
+            $this->client->authenticate(),
+            'capture',
+        );
+
+        $succeeded = ! (bool) ($response['error_occured'] ?? false);
+
+        return new PaymentResult(
+            success: $succeeded,
+            status: $succeeded ? PaymentStatus::Captured : PaymentStatus::Failed,
+            transactionId: isset($response['id']) ? Value::string($response['id']) : $request->transactionId,
+            message: Value::nullableString(data_get($response, 'data.message')),
+            raw: $response,
+        );
+    }
+
+    /**
      * Refund all or part of a Paymob transaction.
      */
     public function refund(RefundRequest $request): RefundResult
@@ -170,6 +200,36 @@ final class PaymobGateway extends AbstractPaymentGateway
             transactionId: Value::string($response['id'] ?? $transactionId),
             status: PaymobTransactionStatus::fromTransaction($response),
             orderReference: Value::string(data_get($response, 'order.merchant_order_id') ?? $transactionId),
+            raw: $response,
+        );
+    }
+
+    /**
+     * Search for a Paymob transaction by the merchant's own order reference.
+     *
+     * Runs the same order-inquiry endpoint as {@see getTransaction()} but keyed by the
+     * `merchant_order_id` supplied at checkout instead of the Paymob order id, returning
+     * null when Paymob reports no matching order.
+     *
+     * @param  string  $query  The merchant order id (the order reference used at checkout).
+     */
+    public function searchTransaction(string $query): ?TransactionSnapshot
+    {
+        $response = $this->client->post(
+            '/ecommerce/orders/transaction_inquiry',
+            ['merchant_order_id' => $query],
+            $this->client->authenticate(),
+            'search transaction',
+        );
+
+        if (blank($response['id'] ?? null)) {
+            return null;
+        }
+
+        return new TransactionSnapshot(
+            transactionId: Value::string($response['id']),
+            status: PaymobTransactionStatus::fromTransaction($response),
+            orderReference: Value::string(data_get($response, 'order.merchant_order_id') ?? $query),
             raw: $response,
         );
     }

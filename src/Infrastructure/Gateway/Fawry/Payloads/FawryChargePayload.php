@@ -14,9 +14,9 @@ use Hyprpay\Payments\Infrastructure\Support\Value;
  * Builds the FawryPay charge request bodies for the direct payment methods.
  *
  * Targets POST /ECommerceWeb/Fawry/payments/charge with one method per builder:
- * card (PayUsingCC, 3-D Secure), mobile wallet (MWALLET), and pay-at-outlet by
- * reference number (PAYATFAWRY). Each method shares a common base body and appends
- * its method-specific fields and matching signature.
+ * card (PayUsingCC, 3-D Secure), mobile wallet (MWALLET), pay-at-outlet by reference
+ * number (PAYATFAWRY), MyFawry (MYFAWRY), and bank card instalments (CARD). Each method
+ * shares a common base body and appends its method-specific fields and matching signature.
  *
  * The merchant reference is taken verbatim from the request's order reference (no random
  * or time-based suffix), so identical retries are treated idempotently by FawryPay.
@@ -35,18 +35,12 @@ final class FawryChargePayload
     {
         $amount = $request->money->toDecimalString();
         $returnUrl = $request->returnUrl ?? '';
-        $card = is_array($request->options['card'] ?? null) ? $request->options['card'] : [];
+        $card = self::cardDetails($request);
 
-        $number = Value::string($card['number'] ?? null);
-        $expiryYear = Value::string($card['expiryYear'] ?? null);
-        $expiryMonth = Value::string($card['expiryMonth'] ?? null);
-        $cvv = Value::string($card['cvv'] ?? null);
-
-        $body = self::base($request, $credentials, FawryPaymentMethod::Card->value, $amount);
-        $body['cardNumber'] = $number;
-        $body['cardExpiryYear'] = $expiryYear;
-        $body['cardExpiryMonth'] = $expiryMonth;
-        $body['cvv'] = $cvv;
+        $body = self::withCardFields(
+            self::base($request, $credentials, FawryPaymentMethod::Card->value, $amount),
+            $card,
+        );
         $body['enable3DS'] = true;
         $body['authCaptureModePayment'] = false;
         $body['returnUrl'] = $returnUrl;
@@ -56,10 +50,10 @@ final class FawryChargePayload
             FawryFields::customerProfileId($request),
             FawryPaymentMethod::Card->value,
             $amount,
-            $number,
-            $expiryYear,
-            $expiryMonth,
-            $cvv,
+            $card['number'],
+            $card['expiryYear'],
+            $card['expiryMonth'],
+            $card['cvv'],
             $returnUrl,
             $credentials->sharedSecret,
         );
@@ -112,6 +106,102 @@ final class FawryChargePayload
             $amount,
             $credentials->sharedSecret,
         );
+
+        return $body;
+    }
+
+    /**
+     * Build a MyFawry (MYFAWRY) charge body.
+     *
+     * MyFawry shares the reference-charge shape and signature; the response carries a
+     * deep link and QR code the customer uses to pay from the MyFawry app.
+     *
+     * @return array<string, mixed>
+     */
+    public static function myFawry(CheckoutSessionRequest $request, GatewayCredentials $credentials): array
+    {
+        $amount = $request->money->toDecimalString();
+
+        $body = self::base($request, $credentials, FawryPaymentMethod::MyFawry->value, $amount);
+        $body['signature'] = FawrySignature::reference(
+            $credentials->merchantId,
+            FawryFields::merchantRefNum($request),
+            FawryFields::customerProfileId($request),
+            FawryPaymentMethod::MyFawry->value,
+            $amount,
+            $credentials->sharedSecret,
+        );
+
+        return $body;
+    }
+
+    /**
+     * Build a bank instalment (CARD) charge body.
+     *
+     * Charges a card over a bank instalment plan: the card details are read from the
+     * request options bag under `card` as [number, expiryYear, expiryMonth, cvv], and
+     * the chosen plan from `installment_plan_id`. The instalment plan id participates in
+     * the signature, which (unlike the PayUsingCC 3-D Secure charge) does not cover the
+     * return URL.
+     *
+     * @return array<string, mixed>
+     */
+    public static function installment(CheckoutSessionRequest $request, GatewayCredentials $credentials): array
+    {
+        $amount = $request->money->toDecimalString();
+        $card = self::cardDetails($request);
+        $planId = Value::string($request->options['installment_plan_id'] ?? null);
+
+        $body = self::withCardFields(
+            self::base($request, $credentials, FawryPaymentMethod::CardInstallment->value, $amount),
+            $card,
+        );
+        $body['installmentPlanId'] = $planId;
+        $body['signature'] = FawrySignature::installmentCard(
+            $credentials->merchantId,
+            FawryFields::merchantRefNum($request),
+            FawryFields::customerProfileId($request),
+            FawryPaymentMethod::CardInstallment->value,
+            $amount,
+            $card['number'],
+            $card['expiryYear'],
+            $card['expiryMonth'],
+            $card['cvv'],
+            $planId,
+            $credentials->sharedSecret,
+        );
+
+        return $body;
+    }
+
+    /**
+     * Read the card details from the request options bag (the `card` key).
+     *
+     * @return array{number: string, expiryYear: string, expiryMonth: string, cvv: string}
+     */
+    private static function cardDetails(CheckoutSessionRequest $request): array
+    {
+        return [
+            'number' => Value::string(data_get($request->options, 'card.number')),
+            'expiryYear' => Value::string(data_get($request->options, 'card.expiryYear')),
+            'expiryMonth' => Value::string(data_get($request->options, 'card.expiryMonth')),
+            'cvv' => Value::string(data_get($request->options, 'card.cvv')),
+        ];
+    }
+
+    /**
+     * Add the FawryPay card fields (PAN, expiry, CVV) to a charge body.
+     *
+     * @param  array<string, mixed>  $body
+     * @param  array{number: string, expiryYear: string, expiryMonth: string, cvv: string}  $card
+     * @return array<string, mixed>
+     */
+    private static function withCardFields(array $body, array $card): array
+    {
+        $body['cardNumber'] = $card['number'];
+        $body['cardExpiryYear'] = $card['expiryYear'];
+        $body['cardExpiryMonth'] = $card['expiryMonth'];
+        $body['cvv'] = $card['cvv'];
 
         return $body;
     }

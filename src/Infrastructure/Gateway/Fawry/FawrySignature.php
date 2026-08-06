@@ -117,6 +117,59 @@ final class FawrySignature
     }
 
     /**
+     * Signature for an installment (bank) card charge (`CARD` payment method).
+     *
+     * merchantCode + merchantRefNum + customerProfileId + paymentMethod + amount +
+     * cardNumber + cardExpiryYear + cardExpiryMonth + cvv + installmentPlanId + secureKey
+     */
+    public static function installmentCard(
+        string $merchantCode,
+        string $merchantRefNum,
+        ?string $customerProfileId,
+        string $paymentMethod,
+        string $amount,
+        string $cardNumber,
+        string $cardExpiryYear,
+        string $cardExpiryMonth,
+        string $cvv,
+        string $installmentPlanId,
+        string $secureKey,
+    ): string {
+        return self::hash(
+            $merchantCode.$merchantRefNum.($customerProfileId ?? '').$paymentMethod.$amount
+            .$cardNumber.$cardExpiryYear.$cardExpiryMonth.$cvv.$installmentPlanId.$secureKey,
+        );
+    }
+
+    /**
+     * Signature for an Auth/Capture capture request (`requestSignature`).
+     *
+     * merchantRefNum + captureAmount (if present, two-decimal format; else "") +
+     * merchantCode + secureKey
+     */
+    public static function capture(
+        string $merchantRefNum,
+        ?string $captureAmount,
+        string $merchantCode,
+        string $secureKey,
+    ): string {
+        return self::hash($merchantRefNum.($captureAmount ?? '').$merchantCode.$secureKey);
+    }
+
+    /**
+     * Signature for an Auth/Capture cancel-authorization request (`requestSignature`).
+     *
+     * merchantRefNum + merchantCode + secureKey
+     */
+    public static function cancelAuthorization(
+        string $merchantRefNum,
+        string $merchantCode,
+        string $secureKey,
+    ): string {
+        return self::hash($merchantRefNum.$merchantCode.$secureKey);
+    }
+
+    /**
      * Signature for a Get Payment Status V2 request.
      *
      * merchantCode + merchantRefNumber + secureKey

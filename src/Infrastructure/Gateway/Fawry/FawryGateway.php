@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace Hyprpay\Payments\Infrastructure\Gateway\Fawry;
 
 use Hyprpay\Payments\Domain\AbstractPaymentGateway;
+use Hyprpay\Payments\Domain\Command\CaptureRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
+use Hyprpay\Payments\Domain\Command\VoidRequest;
 use Hyprpay\Payments\Domain\Contract\HttpClient;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\Exception\GatewayRequestException;
 use Hyprpay\Payments\Domain\Result\CheckoutSession;
+use Hyprpay\Payments\Domain\Result\PaymentResult;
 use Hyprpay\Payments\Domain\Result\RefundResult;
 use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
 use Hyprpay\Payments\Domain\Result\WebhookEvent;
@@ -19,6 +22,8 @@ use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
 use Hyprpay\Payments\Infrastructure\Gateway\Fawry\Enums\FawryEndpoint;
 use Hyprpay\Payments\Infrastructure\Gateway\Fawry\Enums\FawryOrderStatus;
 use Hyprpay\Payments\Infrastructure\Gateway\Fawry\Enums\FawryPaymentMethod;
+use Hyprpay\Payments\Infrastructure\Gateway\Fawry\Payloads\FawryCancelPayload;
+use Hyprpay\Payments\Infrastructure\Gateway\Fawry\Payloads\FawryCapturePayload;
 use Hyprpay\Payments\Infrastructure\Gateway\Fawry\Payloads\FawryChargePayload;
 use Hyprpay\Payments\Infrastructure\Gateway\Fawry\Payloads\FawryFields;
 use Hyprpay\Payments\Infrastructure\Gateway\Fawry\Payloads\FawryHostedPayload;
@@ -30,10 +35,12 @@ use Hyprpay\Payments\Infrastructure\Support\Value;
  *
  * Supports the operations that map onto FawryPay's rails: starting a payment via
  * {@see createCheckoutSession()} (hosted Express Checkout, card 3-D Secure, mobile
- * wallet, or pay-at-outlet by reference number), refunding, looking up a transaction
- * (Get Payment Status V2), and verifying Server Notification V2 webhooks. Capture,
- * void, reversal, payer-auth, and vaulting are not part of FawryPay's model and
- * therefore inherit {@see AbstractPaymentGateway}'s unsupported-operation behaviour.
+ * wallet, pay-at-outlet by reference number, the MyFawry app, or a bank card
+ * instalment), capturing an Auth/Capture authorization ({@see capture()}), refunding,
+ * cancelling an authorization ({@see void()}), looking up a transaction (Get Payment
+ * Status V2), and verifying Server Notification V2 webhooks. Reversal, payer-auth, and
+ * vaulting are not part of FawryPay's model and therefore inherit
+ * {@see AbstractPaymentGateway}'s unsupported-operation behaviour.
  *
  * All requests are built deterministically from the caller's inputs — the merchant
  * reference is the caller's order reference with no random or time suffix — so a
@@ -65,8 +72,9 @@ final class FawryGateway extends AbstractPaymentGateway
      * Start a FawryPay payment using the method selected on the request.
      *
      * Routes to the hosted Express Checkout page, a card 3-D Secure charge, a mobile
-     * wallet charge, or a pay-at-outlet reference-number charge, and normalises the
-     * result into a {@see CheckoutSession} (redirect URL, reference, and/or QR code).
+     * wallet charge, a pay-at-outlet reference-number charge, a MyFawry app charge, or a
+     * bank card instalment, and normalises the result into a {@see CheckoutSession}
+     * (redirect URL, reference, and/or QR code).
      */
     public function createCheckoutSession(CheckoutSessionRequest $request): CheckoutSession
     {
@@ -75,7 +83,28 @@ final class FawryGateway extends AbstractPaymentGateway
             FawryPaymentMethod::Card => $this->cardCheckout($request),
             FawryPaymentMethod::MobileWallet => $this->walletCheckout($request),
             FawryPaymentMethod::PayAtFawry => $this->referenceCheckout($request),
+            FawryPaymentMethod::MyFawry => $this->myFawryCheckout($request),
+            FawryPaymentMethod::CardInstallment => $this->installmentCheckout($request),
         };
+    }
+
+    /**
+     * Capture funds held by a prior FawryPay Auth/Capture authorization.
+     *
+     * The captured amount is the request's amount in FawryPay's two-decimal format, so a
+     * smaller amount performs a partial capture. The authorization is referenced by its
+     * merchant reference number (the request's order reference, falling back to its
+     * transaction id).
+     */
+    public function capture(CaptureRequest $request): PaymentResult
+    {
+        $response = $this->client->postJson(
+            FawryEndpoint::PaymentCapture,
+            FawryCapturePayload::build($request, $this->gatewayCredentials),
+            'capture',
+        );
+
+        return $this->toStatusResult($response, PaymentStatus::Captured, $request->orderReference ?? $request->transactionId);
     }
 
     /**
@@ -99,6 +128,25 @@ final class FawryGateway extends AbstractPaymentGateway
             message: Value::nullableString($response['statusDescription'] ?? null),
             raw: $response,
         );
+    }
+
+    /**
+     * Void (cancel) a FawryPay Auth/Capture authorization that has not been captured.
+     *
+     * Releases the hold placed by a charge sent with `authCaptureModePayment: true`. The
+     * authorization is referenced by its merchant reference number (the request's order
+     * reference, falling back to its transaction id). Once funds are captured/settled,
+     * use {@see refund()} instead.
+     */
+    public function void(VoidRequest $request): PaymentResult
+    {
+        $response = $this->client->postJson(
+            FawryEndpoint::PaymentCancel,
+            FawryCancelPayload::build($request, $this->gatewayCredentials),
+            'void',
+        );
+
+        return $this->toStatusResult($response, PaymentStatus::Voided, $request->orderReference ?? $request->transactionId);
     }
 
     /**
@@ -224,6 +272,52 @@ final class FawryGateway extends AbstractPaymentGateway
         return new CheckoutSession(
             reference: isset($response['referenceNumber']) ? Value::string($response['referenceNumber']) : null,
             merchantReference: FawryFields::merchantRefNum($request),
+            raw: $response,
+        );
+    }
+
+    private function myFawryCheckout(CheckoutSessionRequest $request): CheckoutSession
+    {
+        $response = $this->sendCharge(FawryChargePayload::myFawry($request, $this->gatewayCredentials));
+
+        return new CheckoutSession(
+            redirectUrl: Value::nullableString($response['deepLink'] ?? null),
+            reference: isset($response['referenceNumber']) ? Value::string($response['referenceNumber']) : null,
+            qrCode: Value::nullableString($response['qrCode'] ?? null),
+            merchantReference: FawryFields::merchantRefNum($request),
+            raw: $response,
+        );
+    }
+
+    private function installmentCheckout(CheckoutSessionRequest $request): CheckoutSession
+    {
+        $response = $this->sendCharge(FawryChargePayload::installment($request, $this->gatewayCredentials));
+
+        return new CheckoutSession(
+            redirectUrl: Value::nullableString(data_get($response, 'nextAction.redirectUrl')),
+            reference: isset($response['referenceNumber']) ? Value::string($response['referenceNumber']) : null,
+            merchantReference: FawryFields::merchantRefNum($request),
+            raw: $response,
+        );
+    }
+
+    /**
+     * Map a FawryPay statusCode-envelope response (capture/void) into a PaymentResult.
+     *
+     * @param  array<string, mixed>  $response  The decoded FawryPay response body.
+     * @param  PaymentStatus  $successStatus  The status to report when FawryPay returns statusCode 200.
+     * @param  string  $transactionId  The merchant reference the operation acted on.
+     */
+    private function toStatusResult(array $response, PaymentStatus $successStatus, string $transactionId): PaymentResult
+    {
+        $succeeded = $this->fawryStatusCode($response) === '200';
+
+        return new PaymentResult(
+            success: $succeeded,
+            status: $succeeded ? $successStatus : PaymentStatus::Failed,
+            transactionId: $transactionId,
+            code: $this->fawryStatusCode($response),
+            message: Value::nullableString($response['statusDescription'] ?? null),
             raw: $response,
         );
     }

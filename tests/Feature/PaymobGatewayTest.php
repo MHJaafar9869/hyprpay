@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Hyprpay\Payments\Application\PaymentGatewayFactory;
+use Hyprpay\Payments\Domain\Command\CaptureRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
@@ -97,6 +98,60 @@ it('voids a transaction by id', function (): void {
 
     expect($result->status)->toBe(PaymentStatus::Voided)
         ->and($http->lastRequest()?->url)->toBe('https://accept.paymob.com/api/acceptance/void_refund/void');
+});
+
+it('captures an authorized transaction by id and amount', function (): void {
+    $http = (new FakeHttpClient)
+        ->queueJson(['token' => 'AUTH_TOKEN'])
+        ->queueJson(['id' => 888, 'success' => true, 'pending' => false, 'error_occured' => false]);
+    $gateway = new PaymobGateway(paymobCredentials(), $http);
+
+    $result = $gateway->capture(new CaptureRequest(transactionId: '555', money: Money::minor(7500, 'EGP')));
+
+    expect($result->success)->toBeTrue()
+        ->and($result->status)->toBe(PaymentStatus::Captured)
+        ->and($result->transactionId)->toBe('888')
+        ->and($http->lastRequest()?->url)->toBe('https://accept.paymob.com/api/acceptance/capture')
+        ->and($http->recorded()[1]->header('Authorization'))->toBe('Bearer AUTH_TOKEN')
+        ->and(paymobRecorded($http, 1)['transaction_id'])->toBe('555')
+        ->and(paymobRecorded($http, 1)['amount_cents'])->toBe(7500);
+});
+
+it('reports a failed capture when Paymob flags an error', function (): void {
+    $http = (new FakeHttpClient)
+        ->queueJson(['token' => 'AUTH_TOKEN'])
+        ->queueJson(['id' => 888, 'error_occured' => true, 'data' => ['message' => 'declined']]);
+    $gateway = new PaymobGateway(paymobCredentials(), $http);
+
+    $result = $gateway->capture(new CaptureRequest(transactionId: '555', money: Money::minor(7500, 'EGP')));
+
+    expect($result->success)->toBeFalse()
+        ->and($result->status)->toBe(PaymentStatus::Failed)
+        ->and($result->message)->toBe('declined');
+});
+
+it('searches for a transaction by merchant order id', function (): void {
+    $http = (new FakeHttpClient)
+        ->queueJson(['token' => 'AUTH_TOKEN'])
+        ->queueJson(['id' => 999, 'success' => true, 'pending' => false, 'order' => ['merchant_order_id' => 'ORD1']]);
+    $gateway = new PaymobGateway(paymobCredentials(), $http);
+
+    $snapshot = $gateway->searchTransaction('ORD1');
+
+    expect($snapshot?->status)->toBe(PaymentStatus::Captured)
+        ->and($snapshot?->transactionId)->toBe('999')
+        ->and($snapshot?->orderReference)->toBe('ORD1')
+        ->and($http->lastRequest()?->url)->toBe('https://accept.paymob.com/api/ecommerce/orders/transaction_inquiry')
+        ->and(paymobRecorded($http, 1)['merchant_order_id'])->toBe('ORD1');
+});
+
+it('returns null when searching for an unknown merchant order id', function (): void {
+    $http = (new FakeHttpClient)
+        ->queueJson(['token' => 'AUTH_TOKEN'])
+        ->queueJson([]);
+    $gateway = new PaymobGateway(paymobCredentials(), $http);
+
+    expect($gateway->searchTransaction('NOPE'))->toBeNull();
 });
 
 it('maps an order inquiry to a captured snapshot', function (): void {
