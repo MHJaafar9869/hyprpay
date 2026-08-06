@@ -30,6 +30,24 @@ it('signs a hosted-init request over the concatenated charge items', function ()
     expect($signature)->toBe(hash('sha256', 'MC'.'REF1'.'https://ret'.'i1'.'1'.'100.00'.'sec'));
 });
 
+it('signs an instalment (CARD) charge including the plan id, before the secret', function (): void {
+    $signature = FawrySignature::installmentCard('MC', 'REF1', null, 'CARD', '1200.00', '4111', '30', '12', '123', 'PLAN-12', 'sec');
+
+    expect($signature)->toBe(hash('sha256', 'MC'.'REF1'.''.'CARD'.'1200.00'.'4111'.'30'.'12'.'123'.'PLAN-12'.'sec'));
+});
+
+it('signs a capture over the reference, amount, merchant code and secret', function (): void {
+    expect(FawrySignature::capture('REF1', '75.00', 'MC', 'sec'))
+        ->toBe(hash('sha256', 'REF1'.'75.00'.'MC'.'sec'))
+        ->and(FawrySignature::capture('REF1', null, 'MC', 'sec'))
+        ->toBe(hash('sha256', 'REF1'.''.'MC'.'sec'));
+});
+
+it('signs a cancel-authorization over the reference, merchant code and secret', function (): void {
+    expect(FawrySignature::cancelAuthorization('REF1', 'MC', 'sec'))
+        ->toBe(hash('sha256', 'REF1'.'MC'.'sec'));
+});
+
 it('signs a refund with and without a reason', function (): void {
     expect(FawrySignature::refund('MC', 'FREF', '25.00', 'duplicate', 'sec'))
         ->toBe(hash('sha256', 'MC'.'FREF'.'25.00'.'duplicate'.'sec'))

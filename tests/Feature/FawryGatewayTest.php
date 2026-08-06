@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use Hyprpay\Payments\Application\PaymentGatewayFactory;
+use Hyprpay\Payments\Domain\Command\CaptureRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
+use Hyprpay\Payments\Domain\Command\VoidRequest;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\Exception\GatewayRequestException;
@@ -109,6 +111,114 @@ it('refunds a settled payment by its reference number', function (): void {
         ->and($http->lastRequest()?->url)->toBe('https://atfawry.fawrystaging.com/ECommerceWeb/Fawry/payments/refund')
         ->and(fawryBody($http)['referenceNumber'])->toBe('FRN-1')
         ->and(fawryBody($http)['reason'])->toBe('duplicate');
+});
+
+it('captures an authorization and maps it to a captured result', function (): void {
+    [$gateway, $http] = fawryWithFakeHttp();
+    $http->queueJson(['statusCode' => 200, 'statusDescription' => 'Operation done successfully']);
+
+    $result = $gateway->capture(new CaptureRequest(transactionId: 'ORD8', money: Money::minor(7500, 'EGP')));
+
+    expect($result->success)->toBeTrue()
+        ->and($result->status)->toBe(PaymentStatus::Captured)
+        ->and($result->transactionId)->toBe('ORD8')
+        ->and($http->lastRequest()?->url)->toBe('https://atfawry.fawrystaging.com/ECommerceWeb/api/payment/capture')
+        ->and(fawryBody($http)['merchantCode'])->toBe('test_merchant')
+        ->and(fawryBody($http)['merchantRefNum'])->toBe('ORD8')
+        ->and(fawryBody($http)['captureAmount'])->toBe('75.00')
+        ->and(fawryBody($http)['requestSignature'])
+        ->toBe(FawrySignature::capture('ORD8', '75.00', 'test_merchant', testCredentials()->sharedSecret));
+});
+
+it('cancels an authorization and maps it to a voided result', function (): void {
+    [$gateway, $http] = fawryWithFakeHttp();
+    $http->queueJson(['statusCode' => 200, 'statusDescription' => 'Operation done successfully']);
+
+    $result = $gateway->void(new VoidRequest(transactionId: 'ORD8'));
+
+    expect($result->success)->toBeTrue()
+        ->and($result->status)->toBe(PaymentStatus::Voided)
+        ->and($result->transactionId)->toBe('ORD8')
+        ->and($http->lastRequest()?->url)->toBe('https://atfawry.fawrystaging.com/ECommerceWeb/api/payment/cancel')
+        ->and(fawryBody($http)['merchantCode'])->toBe('test_merchant')
+        ->and(fawryBody($http)['merchantRefNum'])->toBe('ORD8')
+        ->and(fawryBody($http)['requestSignature'])
+        ->toBe(FawrySignature::cancelAuthorization('ORD8', 'test_merchant', testCredentials()->sharedSecret));
+});
+
+it('prefers the order reference over the transaction id when cancelling', function (): void {
+    [$gateway, $http] = fawryWithFakeHttp();
+    $http->queueJson(['statusCode' => 200]);
+
+    $gateway->void(new VoidRequest(transactionId: 'FRN-2', orderReference: 'ORD-CANCEL'));
+
+    expect(fawryBody($http)['merchantRefNum'])->toBe('ORD-CANCEL');
+});
+
+it('reports a failed void when Fawry rejects the cancellation', function (): void {
+    [$gateway, $http] = fawryWithFakeHttp();
+    $http->queueJson(['statusCode' => 9946, 'statusDescription' => 'Authorization already captured']);
+
+    $result = $gateway->void(new VoidRequest(transactionId: 'ORD9'));
+
+    expect($result->success)->toBeFalse()
+        ->and($result->status)->toBe(PaymentStatus::Failed)
+        ->and($result->code)->toBe('9946');
+});
+
+it('creates a MyFawry payment and returns the deep link and QR', function (): void {
+    [$gateway, $http] = fawryWithFakeHttp();
+    $http->queueJson([
+        'statusCode' => 200,
+        'referenceNumber' => '9900002222',
+        'deepLink' => 'myfawry://pay/9900002222',
+        'qrCode' => 'https://atfawry.test/qr/9900002222',
+    ]);
+
+    $session = $gateway->createCheckoutSession(new CheckoutSessionRequest(
+        money: Money::minor(10000, 'EGP'),
+        orderReference: 'ORD-MF',
+        paymentMethod: 'MYFAWRY',
+    ));
+
+    expect($session->reference)->toBe('9900002222')
+        ->and($session->redirectUrl)->toBe('myfawry://pay/9900002222')
+        ->and($session->qrCode)->toBe('https://atfawry.test/qr/9900002222')
+        ->and($http->lastRequest()?->url)->toBe('https://atfawry.fawrystaging.com/ECommerceWeb/Fawry/payments/charge')
+        ->and(fawryBody($http)['paymentMethod'])->toBe('MYFAWRY');
+});
+
+it('creates a bank instalment card payment and returns the 3DS redirect URL', function (): void {
+    [$gateway, $http] = fawryWithFakeHttp();
+    $http->queueJson(['statusCode' => 200, 'nextAction' => ['redirectUrl' => 'https://acs.test/3ds']]);
+
+    $session = $gateway->createCheckoutSession(new CheckoutSessionRequest(
+        money: Money::minor(120000, 'EGP'),
+        orderReference: 'ORD-INST',
+        paymentMethod: 'CARD',
+        options: [
+            'installment_plan_id' => 'PLAN-12',
+            'card' => ['number' => '4111111111111111', 'expiryYear' => '30', 'expiryMonth' => '12', 'cvv' => '123'],
+        ],
+    ));
+
+    expect($session->redirectUrl)->toBe('https://acs.test/3ds')
+        ->and(fawryBody($http)['paymentMethod'])->toBe('CARD')
+        ->and(fawryBody($http)['installmentPlanId'])->toBe('PLAN-12')
+        ->and(fawryBody($http)['cardNumber'])->toBe('4111111111111111')
+        ->and(fawryBody($http)['signature'])->toBe(FawrySignature::installmentCard(
+            'test_merchant',
+            'ORD-INST',
+            null,
+            'CARD',
+            '1200.00',
+            '4111111111111111',
+            '30',
+            '12',
+            '123',
+            'PLAN-12',
+            testCredentials()->sharedSecret,
+        ));
 });
 
 it('looks up a transaction status via a signed GET request', function (): void {
