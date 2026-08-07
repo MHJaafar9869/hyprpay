@@ -508,6 +508,100 @@ code:not(pre code) {
 .d.paylink { background: var(--paylink); box-shadow: 0 0 10px var(--paylink); }
 .d.paytabs { background: var(--paytabs); box-shadow: 0 0 10px var(--paytabs); }
 
+/* ── gateway deck (card stack, all screens) ───────────────── */
+.deck { display: none; max-width: 640px; } /* .js swaps the table for the deck; table is the no-JS fallback */
+.js .deck { display: block; }
+.js .matrix-wrap { display: none; }
+
+/* single column on phones; heading beside the deck on wider screens */
+.matrix-layout { display: grid; gap: 36px; }
+.matrix-layout .section-head { margin-bottom: 0; }
+.matrix-col { min-width: 0; }
+
+.deck-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px;
+}
+.deck-count { font-family: var(--mono); font-size: 13px; color: var(--muted); letter-spacing: 0.06em; }
+.deck-count b { color: var(--text); font-weight: 600; }
+.deck-hint {
+  font-family: var(--mono); font-size: 11.5px; color: var(--faint);
+  letter-spacing: 0.04em; text-transform: lowercase;
+}
+
+.deck-stack { display: grid; grid-template-columns: minmax(0, 1fr); overflow: hidden; padding: 54px 0 18px; }
+.deck-card {
+  grid-area: 1 / 1; /* stack every card in one cell */
+  position: relative;
+  background: var(--ink-2);
+  border: 1px solid var(--line-2);
+  border-radius: 0;
+  padding: 20px 20px 22px;
+  overflow: hidden;
+  box-shadow: 0 24px 56px -26px rgba(0, 0, 0, 0.95);
+  transition: transform 0.42s var(--ease), opacity 0.42s var(--ease);
+  will-change: transform;
+}
+.deck-card::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--gw); box-shadow: 0 0 26px 1px var(--gw); opacity: 0.85;
+}
+/* only the front card shows content; the ones behind read as clean cascading
+   card shells (kept in the DOM so all cards stay the same size) */
+.deck-card > * { transition: opacity 0.3s var(--ease); }
+.deck-card:not([data-pos="0"]) > * { opacity: 0; }
+.deck-card:not([data-pos="0"]) { pointer-events: none; }
+.deck-card[data-pos="0"] { z-index: 5; cursor: pointer; }
+.deck-card[data-pos="0"]:active { transform: scale(0.994); }
+
+/* phones: keep the front card full width so nothing wraps; cascade peeks
+   upward (its rightward lean is clipped) */
+.deck-card[data-pos="1"] { transform: translate(7px, -12px) rotate(1.4deg); z-index: 4; }
+.deck-card[data-pos="2"] { transform: translate(14px, -24px) rotate(2.8deg); z-index: 3; }
+.deck-card[data-pos="3"] { transform: translate(21px, -36px) rotate(4.2deg); z-index: 2; }
+.deck-card[data-pos="4"] { transform: translate(28px, -48px) rotate(5.6deg); z-index: 1; }
+
+@media (min-width: 900px) {
+  .matrix-layout { grid-template-columns: 0.55fr 1fr; gap: 48px; align-items: start; }
+  .matrix-layout .section-head { max-width: none; position: sticky; top: 104px; }
+  .deck { max-width: none; }
+  .deck-count { font-size: 14px; }
+  .deck-ops .op { padding: 9px 0; }
+  .deck-ops dt, .deck-ops dd { font-size: 12.5px; }
+  /* cascade up-and-to-the-right like a loose stack of papers; overflow:hidden
+     keeps the spread from ever widening the page */
+  .deck-stack { padding: 128px 150px 22px 6px; overflow: hidden; }
+  .deck-card[data-pos="1"] { transform: translate(34px, -30px) rotate(2deg); }
+  .deck-card[data-pos="2"] { transform: translate(68px, -60px) rotate(4deg); }
+  .deck-card[data-pos="3"] { transform: translate(102px, -90px) rotate(6deg); }
+  .deck-card[data-pos="4"] { transform: translate(136px, -120px) rotate(8deg); }
+}
+.deck-card-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 14px;
+}
+.deck-card-head .gw-tag, .deck-card-head .gw-sig { white-space: nowrap; }
+.deck-ops { margin: 0; }
+/* labels/values never wrap or break mid-word; flex-wrap lets a rare over-long
+   value drop cleanly onto its own right-aligned line instead */
+.deck-ops .op {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
+  gap: 2px 8px;
+  padding: 8px 0; border-top: 1px solid var(--line);
+}
+.deck-ops .op:first-child { border-top: 0; }
+.deck-ops dt {
+  font-family: var(--mono); font-size: 10.5px; color: var(--muted);
+  letter-spacing: 0.01em; white-space: nowrap;
+}
+/* inline value sits right; a rare over-long value that must drop lands
+   left-aligned under its label, reading as a description not a broken wrap */
+.deck-ops dd {
+  margin: 0; font-family: var(--mono); font-size: 10.5px; color: var(--gw);
+  white-space: nowrap;
+}
+.deck-ops .op.off dt, .deck-ops .op.off dd { color: var(--faint); }
+
 /* ── quick start ──────────────────────────────────────────── */
 .start-grid {
   display: grid;
@@ -515,6 +609,9 @@ code:not(pre code) {
   gap: 22px;
   align-items: stretch;
 }
+/* let every grid/flex level shrink below its content so long code lines scroll
+   inside their block instead of widening the page on narrow screens */
+.start-grid > *, .steps ol, .steps li { min-width: 0; }
 /* stretch the steps column to the code column's height so the docs card can
    sit at the bottom, level with where the snippet ends */
 .steps { display: flex; flex-direction: column; align-self: stretch; }
@@ -577,6 +674,7 @@ code:not(pre code) {
   border: 1px solid var(--line);
   border-radius: 0;
   overflow: hidden;
+  margin: 0; /* reset the UA figure margin so .code.big fills its column */
 }
 .code pre {
   margin: 0;
@@ -717,6 +815,9 @@ code:not(pre code) {
   .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .start-grid { grid-template-columns: 1fr; }
   .code.big { order: -1; }
+  /* stacked layout has no free space to center into, so give the button a
+     fixed gap above the last step instead */
+  .docs-cta { margin-top: 30px; }
 }
 
 @media (max-width: 720px) {
@@ -727,6 +828,8 @@ code:not(pre code) {
   .nav-links a:nth-child(-n+4) { display: none; }
   .hero, .section, .cta, .foot { padding-left: 18px; padding-right: 18px; }
   .cta::before { margin: 0 18px; }
+  /* inset the CTA content past the border so full-width buttons don't touch it */
+  .cta { padding-left: 34px; padding-right: 34px; }
   .hero-stats { grid-template-columns: repeat(2, 1fr); }
   .cards { grid-template-columns: 1fr; }
   .gateways { grid-template-columns: 1fr; }
@@ -739,7 +842,7 @@ code:not(pre code) {
   .hero-cta { flex-direction: column; align-items: stretch; }
   .hero-cta .btn-solid, .hero-cta .btn-ghost { text-align: center; padding: 14px 18px; }
   .cta-row { display: flex; flex-direction: column; align-items: stretch; }
-  .cta-row .btn-solid, .cta-row .btn-ghost { text-align: center; }
+  .cta-row .btn-solid, .cta-row .btn-ghost { text-align: center; padding: 17px 24px; }
   .code pre { font-size: 12px; }
   .card, .gw { padding-left: 20px; padding-right: 20px; }
   .section-head h2, .cta h2 { font-size: clamp(26px, 7vw, 34px); }
@@ -754,43 +857,3 @@ code:not(pre code) {
   .copy-done { right: 12px; }
 }
 
-/* operation matrix → one card per operation on phones (no horizontal scroll) */
-@media (max-width: 720px) {
-  .matrix-wrap { overflow: visible; border: 0; background: none; }
-  .matrix { min-width: 0; font-size: 14px; }
-  .matrix thead { display: none; }
-  .matrix tbody tr {
-    display: block;
-    border: 1px solid var(--line);
-    background: var(--ink-1);
-    margin-bottom: 10px;
-  }
-  .matrix tbody tr:last-child { margin-bottom: 0; }
-  .matrix tbody th {
-    display: block;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--line);
-    white-space: normal;
-  }
-  .matrix tbody td {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--line);
-    white-space: normal;
-  }
-  .matrix tbody tr td:last-child { border-bottom: 0; }
-  /* inject the gateway name as the row label */
-  .matrix tbody td::before {
-    color: var(--muted);
-    font-family: var(--mono);
-    font-size: 12px;
-    letter-spacing: 0.02em;
-  }
-  .matrix tbody td:nth-of-type(1)::before { content: "CyberSource UC"; }
-  .matrix tbody td:nth-of-type(2)::before { content: "Fawry"; }
-  .matrix tbody td:nth-of-type(3)::before { content: "Paymob"; }
-  .matrix tbody td:nth-of-type(4)::before { content: "PayLink"; }
-}

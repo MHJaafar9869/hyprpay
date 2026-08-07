@@ -191,12 +191,14 @@
 
   <!-- ─────────────────────────  MATRIX  ───────────────────────── -->
   <section id="matrix" class="section">
+    <div class="matrix-layout">
     <div class="section-head reveal">
       <span class="section-no">03</span>
       <h2>The operation matrix.</h2>
       <p>What each driver supports. Anything unsupported throws — the surface never lies.</p>
     </div>
 
+    <div class="matrix-col">
     <div class="matrix-wrap reveal">
       <table class="matrix">
         <thead>
@@ -222,6 +224,92 @@
           <tr><th scope="row"><code>verifyWebhook</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="deck reveal" data-deck>
+      <div class="deck-bar">
+        <span class="deck-count"><b data-deck-cur>1</b> / 5</span>
+        <span class="deck-hint">tap a card to cycle</span>
+      </div>
+      <div class="deck-stack">
+        <article class="deck-card" data-pos="0" style="--gw:var(--cyber)">
+          <header class="deck-card-head"><span class="gw-tag">CyberSource UC</span><span class="gw-sig">HMAC HTTP-Signature</span></header>
+          <dl class="deck-ops">
+            <div class="op"><dt>createCheckoutSession</dt><dd>capture context</dd></div>
+            <div class="op"><dt>charge</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>capture</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>refund</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>void</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>reverseAuthorization</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>enroll / validatePayerAuth</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>vault / chargeStoredCredential</dt><dd>TMS &middot; MIT/CIT</dd></div>
+            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>verifyWebhook</dt><dd>&#10003;</dd></div>
+          </dl>
+        </article>
+        <article class="deck-card" data-pos="1" style="--gw:var(--fawry)">
+          <header class="deck-card-head"><span class="gw-tag">Fawry</span><span class="gw-sig">SHA-256</span></header>
+          <dl class="deck-ops">
+            <div class="op"><dt>createCheckoutSession</dt><dd>hosted / card / wallet</dd></div>
+            <div class="op off"><dt>charge</dt><dd>&mdash;</dd></div>
+            <div class="op"><dt>capture</dt><dd>Auth/Capture</dd></div>
+            <div class="op"><dt>refund</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>void</dt><dd>cancel auth</dd></div>
+            <div class="op off"><dt>reverseAuthorization</dt><dd>&mdash;</dd></div>
+            <div class="op off"><dt>enroll / validatePayerAuth</dt><dd>&mdash;</dd></div>
+            <div class="op off"><dt>vault / chargeStoredCredential</dt><dd>&mdash;</dd></div>
+            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>verifyWebhook</dt><dd>&#10003;</dd></div>
+          </dl>
+        </article>
+        <article class="deck-card" data-pos="2" style="--gw:var(--paymob)">
+          <header class="deck-card-head"><span class="gw-tag">Paymob</span><span class="gw-sig">HMAC-SHA512</span></header>
+          <dl class="deck-ops">
+            <div class="op"><dt>createCheckoutSession</dt><dd>iframe flow</dd></div>
+            <div class="op off"><dt>charge</dt><dd>&mdash;</dd></div>
+            <div class="op"><dt>capture</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>refund</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>void</dt><dd>&#10003;</dd></div>
+            <div class="op off"><dt>reverseAuthorization</dt><dd>&mdash;</dd></div>
+            <div class="op off"><dt>enroll / validatePayerAuth</dt><dd>&mdash;</dd></div>
+            <div class="op off"><dt>vault / chargeStoredCredential</dt><dd>&mdash;</dd></div>
+            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>verifyWebhook</dt><dd>&#10003;</dd></div>
+          </dl>
+        </article>
+        <article class="deck-card" data-pos="3" style="--gw:var(--paylink)">
+          <header class="deck-card-head"><span class="gw-tag">PayLink</span><span class="gw-sig">HMAC-SHA256</span></header>
+          <dl class="deck-ops">
+            <div class="op"><dt>createCheckoutSession</dt><dd>invoice / iframe</dd></div>
+            <div class="op off"><dt>charge</dt><dd>&mdash;</dd></div>
+            <div class="op"><dt>capture</dt><dd>settle</dd></div>
+            <div class="op"><dt>refund</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>void</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>reverseAuthorization</dt><dd>&#10003;</dd></div>
+            <div class="op off"><dt>enroll / validatePayerAuth</dt><dd>&mdash;</dd></div>
+            <div class="op off"><dt>vault / chargeStoredCredential</dt><dd>&mdash;</dd></div>
+            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>verifyWebhook</dt><dd>&#10003;</dd></div>
+          </dl>
+        </article>
+        <article class="deck-card" data-pos="4" style="--gw:var(--paytabs)">
+          <header class="deck-card-head"><span class="gw-tag">PayTabs</span><span class="gw-sig">Server key</span></header>
+          <dl class="deck-ops">
+            <div class="op"><dt>createCheckoutSession</dt><dd>hosted / invoice / paylink / managed</dd></div>
+            <div class="op"><dt>charge</dt><dd>Own Form</dd></div>
+            <div class="op"><dt>capture</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>refund</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>void</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>reverseAuthorization</dt><dd>release</dd></div>
+            <div class="op off"><dt>enroll / validatePayerAuth</dt><dd>&mdash;</dd></div>
+            <div class="op"><dt>vault / chargeStoredCredential</dt><dd>token &middot; MIT/CIT</dd></div>
+            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>query</dd></div>
+            <div class="op"><dt>verifyWebhook</dt><dd>&#10003;</dd></div>
+          </dl>
+        </article>
+      </div>
+    </div>
+    </div>
     </div>
   </section>
 

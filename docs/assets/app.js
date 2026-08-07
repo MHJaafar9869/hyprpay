@@ -24,6 +24,25 @@
     });
   }
 
+  var deck = document.querySelector('[data-deck]');
+  if (deck) {
+    var cards = Array.prototype.slice.call(deck.querySelectorAll('.deck-card'));
+    var cur = deck.querySelector('[data-deck-cur]');
+    var n = cards.length, active = 0;
+    var render = function () {
+      cards.forEach(function (c, i) {
+        var pos = (i - active + n) % n;
+        c.setAttribute('data-pos', String(pos));
+        c.setAttribute('aria-hidden', pos === 0 ? 'false' : 'true');
+      });
+      if (cur) cur.textContent = String(active + 1);
+    };
+    var go = function (d) { active = (active + d + n) % n; render(); };
+    var stack = deck.querySelector('.deck-stack');
+    stack.addEventListener('click', function () { go(1); });
+    render();
+  }
+
   var themeBtn = document.querySelector('.theme-toggle');
   if (themeBtn) {
     themeBtn.addEventListener('click', function () {
