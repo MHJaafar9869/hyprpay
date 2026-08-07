@@ -16,7 +16,11 @@ use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\ValueObject\Customer;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
 use Hyprpay\Payments\Domain\ValueObject\Money;
+use Hyprpay\Payments\Infrastructure\Gateway\Paytabs\PaytabsAgreement;
+use Hyprpay\Payments\Infrastructure\Gateway\Paytabs\PaytabsBeneficiary;
+use Hyprpay\Payments\Infrastructure\Gateway\Paytabs\PaytabsCheckoutOptions;
 use Hyprpay\Payments\Infrastructure\Gateway\Paytabs\PaytabsGateway;
+use Hyprpay\Payments\Infrastructure\Gateway\Paytabs\PaytabsSplitPayout;
 use Hyprpay\Payments\Infrastructure\Http\FakeHttpClient;
 
 /**
@@ -72,7 +76,7 @@ it('creates a hosted payment page and returns the redirect URL', function (): vo
         returnUrl: 'https://shop.test/return',
         customer: new Customer(email: 'john@example.com', firstName: 'John', lastName: 'Doe'),
         description: 'Gold Plan',
-        options: ['webhook_url' => 'https://shop.test/ipn'],
+        options: new PaytabsCheckoutOptions(webhookUrl: 'https://shop.test/ipn'),
     ));
 
     $request = $http->lastRequest();
@@ -263,7 +267,7 @@ it('embeds the hosted page in an iframe when the iframe option is set', function
         money: Money::minor(1000, 'SAR'),
         orderReference: 'ORD-IF',
         returnUrl: 'https://shop.test/return',
-        options: ['iframe' => true, 'framed_return_top' => true, 'framed_message_target' => 'https://shop.test'],
+        options: new PaytabsCheckoutOptions(iframe: true, framedReturnTop: true, framedMessageTarget: 'https://shop.test'),
     ));
 
     $body = paytabsBody($http);
@@ -311,7 +315,7 @@ it('requests a card token when tokenise is set', function (): void {
     (new PaytabsGateway(paytabsCredentials(), $http))->createCheckoutSession(new CheckoutSessionRequest(
         money: Money::minor(1000, 'SAR'),
         orderReference: 'ORD-TK',
-        options: ['tokenise' => 2],
+        options: new PaytabsCheckoutOptions(tokenise: 2),
     ));
 
     expect(paytabsBody($http)['tokenise'])->toBe(2);
@@ -323,14 +327,14 @@ it('starts a repeat-billing agreement on checkout', function (): void {
     (new PaytabsGateway(paytabsCredentials(), $http))->createCheckoutSession(new CheckoutSessionRequest(
         money: Money::minor(1230, 'SAR'),
         orderReference: 'ORD-RB',
-        options: ['agreement' => [
-            'agreement_description' => 'Monthly plan',
-            'repeat_amount' => 100,
-            'repeat_terms' => 3,
-            'repeat_period' => 1,
-            'repeat_every' => 1,
-            'first_installment_due_date' => '05/May/2026',
-        ]],
+        options: new PaytabsCheckoutOptions(agreement: new PaytabsAgreement(
+            description: 'Monthly plan',
+            repeatAmount: 100,
+            repeatTerms: 3,
+            repeatPeriod: 1,
+            repeatEvery: 1,
+            firstInstallmentDueDate: '05/May/2026',
+        )),
     ));
 
     $agreement = paytabsBody($http)['agreement'];
@@ -347,10 +351,10 @@ it('splits the settled funds across beneficiaries', function (): void {
     (new PaytabsGateway(paytabsCredentials(), $http))->createCheckoutSession(new CheckoutSessionRequest(
         money: Money::minor(20000, 'SAR'),
         orderReference: 'ORD-SPLIT',
-        options: ['split_payout' => [
-            ['entity_id' => 1001, 'entity_name' => 'Agency', 'item_description' => 'Fee', 'item_total' => '50.00', 'msc_flag' => 'F', 'beneficiary' => ['name' => 'Tywin Lannister', 'account_number' => 'SA0000000000000000000000', 'country' => 'SA', 'bank' => 'Iron Bank']],
-            ['entity_id' => 1002, 'entity_name' => 'Vendor', 'item_description' => 'Goods', 'item_total' => '150.00', 'msc_flag' => 'Z', 'beneficiary' => ['name' => 'Jon Snow', 'account_number' => 'SA1111111111111111111111', 'country' => 'SA', 'bank' => 'Iron Bank']],
-        ]],
+        options: new PaytabsCheckoutOptions(splitPayout: [
+            new PaytabsSplitPayout(entityId: 1001, entityName: 'Agency', itemDescription: 'Fee', itemTotal: '50.00', mscFlag: 'F', beneficiary: new PaytabsBeneficiary(name: 'Tywin Lannister', accountNumber: 'SA0000000000000000000000', country: 'SA', bank: 'Iron Bank')),
+            new PaytabsSplitPayout(entityId: 1002, entityName: 'Vendor', itemDescription: 'Goods', itemTotal: '150.00', mscFlag: 'Z', beneficiary: new PaytabsBeneficiary(name: 'Jon Snow', accountNumber: 'SA1111111111111111111111', country: 'SA', bank: 'Iron Bank')),
+        ]),
     ));
 
     $split = paytabsBody($http)['split_payout'];

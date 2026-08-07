@@ -15,7 +15,11 @@ use Hyprpay\Payments\Domain\Enum\CredentialInitiator;
 use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
 use Hyprpay\Payments\Domain\ValueObject\Customer;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
-use Hyprpay\Payments\Infrastructure\Support\Value;
+use Hyprpay\Payments\Domain\ValueObject\Money;
+use Hyprpay\Payments\Infrastructure\Gateway\Paytabs\PaytabsAgreement;
+use Hyprpay\Payments\Infrastructure\Gateway\Paytabs\PaytabsCheckoutOptions;
+use Hyprpay\Payments\Infrastructure\Gateway\Paytabs\PaytabsLineItem;
+use Hyprpay\Payments\Infrastructure\Gateway\Paytabs\PaytabsSplitPayout;
 
 /**
  * Builds the PayTabs PT2 request bodies for each operation and integration type.
@@ -47,26 +51,26 @@ final class PaytabsPayload
     public static function hosted(CheckoutSessionRequest $request, GatewayCredentials $credentials): array
     {
         $customerDetails = self::customerDetails($request->customer, $request->billTo);
-        $options = $request->optionsArray();
+        $options = PaytabsCheckoutOptions::fromRequest($request);
 
         $body = self::withoutNulls([
             'profile_id' => self::profileId($credentials),
             'tran_type' => self::tranType($request->paymentMethod),
-            'tran_class' => Value::string($options['tran_class'] ?? null, 'ecom'),
+            'tran_class' => $options->tranClass ?? 'ecom',
             'cart_id' => $request->orderReference,
             'cart_description' => $request->description ?? 'Payment',
             'cart_currency' => $request->money->currency,
             'cart_amount' => $request->money->toDecimalString(),
             'paypage_lang' => self::language($request, $credentials),
             'return' => $request->returnUrl,
-            'callback' => Value::nullableString($options['webhook_url'] ?? null),
-            'tokenise' => isset($options['tokenise']) ? Value::int($options['tokenise']) : null,
-            'agreement' => self::agreement($request),
-            'split_payout' => self::splitPayout($request),
+            'callback' => $options->webhookUrl,
+            'tokenise' => $options->tokenise,
+            'agreement' => self::agreement($options, $request->money),
+            'split_payout' => self::splitPayout($options),
             'customer_details' => $customerDetails === [] ? null : $customerDetails,
         ]);
 
-        return array_merge($body, self::framedFields($request, false));
+        return array_merge($body, self::framedFields($options, false));
     }
 
     /**
@@ -80,7 +84,7 @@ final class PaytabsPayload
     public static function invoice(CheckoutSessionRequest $request, GatewayCredentials $credentials): array
     {
         $body = self::hosted($request, $credentials);
-        $body['invoice'] = ['line_items' => self::lineItems($request)];
+        $body['invoice'] = ['line_items' => self::lineItems(PaytabsCheckoutOptions::fromRequest($request), $request->money)];
 
         return $body;
     }
@@ -92,7 +96,7 @@ final class PaytabsPayload
      */
     public static function managed(CheckoutSessionRequest $request, GatewayCredentials $credentials): array
     {
-        return array_merge(self::hosted($request, $credentials), self::framedFields($request, true));
+        return array_merge(self::hosted($request, $credentials), self::framedFields(PaytabsCheckoutOptions::fromRequest($request), true));
     }
 
     /**
@@ -293,99 +297,75 @@ final class PaytabsPayload
      * agreement currency and initial amount default to the checkout's money, which
      * PayTabs requires them to match.
      *
-     * @return array<array-key, mixed>|null
+     * @return array<string, mixed>|null
      */
-    private static function agreement(CheckoutSessionRequest $request): ?array
+    private static function agreement(PaytabsCheckoutOptions $options, Money $money): ?array
     {
-        $agreement = $request->optionsArray()['agreement'] ?? null;
-
-        if (! is_array($agreement) || $agreement === []) {
+        if (! $options->agreement instanceof PaytabsAgreement) {
             return null;
         }
 
         return array_merge([
-            'agreement_currency' => $request->money->currency,
-            'initial_amount' => $request->money->toDecimalString(),
-        ], $agreement);
+            'agreement_currency' => $money->currency,
+            'initial_amount' => $money->toDecimalString(),
+        ], $options->agreement->toArray());
     }
 
     /**
      * Build the iframe/embedded-mode (framed) fields when requested.
      *
-     * Enabled by `options['iframe']` (or forced for the Managed Form): PayTabs then
+     * Enabled by the options' `iframe` flag (or forced for the Managed Form): PayTabs then
      * returns a redirect_url meant to be embedded in an `<iframe>` rather than
-     * redirected to. `framed_return_top` / `framed_return_parent` control reload
-     * behaviour on the post-payment return, and `framed_message_target` (an HTTPS URL
-     * on your domain) receives a JS `postMessage` so you can close the iframe.
+     * redirected to. `framedReturnTop` / `framedReturnParent` control reload behaviour on
+     * the post-payment return, and `framedMessageTarget` (an HTTPS URL on your domain)
+     * receives a JS `postMessage` so you can close the iframe.
      *
      * @return array<string, mixed>
      */
-    private static function framedFields(CheckoutSessionRequest $request, bool $force): array
+    private static function framedFields(PaytabsCheckoutOptions $options, bool $force): array
     {
-        $options = $request->optionsArray();
-        $enabled = $force || filter_var($options['iframe'] ?? false, FILTER_VALIDATE_BOOLEAN);
-
-        if (! $enabled) {
+        if (! $force && ! $options->iframe) {
             return [];
         }
 
         return self::withoutNulls([
             'framed' => true,
-            'framed_return_top' => self::optionalBool($request, 'framed_return_top'),
-            'framed_return_parent' => self::optionalBool($request, 'framed_return_parent'),
-            'framed_message_target' => Value::nullableString($options['framed_message_target'] ?? null),
+            'framed_return_top' => $options->framedReturnTop,
+            'framed_return_parent' => $options->framedReturnParent,
+            'framed_message_target' => $options->framedMessageTarget,
         ]);
-    }
-
-    /**
-     * Read an optional boolean checkout option, or null when it is not set.
-     */
-    private static function optionalBool(CheckoutSessionRequest $request, string $key): ?bool
-    {
-        $options = $request->optionsArray();
-
-        if (! array_key_exists($key, $options)) {
-            return null;
-        }
-
-        return filter_var($options[$key], FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
      * Resolve the split-payout stakeholders from the checkout options.
      *
-     * Passed through as-is: an array of entities, each with its `item_total`,
-     * `msc_flag`, and `beneficiary` details. PayTabs splits the settled funds across
-     * them after the customer pays. Returns null when no split is configured.
+     * PayTabs splits the settled funds across these entities after the customer pays.
+     * Returns null when no split is configured.
      *
-     * @return array<int, mixed>|null
+     * @return array<int, array<string, mixed>>|null
      */
-    private static function splitPayout(CheckoutSessionRequest $request): ?array
+    private static function splitPayout(PaytabsCheckoutOptions $options): ?array
     {
-        $split = $request->optionsArray()['split_payout'] ?? null;
-
-        if (! is_array($split) || $split === []) {
+        if ($options->splitPayout === []) {
             return null;
         }
 
-        return array_values($split);
+        return array_map(static fn (PaytabsSplitPayout $stakeholder): array => $stakeholder->toArray(), $options->splitPayout);
     }
 
     /**
      * Resolve the invoice line items, defaulting to a single item for the full amount.
      *
-     * @return array<int, mixed>
+     * @return array<int, array<string, mixed>>
      */
-    private static function lineItems(CheckoutSessionRequest $request): array
+    private static function lineItems(PaytabsCheckoutOptions $options, Money $money): array
     {
-        $items = $request->optionsArray()['line_items'] ?? null;
-
-        if (is_array($items) && $items !== []) {
-            return array_values($items);
+        if ($options->lineItems !== []) {
+            return array_map(static fn (PaytabsLineItem $item): array => $item->toArray(), $options->lineItems);
         }
 
         return [[
-            'unit_cost' => $request->money->toDecimalString(),
+            'unit_cost' => $money->toDecimalString(),
             'quantity' => 1,
         ]];
     }
