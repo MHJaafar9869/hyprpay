@@ -81,6 +81,7 @@
       <li data-gws="cyber fawry paymob paylink"><a href="#search-transaction" data-spy="search-transaction">Search transaction</a></li>
       <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#reconcile" data-spy="reconcile">Reconcile</a></li>
       <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#verify-webhook" data-spy="verify-webhook">Verify webhook</a></li>
+      <li data-gws="misc"><a href="#events" data-spy="events">Events</a></li>
       <li data-gws="cyber"><a href="#enroll-payer-auth" data-spy="enroll-payer-auth">Enroll payer auth</a></li>
       <li data-gws="cyber"><a href="#validate-payer-auth" data-spy="validate-payer-auth">Validate payer auth</a></li>
       <li data-gws="cyber paypal"><a href="#vault-instrument" data-spy="vault-instrument">Vault instrument</a></li>
@@ -451,6 +452,37 @@
       </div>
     </section>
 
+    <section id="events" class="doc-section" data-gws="misc">
+      <p class="doc-eyebrow">Cross-cutting</p>
+      <h2>Events</h2>
+      <p class="doc-sig"><span class="fn">Event::listen</span>(PaymentEvent::class, listener): <span class="rt">void</span></p>
+      <p>Every driver emits a typed domain event after each operation. All events implement the
+         <code>PaymentEvent</code> interface, so one listener receives them all — or target a single
+         event type. Events fire on completion (success or decline); the result carries the outcome.
+         Payloads are queue-safe: ids, amount and result, never the raw request or card data.</p>
+      <div class="code">
+<pre><code><span class="c">// one subscriber, every event — match on the concrete type</span>
+<span class="k">final class</span> <span class="t">PaymentEventSubscriber</span>
+{
+    <span class="k">public function</span> <span class="fn">handle</span>(<span class="t">PaymentEvent</span> <span class="v">$event</span>): <span class="k">void</span>
+    {
+        <span class="k">match</span> (<span class="k">true</span>) {
+            <span class="v">$event</span> <span class="k">instanceof</span> <span class="t">PaymentCaptured</span> =&gt; <span class="v">$this</span>-&gt;<span class="fn">markOrderPaid</span>(<span class="v">$event</span>-&gt;orderReference, <span class="v">$event</span>-&gt;result),
+            <span class="v">$event</span> <span class="k">instanceof</span> <span class="t">PaymentRefunded</span> =&gt; <span class="v">$this</span>-&gt;<span class="fn">recordRefund</span>(<span class="v">$event</span>-&gt;transactionId, <span class="v">$event</span>-&gt;result),
+            <span class="v">$event</span> <span class="k">instanceof</span> <span class="t">WebhookReceived</span> =&gt; <span class="v">$this</span>-&gt;<span class="fn">applyWebhook</span>(<span class="v">$event</span>-&gt;webhook),
+            <span class="k">default</span> =&gt; <span class="k">null</span>, <span class="c">// charge/void/vault/checkout — ignored here</span>
+        };
+    }
+}
+
+<span class="c">// register once; receives every event via the interface</span>
+<span class="t">Event</span>::<span class="fn">listen</span>(<span class="t">PaymentEvent</span>::<span class="k">class</span>, <span class="t">PaymentEventSubscriber</span>::<span class="k">class</span>);
+
+<span class="c">// config/gateway.php — on by default; 'log' attaches the redaction-safe audit listener</span>
+<span class="s">'events'</span> =&gt; [<span class="s">'enabled'</span> =&gt; <span class="k">true</span>, <span class="s">'log'</span> =&gt; <span class="k">false</span>]</code></pre>
+      </div>
+    </section>
+
     <section id="enroll-payer-auth" class="doc-section" data-gws="cyber">
       <p class="doc-eyebrow">3-D Secure</p>
       <h2>Enroll payer auth</h2>
@@ -553,6 +585,7 @@
       <li role="presentation"><button class="gw-opt" role="tab" data-gw="paylink" aria-selected="false" style="--g:var(--paylink)">PayLink</button></li>
       <li role="presentation"><button class="gw-opt" role="tab" data-gw="paytabs" aria-selected="false" style="--g:var(--paytabs)">PayTabs</button></li>
       <li role="presentation"><button class="gw-opt" role="tab" data-gw="paypal"  aria-selected="false" style="--g:var(--paypal)">PayPal</button></li>
+      <li role="presentation"><button class="gw-opt" role="tab" data-gw="misc"    aria-selected="false" style="--g:var(--muted)">Misc</button></li>
     </ul>
     <p class="gw-nav-note">Switching a gateway rescopes the actions on the left and the examples in the center to that driver.</p>
   </aside>

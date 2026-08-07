@@ -6,7 +6,8 @@
     paymob:  { name: 'Paymob',  enumCase: 'Paymob',  hue: 'var(--paymob)',  sign: 'HMAC-SHA512', ret: 'redirectUrl (iframe)' },
     paylink: { name: 'PayLink', enumCase: 'Paylink', hue: 'var(--paylink)', sign: 'HMAC-SHA256', ret: 'redirectUrl (invoice / iframe)' },
     paytabs: { name: 'PayTabs', enumCase: 'Paytabs', hue: 'var(--paytabs)', sign: 'server key + HMAC-SHA256', ret: 'redirectUrl (hosted page)' },
-    paypal:  { name: 'PayPal',  enumCase: 'PayPal',  hue: 'var(--paypal)',  sign: 'OAuth 2.0 client credentials', ret: 'redirectUrl (approval link)' }
+    paypal:  { name: 'PayPal',  enumCase: 'PayPal',  hue: 'var(--paypal)',  sign: 'OAuth 2.0 client credentials', ret: 'redirectUrl (approval link)' },
+    misc:    { name: 'Misc', enumCase: '', hue: 'var(--muted)', sign: '—', ret: '—', meta: false }
   };
   var opts     = [].slice.call(document.querySelectorAll('.gw-opt'));
   var sections = [].slice.call(document.querySelectorAll('.doc-section'));
@@ -69,6 +70,7 @@
     ctx.querySelector('[data-ctx="name"]').textContent = info.name;
     ctx.querySelector('[data-ctx="sign"]').textContent = info.sign;
     ctx.querySelector('[data-ctx="ret"]').textContent  = info.ret;
+    Array.prototype.forEach.call(ctx.querySelectorAll('.meta'), function (m) { m.hidden = info.meta === false; });
     var en = docMain.querySelector('[data-gwenum]');
     if (en) en.textContent = info.enumCase;
     sections.forEach(function (s) { s.hidden = !supports(s, gw); });
