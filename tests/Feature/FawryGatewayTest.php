@@ -12,6 +12,8 @@ use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\Exception\GatewayRequestException;
 use Hyprpay\Payments\Domain\Result\CheckoutSession;
 use Hyprpay\Payments\Domain\ValueObject\Money;
+use Hyprpay\Payments\Infrastructure\Gateway\Fawry\FawryCard;
+use Hyprpay\Payments\Infrastructure\Gateway\Fawry\FawryCheckoutOptions;
 use Hyprpay\Payments\Infrastructure\Gateway\Fawry\FawryGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\Fawry\FawrySignature;
 use Hyprpay\Payments\Infrastructure\Http\FakeHttpClient;
@@ -74,7 +76,7 @@ it('creates a mobile-wallet payment and returns the reference and QR', function 
         money: Money::minor(5000, 'EGP'),
         orderReference: 'ORD3',
         paymentMethod: 'MWALLET',
-        options: ['wallet_number' => '01000000000'],
+        options: new FawryCheckoutOptions(walletNumber: '01000000000'),
     ));
 
     expect($session->reference)->toBe('888')
@@ -91,7 +93,7 @@ it('creates a card payment and returns the 3DS redirect URL', function (): void 
         orderReference: 'ORD4',
         returnUrl: 'https://shop.test/return',
         paymentMethod: 'PayUsingCC',
-        options: ['card' => ['number' => '4111111111111111', 'expiryYear' => '30', 'expiryMonth' => '12', 'cvv' => '123']],
+        options: new FawryCheckoutOptions(card: new FawryCard('4111111111111111', '30', '12', '123')),
     ));
 
     expect($session->redirectUrl)->toBe('https://acs.test/3ds')
@@ -196,10 +198,10 @@ it('creates a bank instalment card payment and returns the 3DS redirect URL', fu
         money: Money::minor(120000, 'EGP'),
         orderReference: 'ORD-INST',
         paymentMethod: 'CARD',
-        options: [
-            'installment_plan_id' => 'PLAN-12',
-            'card' => ['number' => '4111111111111111', 'expiryYear' => '30', 'expiryMonth' => '12', 'cvv' => '123'],
-        ],
+        options: new FawryCheckoutOptions(
+            card: new FawryCard('4111111111111111', '30', '12', '123'),
+            installmentPlanId: 'PLAN-12',
+        ),
     ));
 
     expect($session->redirectUrl)->toBe('https://acs.test/3ds')
