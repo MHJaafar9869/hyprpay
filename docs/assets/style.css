@@ -25,6 +25,7 @@
   --fawry:   #ffd166;
   --paymob:  #8ab4ff;
   --paylink: #f79fd6;
+  --paytabs: #c3a6ff;
 
   --display: "Bricolage Grotesque", "Times New Roman", serif;
   --sans:    "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
@@ -59,6 +60,7 @@
   --fawry:   #a9760a;
   --paymob:  #2f66cf;
   --paylink: #bb3f86;
+  --paytabs: #6b3fce;
 
   color-scheme: light;
 }
@@ -504,6 +506,7 @@ code:not(pre code) {
 .d.fawry { background: var(--fawry); box-shadow: 0 0 10px var(--fawry); }
 .d.paymob { background: var(--paymob); box-shadow: 0 0 10px var(--paymob); }
 .d.paylink { background: var(--paylink); box-shadow: 0 0 10px var(--paylink); }
+.d.paytabs { background: var(--paytabs); box-shadow: 0 0 10px var(--paytabs); }
 
 /* ── quick start ──────────────────────────────────────────── */
 .start-grid {
@@ -569,6 +572,7 @@ code:not(pre code) {
   --fawry: #ffd166;
   --paymob: #8ab4ff;
   --paylink: #f79fd6;
+  --paytabs: #c3a6ff;
   background: var(--ink-1);
   border: 1px solid var(--line);
   border-radius: 0;

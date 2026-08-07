@@ -11,6 +11,7 @@ use Hyprpay\Payments\Infrastructure\Console\ReconcileCybersourceCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcileFawryCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcilePaylinkCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcilePaymobCommand;
+use Hyprpay\Payments\Infrastructure\Console\ReconcilePaytabsCommand;
 use Hyprpay\Payments\Infrastructure\Credentials\ConfigCredentialResolver;
 use Hyprpay\Payments\Infrastructure\Http\LaravelHttpClient;
 use Hyprpay\Payments\Infrastructure\Http\LoggingHttpClient;
@@ -99,6 +100,7 @@ final class GatewayServiceProvider extends ServiceProvider
                 ReconcileFawryCommand::class,
                 ReconcilePaymobCommand::class,
                 ReconcilePaylinkCommand::class,
+                ReconcilePaytabsCommand::class,
             ]);
         }
     }

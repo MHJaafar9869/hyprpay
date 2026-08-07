@@ -17,6 +17,7 @@ enum GatewayName: string
     case Fawry = 'fawry';
     case Paymob = 'paymob';
     case Paylink = 'paylink';
+    case Paytabs = 'paytabs';
 
     /**
      * Human-readable display name for the gateway.
@@ -30,6 +31,7 @@ enum GatewayName: string
             self::Fawry => 'Fawry',
             self::Paymob => 'Paymob',
             self::Paylink => 'PayLink',
+            self::Paytabs => 'PayTabs',
         };
     }
 }

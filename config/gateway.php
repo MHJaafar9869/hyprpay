@@ -125,5 +125,17 @@ return [
 
             'currency' => env('PAYLINK_CURRENCY', 'USD'),
         ],
+
+        'paytabs' => [
+            'test_mode' => (bool) env('PAYTABS_TEST_MODE', true),
+            'host' => env('PAYTABS_HOST', 'secure.paytabs.sa'),
+            'merchant_id' => env('PAYTABS_PROFILE_ID'),
+            'shared_secret' => env('PAYTABS_SERVER_KEY'),
+            'webhook_secret' => env('PAYTABS_SERVER_KEY'),
+
+            'country' => env('PAYTABS_COUNTRY', 'SA'),
+            'locale' => env('PAYTABS_LOCALE', 'en'),
+            'currency' => env('PAYTABS_CURRENCY', 'SAR'),
+        ],
     ],
 ];
