@@ -54,6 +54,7 @@
     <ul class="tree-flat">
       <li data-gws="cyber fawry paymob paylink"><a href="#overview" data-spy="overview">Overview</a></li>
       <li data-gws="cyber fawry paymob paylink"><a href="#create-checkout" data-spy="create-checkout">Create checkout</a></li>
+      <li data-gws="cyber"><a href="#dcc-rate" data-spy="dcc-rate">DCC rate</a></li>
       <li data-gws="cyber"><a href="#charge" data-spy="charge">Charge</a></li>
       <li data-gws="cyber fawry paymob paylink"><a href="#capture" data-spy="capture">Capture</a></li>
       <li data-gws="cyber fawry paymob paylink"><a href="#void" data-spy="void">Void</a></li>
@@ -146,6 +147,31 @@
 
 <span class="c">// embed $session->redirectUrl in an &lt;iframe&gt; (or redirect without the option)</span></code></pre>
         </div>
+      </div>
+    </section>
+
+    <section id="dcc-rate" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Payment flow</p>
+      <h2>DCC rate</h2>
+      <p class="doc-sig"><span class="fn">requestDccRate</span>(DccRateRequest): <span class="rt">DccQuote</span></p>
+      <p>Quote a Dynamic Currency Conversion rate so a foreign cardholder pays in their own
+         currency. Thread the returned <code>DccQuote</code> into <code>charge</code> — and
+         <code>capture</code> / <code>refund</code> / <code>reverseAuthorization</code> — so the
+         same quoted rate is echoed across the lifecycle. Set <code>money</code> to the quote's
+         <code>convertedAmount</code>.</p>
+      <div class="code">
+<pre><code><span class="v">$quote</span> = <span class="v">$gateway</span>-&gt;<span class="fn">requestDccRate</span>(<span class="k">new</span> <span class="t">DccRateRequest</span>(
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">48000</span>, <span class="s">'EGP'</span>), <span class="c">// 480.00 EGP</span>
+    <span class="a">cardNumber:</span> <span class="s">'4111111111111111'</span>,
+));
+
+<span class="k">if</span> (<span class="v">$quote</span>-&gt;offered) {
+    <span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="k">new</span> <span class="t">ChargeRequest</span>(
+        <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>,
+        <span class="a">money:</span> <span class="v">$quote</span>-&gt;convertedAmount, <span class="c">// billing currency, quoted rate</span>
+        <span class="a">dcc:</span> <span class="v">$quote</span>,
+    ));
+}</code></pre>
       </div>
     </section>
 

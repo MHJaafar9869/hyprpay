@@ -280,12 +280,51 @@ everywhere.
 | `reverseAuthorization` | ✅ | — | — | ✅ |
 | `enrollPayerAuth` / `validatePayerAuth` (3-DS) | ✅ | — | — | — |
 | `vaultInstrument` / `chargeStoredCredential` | ✅ (TMS, MIT/CIT) | — | — | — |
+| `requestDccRate` (Dynamic Currency Conversion) | ✅ | — | — | — |
 | `getTransaction` / `searchTransaction` | ✅ | ✅ | ✅ | ✅ |
 | `verifyWebhook` | ✅ | ✅ | ✅ | ✅ |
 
 Provider-specific inputs (e.g. Fawry payment method, Paymob integration/iframe ids,
 card or wallet details) are passed through `CheckoutSessionRequest::$options` and the
 `GatewayCredentials::$extra` bag.
+
+## Dynamic Currency Conversion (DCC)
+
+Let a foreign cardholder pay in their own currency at a rate you quote up front. Ask
+CyberSource for a rate with `requestDccRate`, then thread the returned `DccQuote` into
+the charge — `charge`, `capture`, `refund`, and `reverseAuthorization` all accept it, so
+the *same* quoted rate is echoed across the whole lifecycle. Set `money` to the quote's
+`convertedAmount` (the cardholder's billing currency); the original merchant amount and
+exchange rate ride along on the quote.
+
+```php
+use Hyprpay\Payments\Domain\Command\DccRateRequest;
+use Hyprpay\Payments\Domain\Command\ChargeRequest;
+use Hyprpay\Payments\Domain\ValueObject\Money;
+use Hyprpay\Payments\Domain\Enum\GatewayName;
+
+$cybersource = $factory->make(GatewayName::CybersourceUnifiedCheckout);
+
+// 1. Quote a rate for 480.00 EGP against the cardholder's card.
+$quote = $cybersource->requestDccRate(new DccRateRequest(
+    money: Money::minor(48000, 'EGP'),
+    cardNumber: '4111111111111111',
+));
+
+// 2. If DCC is offered, present $quote->convertedAmount to the cardholder, then charge it.
+if ($quote->offered) {
+    $result = $cybersource->charge(new ChargeRequest(
+        transientToken: $tokenFromWidget,
+        money: $quote->convertedAmount, // the cardholder's billing amount, at the quoted rate
+        dcc: $quote,                    // same rate id echoed on capture/refund too
+        orderReference: 'ORDER-123',
+    ));
+}
+```
+
+`money` supplies the billing amount and currency; the quote supplies the original merchant
+amount, the exchange rate, and the `currencyConversion.id` that pins the transaction to the
+rate CyberSource returned — all echoed unchanged on capture, refund, and reversal.
 
 ## Idempotency
 
