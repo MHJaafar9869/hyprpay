@@ -1,0 +1,53 @@
+name: Bug report
+description: Report a bug in the payment SDK
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a report. **Never include secrets** — API
+        keys, shared secrets, full card numbers, or cardholder data — in the fields below.
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: gateway
+    attributes:
+      label: Gateway
+      options:
+        - CyberSource Unified Checkout
+        - Fawry
+        - Paymob
+        - PayLink
+        - Not gateway-specific
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What happened instead? Include the exception message/stack trace, with any secrets redacted.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: A minimal code snippet is ideal.
+      render: php
+  - type: input
+    id: php
+    attributes:
+      label: PHP version
+      placeholder: "8.3"
