@@ -71,7 +71,7 @@ final class PaylinkGateway extends AbstractPaymentGateway
         $customerFirstName = $customer?->firstName;
         $customerLastName = $customer?->lastName;
         $customerEmail = $customer?->email;
-        $options = $request->optionsArray();
+        $options = PaylinkCheckoutOptions::fromRequest($request);
 
         $response = $this->client->post(
             PaylinkEndpoint::InvoiceCreate,
@@ -87,12 +87,12 @@ final class PaylinkGateway extends AbstractPaymentGateway
                 'state' => $billTo?->administrativeArea,
                 'currency' => $request->money->currency,
                 'redirection_url' => $request->returnUrl,
-                'webhook_url' => $options['webhook_url'] ?? null,
-                'order_details' => $options['order_details'] ?? null,
-                'payment_mode' => $options['payment_mode'] ?? null,
-                'iframe' => filter_var($options['iframe'] ?? false, FILTER_VALIDATE_BOOLEAN) ?: null,
+                'webhook_url' => $options->webhookUrl,
+                'order_details' => $options->orderDetails,
+                'payment_mode' => $options->paymentMode,
+                'iframe' => $options->iframe ?: null,
             ],
-            Value::nullableString($options['idempotency_key'] ?? $request->orderReference),
+            Value::nullableString($options->idempotencyKey ?? $request->orderReference),
             'create checkout session',
         );
 
