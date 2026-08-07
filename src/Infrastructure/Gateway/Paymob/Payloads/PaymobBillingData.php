@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hyprpay\Payments\Infrastructure\Gateway\Paymob\Payloads;
 
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
+use Hyprpay\Payments\Infrastructure\Gateway\Paymob\PaymobCheckoutOptions;
 use Hyprpay\Payments\Infrastructure\Support\Value;
 
 /**
@@ -31,7 +32,7 @@ final class PaymobBillingData
             'first_name' => self::value($customerFirstName ?? $billTo?->firstName),
             'last_name' => self::value($customerLastName ?? $billTo?->lastName),
             'email' => self::value($customerEmail ?? $billTo?->email),
-            'phone_number' => self::value($request->optionsArray()['customer_mobile'] ?? $billTo?->phoneNumber),
+            'phone_number' => self::value(PaymobCheckoutOptions::fromRequest($request)->customerMobile ?? $billTo?->phoneNumber),
             'apartment' => self::value($billTo?->address2),
             'floor' => 'NA',
             'street' => self::value($billTo?->address1),
@@ -46,10 +47,8 @@ final class PaymobBillingData
 
     /**
      * Return the trimmed value, or Paymob's "NA" placeholder when it is blank.
-     *
-     * @param  mixed  $value
      */
-    private static function value($value): string
+    private static function value(?string $value): string
     {
         return filled($value) ? Value::string($value) : 'NA';
     }

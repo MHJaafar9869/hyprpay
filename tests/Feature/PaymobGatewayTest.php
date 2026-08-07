@@ -14,6 +14,7 @@ use Hyprpay\Payments\Domain\Result\CheckoutSession;
 use Hyprpay\Payments\Domain\ValueObject\Customer;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
 use Hyprpay\Payments\Domain\ValueObject\Money;
+use Hyprpay\Payments\Infrastructure\Gateway\Paymob\PaymobCheckoutOptions;
 use Hyprpay\Payments\Infrastructure\Gateway\Paymob\PaymobGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\Paymob\PaymobHmac;
 use Hyprpay\Payments\Infrastructure\Http\FakeHttpClient;
@@ -57,7 +58,7 @@ it('runs the auth, order and payment-key flow and returns the iframe URL', funct
         orderReference: 'ORD1',
         customer: new Customer(email: 'a@b.com', firstName: 'A', lastName: 'B'),
         paymentMethod: 'card',
-        options: ['customer_mobile' => '01000000000'],
+        options: new PaymobCheckoutOptions(customerMobile: '01000000000'),
     ));
 
     expect($session->reference)->toBe('12345')
@@ -70,6 +71,25 @@ it('runs the auth, order and payment-key flow and returns the iframe URL', funct
         ->and(paymobRecorded($http, 2)['integration_id'])->toBe('111')
         ->and(paymobRecorded($http, 2)['billing_data']['phone_number'])->toBe('01000000000')
         ->and(paymobRecorded($http, 2)['billing_data']['floor'])->toBe('NA');
+});
+
+it('overrides the integration id, iframe id, and expiry from typed options', function (): void {
+    $http = (new FakeHttpClient)
+        ->queueJson(['token' => 'AUTH_TOKEN'])
+        ->queueJson(['id' => 12345])
+        ->queueJson(['token' => 'PAY_TOKEN']);
+    $gateway = new PaymobGateway(paymobCredentials(), $http);
+
+    $session = $gateway->createCheckoutSession(new CheckoutSessionRequest(
+        money: Money::minor(10000, 'EGP'),
+        orderReference: 'ORD1',
+        paymentMethod: 'card',
+        options: new PaymobCheckoutOptions(integrationId: 555, iframeId: 777, expiration: 600),
+    ));
+
+    expect(paymobRecorded($http, 2)['integration_id'])->toBe('555')
+        ->and(paymobRecorded($http, 2)['expiration'])->toBe(600)
+        ->and($session->redirectUrl)->toBe('https://accept.paymob.com/api/acceptance/iframes/777?payment_token=PAY_TOKEN');
 });
 
 it('refunds a transaction by id and amount', function (): void {
