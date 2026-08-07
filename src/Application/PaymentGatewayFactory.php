@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Hyprpay\Payments\Application;
 
 use Hyprpay\Payments\Domain\Contract\CredentialResolver;
+use Hyprpay\Payments\Domain\Contract\EventDispatcher;
 use Hyprpay\Payments\Domain\Contract\HttpClient;
 use Hyprpay\Payments\Domain\Contract\PaymentGatewayInterface;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Exception\GatewayNotSupportedException;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\CybersourceUnifiedCheckoutGateway;
+use Hyprpay\Payments\Infrastructure\Gateway\EventDispatchingGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\Fawry\FawryGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\Paylink\PaylinkGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\Paymob\PaymobGateway;
@@ -22,17 +24,21 @@ use Hyprpay\Payments\Infrastructure\Gateway\Paytabs\PaytabsGateway;
  *
  * Selects the correct adapter for a GatewayName via a match expression, wiring
  * it with the shared HttpClient and the credentials for that gateway (resolved
- * through the CredentialResolver when none are provided by the caller).
+ * through the CredentialResolver when none are provided by the caller). When an
+ * EventDispatcher is supplied, each driver is wrapped in an EventDispatchingGateway
+ * so it emits payment domain events; without one, the bare driver is returned.
  */
 final readonly class PaymentGatewayFactory
 {
     /**
      * @param  HttpClient  $http  The outbound-HTTP client shared with every constructed driver.
      * @param  CredentialResolver  $credentialResolver  Resolves credentials when a caller does not pass them explicitly.
+     * @param  EventDispatcher|null  $events  Dispatcher every driver is wrapped to emit events through, or null to skip event dispatch.
      */
     public function __construct(
         private HttpClient $http,
         private CredentialResolver $credentialResolver,
+        private ?EventDispatcher $events = null,
     ) {}
 
     /**
@@ -47,7 +53,7 @@ final readonly class PaymentGatewayFactory
     {
         $resolved = $credentials ?? $this->credentialResolver->resolve($gateway);
 
-        return match ($gateway) {
+        $driver = match ($gateway) {
             GatewayName::CybersourceUnifiedCheckout => new CybersourceUnifiedCheckoutGateway($resolved, $this->http),
             GatewayName::Fawry => new FawryGateway($resolved, $this->http),
             GatewayName::Paymob => new PaymobGateway($resolved, $this->http),
@@ -55,6 +61,8 @@ final readonly class PaymentGatewayFactory
             GatewayName::Paytabs => new PaytabsGateway($resolved, $this->http),
             GatewayName::PayPal => new PayPalGateway($resolved, $this->http),
         };
+
+        return $this->events instanceof EventDispatcher ? new EventDispatchingGateway($driver, $this->events) : $driver;
     }
 
     /**

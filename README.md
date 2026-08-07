@@ -554,6 +554,92 @@ config (e.g. when the host app ships its own tooling):
 ],
 ```
 
+## Events
+
+Every gateway driver is wrapped so it emits a **payment domain event** after each lifecycle
+operation — `charge`, `capture`, `refund`, `void`, `reverseAuthorization`,
+`chargeStoredCredential`, `vaultInstrument`, `createCheckoutSession`, and `verifyWebhook`.
+The event fires on completion regardless of success (the result's `success`/`status` carries
+the outcome), so you can react to declines too; if the call throws, no event is dispatched.
+
+Every event implements the marker interface `Domain\Event\PaymentEvent`, so **one listener
+subscribed to the interface receives them all** — no listener-per-event boilerplate. Route
+them with a single `match` on the concrete type:
+
+```php
+use Hyprpay\Payments\Domain\Event\AuthorizationReversed;
+use Hyprpay\Payments\Domain\Event\PaymentCaptured;
+use Hyprpay\Payments\Domain\Event\PaymentEvent;
+use Hyprpay\Payments\Domain\Event\PaymentRefunded;
+use Hyprpay\Payments\Domain\Event\WebhookReceived;
+
+final class PaymentEventSubscriber
+{
+    /** One handler for every payment event. */
+    public function handle(PaymentEvent $event): void
+    {
+        match (true) {
+            $event instanceof PaymentCaptured       => $this->markOrderPaid($event->orderReference, $event->result),
+            $event instanceof PaymentRefunded       => $this->recordRefund($event->transactionId, $event->result),
+            $event instanceof AuthorizationReversed => $this->releaseHold($event->transactionId),
+            $event instanceof WebhookReceived       => $this->applyWebhook($event->webhook),
+            default                                 => null, // charge/void/vault/checkout — ignored here
+        };
+    }
+
+    // ...markOrderPaid(), recordRefund(), releaseHold(), applyWebhook()
+}
+```
+
+Register it once against the interface — it then receives every event:
+
+```php
+use Illuminate\Support\Facades\Event;
+
+Event::listen(PaymentEvent::class, PaymentEventSubscriber::class);
+
+// ...or skip the match and target a single operation directly:
+Event::listen(PaymentRefunded::class, function (PaymentRefunded $event): void {
+    if ($event->result->success) {
+        // $event->transactionId, $event->money, $event->result->refundId
+    }
+});
+```
+
+The events and the payload each carries:
+
+| Event | Payload (besides `gateway()`) |
+| --- | --- |
+| `CheckoutSessionCreated` | `orderReference`, `money`, `session` |
+| `PaymentCharged` | `orderReference`, `money`, `result` |
+| `PaymentCaptured` | `transactionId`, `orderReference`, `money`, `result` |
+| `PaymentRefunded` | `transactionId`, `orderReference`, `money`, `result` |
+| `PaymentVoided` | `transactionId`, `orderReference`, `result` |
+| `AuthorizationReversed` | `transactionId`, `orderReference`, `money`, `result` |
+| `StoredCredentialCharged` | `paymentInstrumentId`, `orderReference`, `money`, `result` |
+| `InstrumentVaulted` | `customerReference`, `result` |
+| `WebhookReceived` | `webhook` |
+
+Events are **queue-safe**: they carry only the gateway, correlation ids, amount, and the
+normalized result — never the raw request, which can hold a PAN — so a queued listener never
+serializes card data.
+
+Toggle events and the built-in audit-logging listener (which records a redaction-safe line
+per event through your PSR-3 logger — gateway, ids, and status, never `raw` payloads or card
+data):
+
+```php
+// config/gateway.php
+'events' => [
+    'enabled' => (bool) env('GATEWAY_EVENTS', true),  // wrap drivers to emit events
+    'log' => (bool) env('GATEWAY_EVENTS_LOG', false),  // attach the audit-logging listener
+],
+```
+
+With `enabled` off the factory returns bare drivers and nothing is dispatched. Dispatch goes
+through the framework-agnostic `Domain\Contract\EventDispatcher` port (the Laravel adapter
+forwards to the application's event dispatcher), so the core stays framework-independent.
+
 ## Architecture
 
 The code is organised in three DDD layers under `src/`, each its own namespace:
@@ -563,20 +649,23 @@ Application/     PaymentGatewayFactory ── makes ──▶ Domain\Contract\Pa
                  TransactionReconciler (reconcile use-case) · ReconciliationOutcome
 
 Domain/          the framework-agnostic core — no Laravel, no HTTP
-  Contract/        PaymentGatewayInterface (one fat contract), HttpClient, CredentialResolver (ports)
+  Contract/        PaymentGatewayInterface (one fat contract), HttpClient, CredentialResolver, EventDispatcher (ports)
   AbstractPaymentGateway (default: UnsupportedOperation)
   Command/         request DTOs   (ChargeRequest, CheckoutSessionRequest, RefundRequest, …)
   Result/          response DTOs  (PaymentResult, CheckoutSession, TransactionSnapshot, WebhookEvent, …)
+  Event/           PaymentEvent (marker) + PaymentCharged, PaymentCaptured, PaymentRefunded, WebhookReceived, …
   ValueObject/     Money, Customer, BillingAddress, GatewayCredentials
   Enum/            GatewayName, PaymentStatus, CredentialInitiator
   Exception/       GatewayException + subtypes (UnsupportedOperation, WebhookVerification, …)
 
 Infrastructure/  adapters for the ports — the only layer that touches Laravel & the network
-  Gateway/{X}/     CybersourceUnifiedCheckout · Fawry · Paymob · Paylink (extend AbstractPaymentGateway)
+  Gateway/{X}/     CybersourceUnifiedCheckout · Fawry · Paymob · Paylink · Paytabs · PayPal (extend AbstractPaymentGateway)
+  Gateway/         EventDispatchingGateway (decorator that emits events after each operation)
   Http/            HttpClient decorator stack: RetryingHttpClient → LoggingHttpClient → RateLimitingHttpClient → LaravelHttpClient · FakeHttpClient (tests)
+  Events/          LaravelEventDispatcher · LoggingPaymentEventListener · RecordingEventDispatcher (tests)
   Credentials/     ConfigCredentialResolver
   Console/         ReconcileCommand (base) + one gateway:reconcile:{X} command per gateway
-  GatewayServiceProvider (wires the ports + factory into the container, registers commands)
+  GatewayServiceProvider (wires the ports + factory into the container, registers commands + the event listener)
 ```
 
 Dependencies point inward: `Infrastructure` and `Application` depend on `Domain`; the

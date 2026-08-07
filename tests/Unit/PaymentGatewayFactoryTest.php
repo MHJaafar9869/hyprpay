@@ -6,7 +6,9 @@ use Hyprpay\Payments\Application\PaymentGatewayFactory;
 use Hyprpay\Payments\Domain\Contract\PaymentGatewayInterface;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Exception\GatewayNotSupportedException;
+use Hyprpay\Payments\Infrastructure\Events\RecordingEventDispatcher;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\CybersourceUnifiedCheckoutGateway;
+use Hyprpay\Payments\Infrastructure\Gateway\EventDispatchingGateway;
 use Hyprpay\Payments\Infrastructure\Http\FakeHttpClient;
 
 it('builds the CyberSource driver from explicit credentials without touching the resolver', function (): void {
@@ -39,4 +41,18 @@ it('throws for an unknown gateway name', function (): void {
     $factory = new PaymentGatewayFactory(new FakeHttpClient, recordingResolver(testCredentials()));
 
     expect(fn (): PaymentGatewayInterface => $factory->makeByName('unknown_gateway'))->toThrow(GatewayNotSupportedException::class);
+});
+
+it('wraps the driver in an event-dispatching decorator when a dispatcher is supplied', function (): void {
+    $factory = new PaymentGatewayFactory(new FakeHttpClient, recordingResolver(testCredentials()), new RecordingEventDispatcher);
+
+    expect($factory->make(GatewayName::CybersourceUnifiedCheckout, testCredentials()))
+        ->toBeInstanceOf(EventDispatchingGateway::class);
+});
+
+it('returns the bare driver when no dispatcher is supplied', function (): void {
+    $factory = new PaymentGatewayFactory(new FakeHttpClient, recordingResolver(testCredentials()));
+
+    expect($factory->make(GatewayName::CybersourceUnifiedCheckout, testCredentials()))
+        ->toBeInstanceOf(CybersourceUnifiedCheckoutGateway::class);
 });

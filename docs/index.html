@@ -83,7 +83,7 @@
       <li><b>6</b><span>gateways, one contract</span></li>
       <li><b>0</b><span>vendor SDK deps</span></li>
       <li><b>max</b><span>PHPStan level, no baseline</span></li>
-      <li><b>190+</b><span>Pest tests, network-free</span></li>
+      <li><b>210+</b><span>Pest tests, network-free</span></li>
     </ul>
   </section>
 
@@ -142,7 +142,12 @@
       <article class="card reveal">
         <span class="card-no">/06</span>
         <h3>Exact money, strict types</h3>
-        <p>Amounts are carried as minor units and never rounded. PHPStan runs at <b>level max with a zero baseline</b>, formatted with Pint, refactor-checked with Rector, and covered by 190+ database-free Pest tests.</p>
+        <p>Amounts are carried as minor units and never rounded. PHPStan runs at <b>level max with a zero baseline</b>, formatted with Pint, refactor-checked with Rector, and covered by 210+ database-free Pest tests.</p>
+      </article>
+      <article class="card reveal">
+        <span class="card-no">/07</span>
+        <h3>Events &amp; listeners</h3>
+        <p>Each driver emits a typed domain event after every operation — charge, capture, refund, void, vault, checkout, webhook. One listener on the <code>PaymentEvent</code> interface receives them all, or target a single event. Payloads are <b>queue-safe</b>: ids, amount and result — never the raw request or card data.</p>
       </article>
     </div>
   </section>

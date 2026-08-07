@@ -58,6 +58,28 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Domain events
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, every gateway driver is wrapped so it emits a payment domain
+    | event after each lifecycle operation (charge, capture, refund, void,
+    | reversal, stored-credential charge, vaulting, checkout, webhook). Listen for
+    | a specific event class or for the Hyprpay\Payments\Domain\Event\PaymentEvent
+    | interface to receive them all. With no listeners registered the overhead is
+    | negligible; set enabled to false to return bare drivers with no dispatch.
+    |
+    | Enable "log" to attach the built-in audit listener, which records a
+    | redaction-safe line per event (gateway, ids, status — never card data or raw
+    | payloads) through the application's PSR-3 logger.
+    |
+    */
+    'events' => [
+        'enabled' => (bool) env('GATEWAY_EVENTS', true),
+        'log' => (bool) env('GATEWAY_EVENTS_LOG', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Gateway credentials (fallback)
     |--------------------------------------------------------------------------
     |

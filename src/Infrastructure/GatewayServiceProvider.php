@@ -6,7 +6,9 @@ namespace Hyprpay\Payments\Infrastructure;
 
 use Hyprpay\Payments\Application\PaymentGatewayFactory;
 use Hyprpay\Payments\Domain\Contract\CredentialResolver;
+use Hyprpay\Payments\Domain\Contract\EventDispatcher;
 use Hyprpay\Payments\Domain\Contract\HttpClient;
+use Hyprpay\Payments\Domain\Event\PaymentEvent;
 use Hyprpay\Payments\Infrastructure\Console\ReconcileCybersourceCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcileFawryCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcilePaylinkCommand;
@@ -14,12 +16,15 @@ use Hyprpay\Payments\Infrastructure\Console\ReconcilePaymobCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcilePayPalCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcilePaytabsCommand;
 use Hyprpay\Payments\Infrastructure\Credentials\ConfigCredentialResolver;
+use Hyprpay\Payments\Infrastructure\Events\LaravelEventDispatcher;
+use Hyprpay\Payments\Infrastructure\Events\LoggingPaymentEventListener;
 use Hyprpay\Payments\Infrastructure\Http\LaravelHttpClient;
 use Hyprpay\Payments\Infrastructure\Http\LoggingHttpClient;
 use Hyprpay\Payments\Infrastructure\Http\RateLimitingHttpClient;
 use Hyprpay\Payments\Infrastructure\Http\RetryingHttpClient;
 use Hyprpay\Payments\Infrastructure\Support\Value;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Illuminate\Contracts\Events\Dispatcher as EventsDispatcher;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;
@@ -29,9 +34,10 @@ use Psr\Log\LoggerInterface;
 /**
  * Laravel service provider that wires the gateway SDK into the container.
  *
- * Merges the package config, binds the HttpClient and CredentialResolver ports
- * to their Laravel adapters, registers the PaymentGatewayFactory as a singleton,
- * and publishes the config file when running in the console.
+ * Merges the package config, binds the HttpClient, CredentialResolver, and
+ * EventDispatcher ports to their Laravel adapters, registers the
+ * PaymentGatewayFactory as a singleton, registers the audit-logging payment-event
+ * listener when enabled, and publishes the config file when running in the console.
  */
 final class GatewayServiceProvider extends ServiceProvider
 {
@@ -75,18 +81,31 @@ final class GatewayServiceProvider extends ServiceProvider
             $app->make(ConfigRepository::class),
         ));
 
-        $this->app->singleton(PaymentGatewayFactory::class, static fn (Application $app): PaymentGatewayFactory => new PaymentGatewayFactory(
-            $app->make(HttpClient::class),
-            $app->make(CredentialResolver::class),
+        $this->app->bind(EventDispatcher::class, static fn (Application $app): EventDispatcher => new LaravelEventDispatcher(
+            $app->make(EventsDispatcher::class),
         ));
+
+        $this->app->singleton(PaymentGatewayFactory::class, static function (Application $app): PaymentGatewayFactory {
+            $eventsEnabled = Value::bool($app->make(ConfigRepository::class)->get('gateway.events.enabled', true));
+
+            return new PaymentGatewayFactory(
+                $app->make(HttpClient::class),
+                $app->make(CredentialResolver::class),
+                $eventsEnabled ? $app->make(EventDispatcher::class) : null,
+            );
+        });
     }
 
     /**
-     * Publish the package config and register the reconciliation commands
-     * (when enabled) while running in the console.
+     * Register the payment-event audit logger (when enabled), then — in the console —
+     * publish the package config and register the reconciliation commands.
      */
     public function boot(): void
     {
+        if (Value::bool($this->app->make(ConfigRepository::class)->get('gateway.events.log'))) {
+            $this->app->make(EventsDispatcher::class)->listen(PaymentEvent::class, LoggingPaymentEventListener::class);
+        }
+
         if (! $this->app->runningInConsole()) {
             return;
         }
