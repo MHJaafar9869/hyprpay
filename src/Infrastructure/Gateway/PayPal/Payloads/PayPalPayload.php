@@ -215,7 +215,7 @@ final class PayPalPayload
             return [];
         }
 
-        $options = self::options($request);
+        $options = PayPalCheckoutOptions::fromRequest($request);
 
         $context = [
             'return_url' => $request->returnUrl,
@@ -228,19 +228,6 @@ final class PayPalPayload
         ];
 
         return array_filter($context, static fn (?string $value): bool => $value !== null);
-    }
-
-    /**
-     * Resolve the request's options to a typed PayPalCheckoutOptions.
-     *
-     * Uses the DTO directly when provided, otherwise maps a legacy options array through
-     * {@see PayPalCheckoutOptions::fromArray()} so both call styles are supported.
-     */
-    private static function options(CheckoutSessionRequest $request): PayPalCheckoutOptions
-    {
-        return $request->options instanceof PayPalCheckoutOptions
-            ? $request->options
-            : PayPalCheckoutOptions::fromArray($request->optionsArray());
     }
 
     /**

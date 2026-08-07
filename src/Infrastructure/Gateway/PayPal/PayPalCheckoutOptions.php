@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hyprpay\Payments\Infrastructure\Gateway\PayPal;
 
 use Hyprpay\Payments\Domain\Command\CheckoutOptions;
+use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Infrastructure\Gateway\PayPal\Enums\PayPalPaymentMethodPreference;
 use Hyprpay\Payments\Infrastructure\Gateway\PayPal\Enums\PayPalShippingPreference;
 use Hyprpay\Payments\Infrastructure\Gateway\PayPal\Enums\PayPalUserAction;
@@ -36,6 +37,17 @@ final readonly class PayPalCheckoutOptions implements CheckoutOptions
         public ?PayPalUserAction $userAction = null,
         public ?PayPalPaymentMethodPreference $paymentMethodPreference = null,
     ) {}
+
+    /**
+     * Resolve a request's options to PayPalCheckoutOptions.
+     *
+     * Uses a supplied PayPalCheckoutOptions directly, otherwise maps the request's option
+     * array through {@see fromArray()} so both call styles resolve to the typed object.
+     */
+    public static function fromRequest(CheckoutSessionRequest $request): self
+    {
+        return $request->options instanceof self ? $request->options : self::fromArray($request->optionsArray());
+    }
 
     /**
      * Build the options from a raw PayPal experience-context key array (backward compatibility).
