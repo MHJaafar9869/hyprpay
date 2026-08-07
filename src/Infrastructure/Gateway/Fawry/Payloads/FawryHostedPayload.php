@@ -6,8 +6,8 @@ namespace Hyprpay\Payments\Infrastructure\Gateway\Fawry\Payloads;
 
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
+use Hyprpay\Payments\Infrastructure\Gateway\Fawry\FawryCheckoutOptions;
 use Hyprpay\Payments\Infrastructure\Gateway\Fawry\FawrySignature;
-use Hyprpay\Payments\Infrastructure\Support\Value;
 
 /**
  * Builds the FawryPay Express Checkout hosted-page init request body.
@@ -40,8 +40,10 @@ final class FawryHostedPayload
             'description' => FawryFields::description($request),
         ];
 
-        if (isset($request->options['webhook_url'])) {
-            $body['orderWebHookUrl'] = Value::string($request->options['webhook_url']);
+        $webhookUrl = FawryCheckoutOptions::fromRequest($request)->webhookUrl;
+
+        if ($webhookUrl !== null) {
+            $body['orderWebHookUrl'] = $webhookUrl;
         }
 
         $body['signature'] = FawrySignature::hostedInit(

@@ -7,6 +7,7 @@ namespace Hyprpay\Payments\Infrastructure\Gateway\Fawry\Payloads;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
 use Hyprpay\Payments\Infrastructure\Gateway\Fawry\Enums\FawryPaymentMethod;
+use Hyprpay\Payments\Infrastructure\Gateway\Fawry\FawryCheckoutOptions;
 use Hyprpay\Payments\Infrastructure\Gateway\Fawry\FawrySignature;
 use Hyprpay\Payments\Infrastructure\Support\Value;
 
@@ -26,7 +27,7 @@ final class FawryChargePayload
     /**
      * Build a card (PayUsingCC) 3-D Secure charge body.
      *
-     * Card details are read from the request options bag under `card` as
+     * Card details are read from the checkout options' `card` field as
      * [number, expiryYear, expiryMonth, cvv].
      *
      * @return array<string, mixed>
@@ -64,14 +65,14 @@ final class FawryChargePayload
     /**
      * Build a mobile-wallet (MWALLET) charge body.
      *
-     * The wallet number is read from the request options bag under `wallet_number`.
+     * The wallet number is read from the checkout options' `walletNumber` field.
      *
      * @return array<string, mixed>
      */
     public static function wallet(CheckoutSessionRequest $request, GatewayCredentials $credentials): array
     {
         $amount = $request->money->toDecimalString();
-        $walletNumber = Value::string($request->options['wallet_number'] ?? null);
+        $walletNumber = Value::string(FawryCheckoutOptions::fromRequest($request)->walletNumber);
 
         $body = self::base($request, $credentials, FawryPaymentMethod::MobileWallet->value, $amount);
         $body['debitMobileWalletNo'] = $walletNumber;
@@ -139,7 +140,7 @@ final class FawryChargePayload
      * Build a bank instalment (CARD) charge body.
      *
      * Charges a card over a bank instalment plan: the card details are read from the
-     * request options bag under `card` as [number, expiryYear, expiryMonth, cvv], and
+     * checkout options' `card` field, and
      * the chosen plan from `installment_plan_id`. The instalment plan id participates in
      * the signature, which (unlike the PayUsingCC 3-D Secure charge) does not cover the
      * return URL.
@@ -150,7 +151,7 @@ final class FawryChargePayload
     {
         $amount = $request->money->toDecimalString();
         $card = self::cardDetails($request);
-        $planId = Value::string($request->options['installment_plan_id'] ?? null);
+        $planId = Value::string(FawryCheckoutOptions::fromRequest($request)->installmentPlanId);
 
         $body = self::withCardFields(
             self::base($request, $credentials, FawryPaymentMethod::CardInstallment->value, $amount),
@@ -175,17 +176,19 @@ final class FawryChargePayload
     }
 
     /**
-     * Read the card details from the request options bag (the `card` key).
+     * Read the card details from the typed checkout options (the `card` field).
      *
      * @return array{number: string, expiryYear: string, expiryMonth: string, cvv: string}
      */
     private static function cardDetails(CheckoutSessionRequest $request): array
     {
+        $card = FawryCheckoutOptions::fromRequest($request)->card;
+
         return [
-            'number' => Value::string(data_get($request->options, 'card.number')),
-            'expiryYear' => Value::string(data_get($request->options, 'card.expiryYear')),
-            'expiryMonth' => Value::string(data_get($request->options, 'card.expiryMonth')),
-            'cvv' => Value::string(data_get($request->options, 'card.cvv')),
+            'number' => Value::string($card?->number),
+            'expiryYear' => Value::string($card?->expiryYear),
+            'expiryMonth' => Value::string($card?->expiryMonth),
+            'cvv' => Value::string($card?->cvv),
         ];
     }
 

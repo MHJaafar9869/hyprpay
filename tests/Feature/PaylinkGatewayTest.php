@@ -13,6 +13,7 @@ use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\ValueObject\Customer;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
 use Hyprpay\Payments\Domain\ValueObject\Money;
+use Hyprpay\Payments\Infrastructure\Gateway\Paylink\PaylinkCheckoutOptions;
 use Hyprpay\Payments\Infrastructure\Gateway\Paylink\PaylinkGateway;
 use Hyprpay\Payments\Infrastructure\Http\FakeHttpClient;
 
@@ -49,7 +50,7 @@ it('creates an invoice and returns the checkout URL, signing the body', function
         returnUrl: 'https://shop.test/return',
         customer: new Customer(email: 'john@example.com', firstName: 'John', lastName: 'Doe'),
         description: 'Gold Plan',
-        options: ['webhook_url' => 'https://shop.test/webhook'],
+        options: new PaylinkCheckoutOptions(webhookUrl: 'https://shop.test/webhook'),
     ));
 
     $request = $http->lastRequest();
@@ -79,7 +80,7 @@ it('sends an unsigned iframe flag and returns an iframe-ready checkout URL', fun
         orderReference: 'ORD1',
         returnUrl: 'https://shop.test/return',
         description: 'Gold Plan',
-        options: ['iframe' => true],
+        options: new PaylinkCheckoutOptions(iframe: true),
     ));
 
     expect(paylinkBody($iframeHttp)['iframe'])->toBe('1')

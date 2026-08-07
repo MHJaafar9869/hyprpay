@@ -60,7 +60,7 @@ final class PaylinkGateway extends AbstractPaymentGateway
     /**
      * Create a PayLink invoice and return its checkout URL and invoice id.
      *
-     * Set `options['iframe'] = true` to have PayLink return an iframe-ready checkout
+     * Set PaylinkCheckoutOptions::$iframe to have PayLink return an iframe-ready checkout
      * URL (embed it in an <iframe>) instead of a full-page redirect URL. The flag is
      * sent unsigned, mirroring the server, so it never affects the request signature.
      */
@@ -71,6 +71,7 @@ final class PaylinkGateway extends AbstractPaymentGateway
         $customerFirstName = $customer?->firstName;
         $customerLastName = $customer?->lastName;
         $customerEmail = $customer?->email;
+        $options = PaylinkCheckoutOptions::fromRequest($request);
 
         $response = $this->client->post(
             PaylinkEndpoint::InvoiceCreate,
@@ -86,12 +87,12 @@ final class PaylinkGateway extends AbstractPaymentGateway
                 'state' => $billTo?->administrativeArea,
                 'currency' => $request->money->currency,
                 'redirection_url' => $request->returnUrl,
-                'webhook_url' => $request->options['webhook_url'] ?? null,
-                'order_details' => $request->options['order_details'] ?? null,
-                'payment_mode' => $request->options['payment_mode'] ?? null,
-                'iframe' => filter_var($request->options['iframe'] ?? false, FILTER_VALIDATE_BOOLEAN) ?: null,
+                'webhook_url' => $options->webhookUrl,
+                'order_details' => $options->orderDetails,
+                'payment_mode' => $options->paymentMode,
+                'iframe' => $options->iframe ?: null,
             ],
-            Value::nullableString($request->options['idempotency_key'] ?? $request->orderReference),
+            Value::nullableString($options->idempotencyKey ?? $request->orderReference),
             'create checkout session',
         );
 

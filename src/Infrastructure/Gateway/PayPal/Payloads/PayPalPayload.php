@@ -12,6 +12,9 @@ use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Enum\CredentialInitiator;
 use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
 use Hyprpay\Payments\Domain\ValueObject\Money;
+use Hyprpay\Payments\Infrastructure\Gateway\PayPal\Enums\PayPalShippingPreference;
+use Hyprpay\Payments\Infrastructure\Gateway\PayPal\Enums\PayPalUserAction;
+use Hyprpay\Payments\Infrastructure\Gateway\PayPal\PayPalCheckoutOptions;
 use Hyprpay\Payments\Infrastructure\Support\Value;
 
 /**
@@ -197,10 +200,12 @@ final class PayPalPayload
     }
 
     /**
-     * Assemble the PayPal experience context (approval return/cancel URLs and branding).
+     * Assemble the PayPal experience context from the typed checkout options.
      *
      * Returns an empty array when no return URL is set, in which case the order is created
-     * without a buyer-approval link (e.g. a direct card flow handled elsewhere).
+     * without a buyer-approval link (e.g. a direct card flow handled elsewhere). The button
+     * defaults to PAY_NOW and shipping to NO_SHIPPING; the cancel URL and locale fall back
+     * to the request's return URL and locale.
      *
      * @return array<string, string>
      */
@@ -210,13 +215,16 @@ final class PayPalPayload
             return [];
         }
 
+        $options = PayPalCheckoutOptions::fromRequest($request);
+
         $context = [
             'return_url' => $request->returnUrl,
-            'cancel_url' => Value::nullableString($request->options['cancel_url'] ?? null) ?? $request->returnUrl,
-            'brand_name' => Value::nullableString($request->options['brand_name'] ?? null),
-            'locale' => $request->locale,
-            'user_action' => Value::nullableString($request->options['user_action'] ?? null) ?? 'PAY_NOW',
-            'shipping_preference' => Value::nullableString($request->options['shipping_preference'] ?? null) ?? 'NO_SHIPPING',
+            'cancel_url' => $options->cancelUrl ?? $request->returnUrl,
+            'brand_name' => $options->brandName,
+            'locale' => $options->locale ?? $request->locale,
+            'user_action' => ($options->userAction ?? PayPalUserAction::PayNow)->value,
+            'shipping_preference' => ($options->shippingPreference ?? PayPalShippingPreference::NoShipping)->value,
+            'payment_method_preference' => $options->paymentMethodPreference?->value,
         ];
 
         return array_filter($context, static fn (?string $value): bool => $value !== null);

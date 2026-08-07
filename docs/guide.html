@@ -146,7 +146,7 @@
     <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">15000</span>, <span class="s">'EGP'</span>),
     <span class="a">orderReference:</span> <span class="s">'ORDER-125'</span>,
     <span class="a">paymentMethod:</span> <span class="s">'card'</span>,
-    <span class="a">options:</span> [<span class="s">'integration_id'</span> =&gt; <span class="n">111111</span>, <span class="s">'iframe_id'</span> =&gt; <span class="n">222222</span>],
+    <span class="a">options:</span> <span class="k">new</span> <span class="t">PaymobCheckoutOptions</span>(<span class="a">integrationId:</span> <span class="n">111111</span>, <span class="a">iframeId:</span> <span class="n">222222</span>),
 ));
 
 <span class="c">// redirect to $session->redirectUrl (the Paymob iframe)</span></code></pre>
@@ -159,7 +159,7 @@
     <span class="a">orderReference:</span> <span class="s">'ORDER-126'</span>,
     <span class="a">description:</span> <span class="s">'Gold Plan'</span>,
     <span class="a">returnUrl:</span> <span class="s">'https://shop.test/return'</span>,
-    <span class="a">options:</span> [<span class="s">'iframe'</span> =&gt; <span class="k">true</span>], <span class="c">// embeddable checkout URL</span>
+    <span class="a">options:</span> <span class="k">new</span> <span class="t">PaylinkCheckoutOptions</span>(<span class="a">iframe:</span> <span class="k">true</span>), <span class="c">// embeddable checkout URL</span>
 ));
 
 <span class="c">// embed $session->redirectUrl in an &lt;iframe&gt; (or redirect without the option)</span></code></pre>
@@ -172,13 +172,13 @@
     <span class="a">orderReference:</span> <span class="s">'ORDER-127'</span>,
     <span class="a">returnUrl:</span> <span class="s">'https://shop.test/return'</span>,
     <span class="a">paymentMethod:</span> <span class="s">'invoice'</span>,      <span class="c">// 'invoice' | 'paylink' | 'managed' — selects the integration type</span>
-    <span class="a">options:</span> [
-        <span class="s">'iframe'</span> =&gt; <span class="k">true</span>,          <span class="c">// embed the page in an &lt;iframe&gt; instead of redirecting</span>
-        <span class="s">'tokenise'</span> =&gt; <span class="n">2</span>,           <span class="c">// save the card as a reusable token</span>
-        <span class="s">'agreement'</span> =&gt; [...],      <span class="c">// repeat billing — PayTabs auto-bills the schedule</span>
-        <span class="s">'split_payout'</span> =&gt; [...],   <span class="c">// split the settled funds across beneficiaries</span>
-        <span class="s">'webhook_url'</span> =&gt; <span class="s">'https://shop.test/ipn'</span>,
-    ],
+    <span class="a">options:</span> <span class="k">new</span> <span class="t">PaytabsCheckoutOptions</span>(
+        <span class="a">iframe:</span> <span class="k">true</span>,                       <span class="c">// embed the page in an &lt;iframe&gt; instead of redirecting</span>
+        <span class="a">tokenise:</span> <span class="n">2</span>,                        <span class="c">// save the card as a reusable token</span>
+        <span class="a">agreement:</span> <span class="k">new</span> <span class="t">PaytabsAgreement</span>(<span class="c">/* … */</span>),  <span class="c">// repeat billing — PayTabs auto-bills the schedule</span>
+        <span class="a">splitPayout:</span> [<span class="k">new</span> <span class="t">PaytabsSplitPayout</span>(<span class="c">/* … */</span>)], <span class="c">// split the settled funds across beneficiaries</span>
+        <span class="a">webhookUrl:</span> <span class="s">'https://shop.test/ipn'</span>,
+    ),
 ));
 
 <span class="c">// redirect to $session->redirectUrl (hosted page); $session->reference is the tran_ref</span></code></pre>
@@ -192,7 +192,11 @@
     <span class="a">description:</span> <span class="s">'Gold Plan'</span>,
     <span class="a">returnUrl:</span> <span class="s">'https://shop.test/return'</span>, <span class="c">// PayPal redirects here after approval</span>
     <span class="a">paymentMethod:</span> <span class="s">'authorize'</span>,        <span class="c">// omit to capture on approval (intent CAPTURE)</span>
-    <span class="a">options:</span> [<span class="s">'cancel_url'</span> =&gt; <span class="s">'https://shop.test/cancel'</span>, <span class="s">'brand_name'</span> =&gt; <span class="s">'Example'</span>],
+    <span class="a">options:</span> <span class="k">new</span> <span class="t">PayPalCheckoutOptions</span>(  <span class="c">// typed options — no ambiguous array</span>
+        <span class="a">cancelUrl:</span> <span class="s">'https://shop.test/cancel'</span>,
+        <span class="a">brandName:</span> <span class="s">'Example'</span>,
+        <span class="a">userAction:</span> <span class="t">PayPalUserAction</span>::<span class="cn">PayNow</span>,
+    ),
 ));
 
 <span class="c">// redirect to $session->redirectUrl (PayPal approval page);</span>
@@ -521,7 +525,7 @@
     <span class="a">initiator:</span> <span class="t">CredentialInitiator</span>::<span class="cn">Merchant</span>, <span class="c">// recurring; Customer → ecom</span>
 ));
 
-<span class="c">// create the token by setting options['tokenise' =&gt; 2] on any checkout</span></code></pre>
+<span class="c">// create the token by passing new PaytabsCheckoutOptions(tokenise: 2) on any checkout</span></code></pre>
         </div>
       </div>
       <div class="gw-variant" data-gw="paypal">

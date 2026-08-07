@@ -6,7 +6,7 @@ namespace Hyprpay\Payments\Infrastructure\Gateway\Fawry\Payloads;
 
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
-use Hyprpay\Payments\Infrastructure\Support\Value;
+use Hyprpay\Payments\Infrastructure\Gateway\Fawry\FawryCheckoutOptions;
 
 /**
  * Derives the shared FawryPay request fields from a CheckoutSessionRequest.
@@ -74,22 +74,21 @@ final class FawryFields
     }
 
     /**
-     * Customer email, from the customer profile or the options bag.
+     * Customer email, from the customer profile or the checkout options.
      */
     public static function customerEmail(CheckoutSessionRequest $request): ?string
     {
         $customerEmail = $request->customer?->email;
 
-        return $customerEmail
-            ?? (isset($request->options['customer_email']) ? Value::string($request->options['customer_email']) : null);
+        return $customerEmail ?? FawryCheckoutOptions::fromRequest($request)->customerEmail;
     }
 
     /**
-     * Customer mobile number, taken from the options bag.
+     * Customer mobile number, taken from the checkout options.
      */
     public static function customerMobile(CheckoutSessionRequest $request): ?string
     {
-        return isset($request->options['customer_mobile']) ? Value::string($request->options['customer_mobile']) : null;
+        return FawryCheckoutOptions::fromRequest($request)->customerMobile;
     }
 
     /**
