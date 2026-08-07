@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads;
 
 use Hyprpay\Payments\Domain\Command\ReversalRequest;
+use Hyprpay\Payments\Domain\Result\DccQuote;
 
 /**
  * Builds the CyberSource authorization reversal request body.
@@ -25,14 +26,18 @@ final class ReversalPayload
      */
     public static function build(ReversalRequest $request): array
     {
+        $amountDetails = ['totalAmount' => $request->money->toDecimalString()];
+
+        if ($request->dcc instanceof DccQuote) {
+            $amountDetails['currency'] = $request->money->currency;
+        }
+
         return [
             'clientReferenceInformation' => [
                 'code' => ClientReference::code($request->orderReference, $request->transactionId),
             ],
             'reversalInformation' => [
-                'amountDetails' => [
-                    'totalAmount' => $request->money->toDecimalString(),
-                ],
+                'amountDetails' => $amountDetails,
                 'reason' => $request->reason ?? 'canceled order',
             ],
         ];

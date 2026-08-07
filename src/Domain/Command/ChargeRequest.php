@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Hyprpay\Payments\Domain\Command;
 
+use Hyprpay\Payments\Domain\Result\DccQuote;
 use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
 use Hyprpay\Payments\Domain\ValueObject\Customer;
 use Hyprpay\Payments\Domain\ValueObject\Money;
@@ -28,6 +29,7 @@ final readonly class ChargeRequest
      * @param  string|null  $commerceIndicator  Optional commerce indicator overriding the default transaction type
      * @param  string|null  $deviceFingerprintId  Optional device fingerprint session id for fraud screening
      * @param  string|null  $idempotencyKey  Optional idempotency key; sent to the gateway so a retried charge is not double-processed. Defaults to the order reference when omitted.
+     * @param  DccQuote|null  $dcc  Optional DCC quote to bill the cardholder in their currency; set `money` to the quote's converted amount so the quoted rate is applied
      */
     public function __construct(
         public string $transientToken,
@@ -40,5 +42,6 @@ final readonly class ChargeRequest
         public ?string $commerceIndicator = null,
         public ?string $deviceFingerprintId = null,
         public ?string $idempotencyKey = null,
+        public ?DccQuote $dcc = null,
     ) {}
 }

@@ -8,6 +8,7 @@ use Hyprpay\Payments\Domain\AbstractPaymentGateway;
 use Hyprpay\Payments\Domain\Command\CaptureRequest;
 use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
+use Hyprpay\Payments\Domain\Command\DccRateRequest;
 use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
 use Hyprpay\Payments\Domain\Command\ReversalRequest;
@@ -19,6 +20,7 @@ use Hyprpay\Payments\Domain\Contract\HttpClient;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\Result\CheckoutSession;
+use Hyprpay\Payments\Domain\Result\DccQuote;
 use Hyprpay\Payments\Domain\Result\PayerAuthResult;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
 use Hyprpay\Payments\Domain\Result\RefundResult;
@@ -26,12 +28,14 @@ use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
 use Hyprpay\Payments\Domain\Result\VaultedInstrument;
 use Hyprpay\Payments\Domain\Result\WebhookEvent;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
+use Hyprpay\Payments\Domain\ValueObject\Money;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Concerns\ParsesTransientToken;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Concerns\VerifiesCybersourceWebhook;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Enums\CybersourceEndpoint;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Enums\CybersourceTransactionStatus;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CaptureContextPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CapturePayload;
+use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CurrencyConversionPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\PayerAuthEnrollPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\PayerAuthValidatePayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\PaymentPayload;
@@ -104,6 +108,22 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
             clientLibrary: Value::nullableString($context['clientLibrary'] ?? null),
             clientLibraryIntegrity: Value::nullableString($context['clientLibraryIntegrity'] ?? null),
             raw: $claims,
+        );
+    }
+
+    /**
+     * Requests a Dynamic Currency Conversion rate quote via the currency-conversion
+     * endpoint, returning the mapped DccQuote.
+     */
+    public function requestDccRate(DccRateRequest $request): DccQuote
+    {
+        return $this->toDccQuote(
+            $this->client->post(
+                CybersourceEndpoint::CurrencyConversion->path(),
+                CurrencyConversionPayload::build($request),
+                'request dcc rate',
+            ),
+            $request->money,
         );
     }
 
@@ -367,6 +387,39 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
             transactionId: $this->transactionId($response),
             code: $this->reasonCode($response),
             message: $this->message($response),
+            raw: $response,
+        );
+    }
+
+    /**
+     * Maps a CyberSource currency-conversion JSON response into a DccQuote DTO.
+     *
+     * Reads the quoted rate id, exchange rate, and timestamp from the currencyConversion
+     * block (falling back to amountDetails), and the converted billing amount from
+     * orderInformation.amountDetails. DCC is treated as offered when a rate id is present.
+     * The original merchant amount is echoed from the request.
+     *
+     * @param  array<string, mixed>  $response  Decoded CyberSource currency-conversion response.
+     * @param  Money  $original  The merchant-currency amount that was quoted.
+     */
+    private function toDccQuote(array $response, Money $original): DccQuote
+    {
+        $conversion = Value::array(data_get($response, 'currencyConversion') ?? data_get($response, 'orderInformation.amountDetails.currencyConversion'));
+        $amountDetails = Value::array(data_get($response, 'orderInformation.amountDetails'));
+
+        $id = Value::nullableString($conversion['id'] ?? null);
+        $convertedAmount = Value::nullableString($amountDetails['totalAmount'] ?? null);
+        $convertedCurrency = Value::nullableString($amountDetails['currency'] ?? null);
+
+        return new DccQuote(
+            offered: filled($id),
+            id: $id,
+            exchangeRate: Value::nullableString($conversion['exchangeRate'] ?? $amountDetails['exchangeRate'] ?? null),
+            originalAmount: $original,
+            convertedAmount: ($convertedAmount !== null && $convertedCurrency !== null)
+                ? Money::fromDecimalString($convertedAmount, $convertedCurrency)
+                : null,
+            exchangeRateTimeStamp: Value::nullableString($conversion['exchangeRateTimeStamp'] ?? $amountDetails['exchangeRateTimeStamp'] ?? null),
             raw: $response,
         );
     }

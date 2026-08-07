@@ -7,6 +7,7 @@ namespace Hyprpay\Payments\Domain\Contract;
 use Hyprpay\Payments\Domain\Command\CaptureRequest;
 use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
+use Hyprpay\Payments\Domain\Command\DccRateRequest;
 use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
 use Hyprpay\Payments\Domain\Command\ReversalRequest;
@@ -16,6 +17,7 @@ use Hyprpay\Payments\Domain\Command\ValidatePayerAuthRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Result\CheckoutSession;
+use Hyprpay\Payments\Domain\Result\DccQuote;
 use Hyprpay\Payments\Domain\Result\PayerAuthResult;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
 use Hyprpay\Payments\Domain\Result\RefundResult;
@@ -57,6 +59,17 @@ interface PaymentGatewayInterface
      * @return CheckoutSession The created session, including any token or redirect details.
      */
     public function createCheckoutSession(CheckoutSessionRequest $request): CheckoutSession;
+
+    /**
+     * Request a Dynamic Currency Conversion (DCC) rate quote for an amount and card.
+     *
+     * The returned quote can be threaded into a charge/capture/refund to bill the
+     * cardholder in their own currency at the quoted rate.
+     *
+     * @param  DccRateRequest  $request  The amount, merchant currency, and card to quote.
+     * @return DccQuote The quoted rate and converted amount (or an "not offered" quote).
+     */
+    public function requestDccRate(DccRateRequest $request): DccQuote;
 
     /**
      * Authorize (and optionally capture) a payment for the given request.
