@@ -645,8 +645,10 @@ forwards to the application's event dispatcher), so the core stays framework-ind
 Enable operation logging to wrap every driver in a `LoggingGateway` that logs each call —
 `charge`, `capture`, `refund`, `getTransaction`, `verifyWebhook`, … — with its **duration**
 and a safe correlation context (gateway, order/transaction ids, amount) through your PSR-3
-logger. Normally you just flip the config toggle (`log_operations` below) and the factory does
-the wrapping for you.
+logger. Normally you just flip the config toggle (`logging.operations` below) and the factory
+does the wrapping for you. The SDK writes to its **own** daily channel —
+`storage/logs/hyprpay-YYYY-MM-DD.log` by default — kept out of your app log (set
+`logging.channel` to route it into a channel you've defined instead).
 
 `LoggingGateway` is a plain decorator, so it's constructed at the composition edge (by the
 factory / service provider, like `LoggingHttpClient` and `EventDispatchingGateway`) rather than
@@ -668,7 +670,7 @@ final class PaymentGatewayProvider
      *
      * Wraps the driver in a LoggingGateway, so each call is recorded as
      * `[LoggingGateway] {operation}` through the "payments" channel with a masked,
-     * PAN-free context. Enabling `gateway.log_operations` makes the factory do this
+     * PAN-free context. Enabling `gateway.logging.operations` makes the factory do this
      * automatically, so this wrapper becomes unnecessary.
      */
     public function payments(): PaymentGatewayInterface
@@ -681,7 +683,54 @@ final class PaymentGatewayProvider
 }
 ```
 
-Each call is logged as `[LoggingGateway] {operation}` at info level; the context carries **no
+Each call is logged at info as `[{gateway}] {operation}` — the message plus a structured context:
+
+```text
+[paypal] charge
+{
+    "gateway": "paypal",
+    "order_reference": "ORDER-123",
+    "amount": "100.00",
+    "currency": "USD",
+    "duration_ms": 84.2
+}
+```
+
+The log is identified by **gateway + operation** — a generic decorator can't know your calling
+class, so it doesn't pretend to. If you want the *initiator's* name (`action`), use the `LogsAction`
+trait directly in your own action/service, where `action` becomes your class.
+
+**Request correlation** (`request_id`, `ip`, `url`) isn't added by the SDK — it stays framework-
+agnostic and runs in CLI/queue where there is no request. Add it once to your app's log context
+so it lands on every line, these included (the timestamp is already stamped by the logger):
+
+```php
+// e.g. in middleware
+Log::shareContext(['request_id' => (string) Str::uuid(), 'ip' => $request->ip(), 'url' => $request->fullUrl()]);
+
+// or tag one wrapper with static extra fields via the constructor hook:
+new LoggingGateway($driver, $logger, ['component' => 'checkout']);
+```
+
+With that in place the same call lands in the SDK's daily file
+(`storage/logs/hyprpay-2026-08-08.log`) as — timestamp from the logger, `request_id`/`ip`/`url`
+from your shared context, the rest from the SDK:
+
+```text
+[2026-08-08 10:15:42] production.INFO: [paypal] charge
+{
+    "request_id": "9b1e5b1e-3c2a-4f77-9c1e-2b0f5a7d1e42",
+    "ip": "203.0.113.7",
+    "url": "https://shop.test/checkout",
+    "gateway": "paypal",
+    "order_reference": "ORDER-123",
+    "amount": "100.00",
+    "currency": "USD",
+    "duration_ms": 84.2
+}
+```
+
+The context carries **no
 PAN, cvv, or tokens**, and the underlying `LogsAction` trait masks sensitive keys as a
 backstop. This is distinct from `http.logging`, which logs the lower-level HTTP request/response
 metadata. `LogsAction` (`Infrastructure\Support\Concerns\LogsAction`) is reusable on any class

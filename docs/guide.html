@@ -494,7 +494,7 @@
          (gateway, order/transaction ids, amount) through your PSR-3 logger. The context carries no PAN,
          cvv or tokens, and the underlying <code>LogsAction</code> trait masks sensitive keys as a backstop.
          Distinct from <code>http.logging</code>, which logs the lower-level HTTP request/response metadata.</p>
-      <p>With <code>gateway.log_operations</code> enabled the factory wraps every driver for you. To
+      <p>With <code>gateway.logging.operations</code> enabled the factory wraps every driver for you. To
          compose it yourself — outside Laravel, or around a driver you built — wrap it with any PSR-3
          logger:</p>
       <div class="code">
@@ -511,7 +511,7 @@
      *
      * Wraps the driver in a LoggingGateway, so each call is recorded as
      * [LoggingGateway] {operation} through the "payments" channel with a
-     * masked, PAN-free context. Enabling gateway.log_operations makes the
+     * masked, PAN-free context. Enabling gateway.logging.operations makes the
      * factory do this automatically, so this wrapper becomes unnecessary.
      */</span>
     <span class="k">public function</span> <span class="fn">payments</span>(): <span class="t">PaymentGatewayInterface</span>
@@ -521,6 +521,50 @@
             <span class="t">Log</span>::<span class="fn">channel</span>(<span class="s">'payments'</span>),
         );
     }
+}</code></pre>
+      </div>
+      <p>Each call then lands in your PSR-3 log at info — the message plus a structured context:</p>
+      <div class="code">
+<pre><code>[paypal] charge
+{
+    <span class="s">"gateway"</span>: <span class="s">"paypal"</span>,
+    <span class="s">"order_reference"</span>: <span class="s">"ORDER-123"</span>,
+    <span class="s">"amount"</span>: <span class="s">"100.00"</span>,
+    <span class="s">"currency"</span>: <span class="s">"USD"</span>,
+    <span class="s">"duration_ms"</span>: <span class="n">84.2</span>
+}</code></pre>
+      </div>
+      <p>The log is identified by gateway + operation; the message carries the operation, the context the
+         gateway. Request-scoped fields — request_id, ip, url — aren't added by the SDK (it stays
+         framework-agnostic and runs in CLI/queue where there is no request). Add them once to your app's
+         log context so they land on every line, these included; the timestamp is already stamped by the
+         logger. For the initiator's own name, use the <code>LogsAction</code> trait in your action class —
+         there the <code>action</code> field is your class.</p>
+      <div class="code">
+<pre><code><span class="c">// e.g. in middleware — attaches request_id/ip/url to every subsequent log line</span>
+<span class="t">Log</span>::<span class="fn">shareContext</span>([
+    <span class="s">'request_id'</span> =&gt; (<span class="k">string</span>) <span class="t">Str</span>::<span class="fn">uuid</span>(),
+    <span class="s">'ip'</span> =&gt; <span class="v">$request</span>-&gt;<span class="fn">ip</span>(),
+    <span class="s">'url'</span> =&gt; <span class="v">$request</span>-&gt;<span class="fn">fullUrl</span>(),
+]);
+
+<span class="c">// or tag one wrapper with static extra fields via the constructor hook:</span>
+<span class="k">new</span> <span class="t">LoggingGateway</span>(<span class="v">$driver</span>, <span class="v">$logger</span>, [<span class="s">'component'</span> =&gt; <span class="s">'checkout'</span>]);</code></pre>
+      </div>
+      <p>The SDK logs to its own daily file — <code>storage/logs/hyprpay-2026-08-08.log</code> by default,
+         kept out of your app log. With shared context in place the line reads — timestamp from the
+         logger, request_id/ip/url from your shared context, the rest from the SDK:</p>
+      <div class="code">
+<pre><code>[2026-08-08 10:15:42] production.INFO: [paypal] charge
+{
+    <span class="s">"request_id"</span>: <span class="s">"9b1e5b1e-3c2a-4f77-9c1e-2b0f5a7d1e42"</span>,
+    <span class="s">"ip"</span>: <span class="s">"203.0.113.7"</span>,
+    <span class="s">"url"</span>: <span class="s">"https://shop.test/checkout"</span>,
+    <span class="s">"gateway"</span>: <span class="s">"paypal"</span>,
+    <span class="s">"order_reference"</span>: <span class="s">"ORDER-123"</span>,
+    <span class="s">"amount"</span>: <span class="s">"100.00"</span>,
+    <span class="s">"currency"</span>: <span class="s">"USD"</span>,
+    <span class="s">"duration_ms"</span>: <span class="n">84.2</span>
 }</code></pre>
       </div>
     </section>
@@ -550,7 +594,10 @@
  * events.enabled                bool    Wrap drivers to emit payment domain events.        (GATEWAY_EVENTS = true)
  * events.log                    bool    Attach the redaction-safe audit-logging listener.  (GATEWAY_EVENTS_LOG = false)
  *
- * log_operations                bool    Wrap drivers in a LoggingGateway (per-call logs).  (GATEWAY_LOG_OPERATIONS = false)
+ * logging.operations            bool    Wrap drivers in a LoggingGateway (per-call logs).  (GATEWAY_LOG_OPERATIONS = false)
+ * logging.channel               string  Log channel; null → dedicated daily hyprpay log.   (GATEWAY_LOG_CHANNEL)
+ * logging.days                  int     Retention for the daily hyprpay log.               (GATEWAY_LOG_DAYS = 14)
+ * logging.level                 string  Minimum level for the hyprpay channel.             (GATEWAY_LOG_LEVEL = debug)
  *
  * gateways.{key}                array   Per-gateway credentials — merchant id, secret, host, locale, currency.
  */</span></code></pre>

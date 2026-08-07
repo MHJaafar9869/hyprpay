@@ -33,13 +33,13 @@ it('logs a charge as a timed operation with safe correlation context', function 
     ['level' => $level, 'message' => $message, 'context' => $context] = $logger->records[0];
 
     expect($level)->toBe('info')
-        ->and($message)->toBe('[LoggingGateway] charge')
+        ->and($message)->toBe('[paypal] charge')
         ->and($context['gateway'])->toBe('paypal')
         ->and($context['order_reference'])->toBe('ORD-1')
         ->and($context['amount'])->toBe('100.00')
         ->and($context['currency'])->toBe('USD')
         ->and($context['duration_ms'])->toBeFloat()
-        ->and($context['action'])->toContain('LoggingGateway');
+        ->and($context)->not->toHaveKey('action');
 });
 
 it('logs a capture with the authorization transaction id', function (): void {
@@ -47,8 +47,17 @@ it('logs a capture with the authorization transaction id', function (): void {
 
     $gateway->capture(new CaptureRequest(transactionId: 'AUTH-1', money: Money::minor(6000, 'USD'), orderReference: 'ORD-1'));
 
-    expect($logger->records[0]['message'])->toBe('[LoggingGateway] capture')
+    expect($logger->records[0]['message'])->toBe('[paypal] capture')
         ->and($logger->records[0]['context']['transaction_id'])->toBe('AUTH-1');
+});
+
+it('merges the caller-supplied extra context into every log line', function (): void {
+    $logger = new RecordingLogger;
+    $gateway = new LoggingGateway(eventStubGateway(), $logger, ['component' => 'checkout']);
+
+    $gateway->charge(new ChargeRequest(transientToken: 'tok', money: Money::minor(10000, 'USD'), orderReference: 'ORD-1'));
+
+    expect($logger->records[0]['context']['component'])->toBe('checkout');
 });
 
 it('passes name and credentials through without logging', function (): void {
@@ -85,6 +94,6 @@ it('logs the timing even when the operation throws, then propagates', function (
         ->toThrow(GatewayRequestException::class);
 
     expect($logger->records)->toHaveCount(1)
-        ->and($logger->records[0]['message'])->toBe('[LoggingGateway] charge')
+        ->and($logger->records[0]['message'])->toBe('[paypal] charge')
         ->and($logger->records[0]['context'])->toHaveKey('duration_ms');
 });
