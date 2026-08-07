@@ -177,6 +177,7 @@ use Hyprpay\Payments\Domain\ValueObject\Customer;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Application\PaymentGatewayFactory;
+use Hyprpay\Payments\Infrastructure\Gateway\Paymob\PaymobCheckoutOptions;
 
 final readonly class StartPaymobCheckout
 {
@@ -191,7 +192,7 @@ final readonly class StartPaymobCheckout
                 orderReference: 'ORDER-125',
                 paymentMethod: 'card',
                 customer: new Customer(email: 'ada@shop.test', firstName: 'Ada', lastName: 'Lovelace'),
-                options: ['integration_id' => 111111, 'iframe_id' => 222222, 'customer_mobile' => '01000000000'],
+                options: new PaymobCheckoutOptions(integrationId: 111111, iframeId: 222222, customerMobile: '01000000000'),
             ));
 
         // redirect to $session->redirectUrl (the Paymob iframe); Paymob order id is $session->reference
@@ -200,7 +201,7 @@ final readonly class StartPaymobCheckout
 ```
 
 **PayLink** — create an invoice and redirect to the hosted checkout (or pass
-`options: ['iframe' => true]` to get an iframe-ready `redirectUrl` to embed instead):
+`options: new PaylinkCheckoutOptions(iframe: true)` to get an iframe-ready `redirectUrl` to embed instead):
 
 ```php
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
@@ -208,6 +209,7 @@ use Hyprpay\Payments\Domain\ValueObject\Customer;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Application\PaymentGatewayFactory;
+use Hyprpay\Payments\Infrastructure\Gateway\Paylink\PaylinkCheckoutOptions;
 
 final readonly class StartPaylinkCheckout
 {
@@ -223,7 +225,7 @@ final readonly class StartPaylinkCheckout
                 description: 'Gold Plan',
                 returnUrl: 'https://shop.test/return',
                 customer: new Customer(email: 'john@example.com', firstName: 'John', lastName: 'Doe'),
-                options: ['webhook_url' => 'https://shop.test/webhook', 'iframe' => true],
+                options: new PaylinkCheckoutOptions(webhookUrl: 'https://shop.test/webhook', iframe: true),
             ));
 
         // embed $session->redirectUrl in an <iframe> (or redirect to it without iframe);
@@ -252,7 +254,7 @@ Origin, or the browser blocks framing.
 ```
 
 **PayTabs** — start a hosted payment page and redirect the payer (pass
-`paymentMethod: 'auth'` to place a hold you capture later, and `options['webhook_url']`
+`paymentMethod: 'auth'` to place a hold you capture later, and `PaytabsCheckoutOptions::$webhookUrl`
 for the server-to-server IPN callback):
 
 ```php
@@ -261,6 +263,7 @@ use Hyprpay\Payments\Domain\ValueObject\Customer;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Application\PaymentGatewayFactory;
+use Hyprpay\Payments\Infrastructure\Gateway\Paytabs\PaytabsCheckoutOptions;
 
 final readonly class StartPaytabsCheckout
 {
@@ -276,7 +279,7 @@ final readonly class StartPaytabsCheckout
                 description: 'Gold Plan',
                 returnUrl: 'https://shop.test/return',
                 customer: new Customer(email: 'john@example.com', firstName: 'John', lastName: 'Doe'),
-                options: ['webhook_url' => 'https://shop.test/ipn'],
+                options: new PaytabsCheckoutOptions(webhookUrl: 'https://shop.test/ipn'),
             ));
 
         // redirect to $session->redirectUrl (the PayTabs hosted page);
@@ -361,19 +364,20 @@ everywhere.
 
 Provider-specific inputs (e.g. Fawry payment method, Paymob integration/iframe ids,
 card or wallet details) are passed through `CheckoutSessionRequest::$options` and the
-`GatewayCredentials::$extra` bag. `$options` accepts either a raw key/value array or a
-typed, per-gateway options DTO implementing `CheckoutOptions` — **PayPal** ships
-`PayPalCheckoutOptions` (with `PayPalUserAction` / `PayPalShippingPreference` /
-`PayPalPaymentMethodPreference` enums) so the buyer-experience fields are named and
-type-checked rather than stringly-typed. Drivers read whichever form was supplied via
-`CheckoutSessionRequest::optionsArray()`, so passing an array stays fully supported.
+`GatewayCredentials::$extra` bag. `$options` is a typed, per-gateway options DTO
+implementing `CheckoutOptions` — `FawryCheckoutOptions`, `PaymobCheckoutOptions`,
+`PaylinkCheckoutOptions`, `PaytabsCheckoutOptions`, and `PayPalCheckoutOptions` — so
+every field is named and type-checked (including enums like `PayPalUserAction` and
+nested value objects like `PaytabsAgreement` / `PaytabsSplitPayout` / `PaytabsLineItem`
+and `FawryCard`) rather than stringly-typed. Each DTO's static `fromArray()` builds one
+from a raw config array when you need to; each driver narrows `$options` to its own type.
 
 For **PayTabs**, `paymentMethod` selects the integration type: `invoice` (an emailable
 Invoice link), `managed` (an iframe-embeddable Managed Form), `paylink` (a reusable
 PayLink), or the default Hosted Payment Page (pass `auth` for a hold to capture later).
 To keep the payer on your own site instead of redirecting, either embed the Hosted Page
-in an iframe with `options['iframe'] => true` (optionally `framed_return_top`,
-`framed_return_parent`, `framed_message_target` — an HTTPS URL on your domain that
+with `new PaytabsCheckoutOptions(iframe: true)` (optionally `framedReturnTop`,
+`framedReturnParent`, `framedMessageTarget` — an HTTPS URL on your domain that
 receives a `postMessage` when payment finishes so you can close the frame), or use
 **Own Form**: collect the card in your own form, tokenise it in the browser with
 PayTabs' client-side library, and charge the resulting `payment_token` via `charge()`
@@ -393,16 +397,16 @@ $result = $gateway->charge(new ChargeRequest(
 // holds the bank's 3DS page; a non-3DS card returns the final result inline.
 ```
 
-Pass
-`options['agreement']` (description, `repeat_amount`, `repeat_every`,
-`first_installment_due_date`, …) on a checkout to start a Repeat Billing agreement — the
-customer completes the initial payment and consents, then PayTabs auto-bills the schedule
-(recurring execution and pause/cancel are managed PayTabs-side, not via the SDK). Pass
-`options['split_payout']` (an array of stakeholders, each with `item_total`, `msc_flag`,
-and `beneficiary` details) to split the settled funds across beneficiaries after payment.
+Pass a
+`PaytabsAgreement` on the options' `agreement` (description, `repeatAmount`, `repeatEvery`,
+`firstInstallmentDueDate`, …) to start a Repeat Billing agreement — the customer completes
+the initial payment and consents, then PayTabs auto-bills the schedule (recurring execution
+and pause/cancel are managed PayTabs-side, not via the SDK). Pass a list of
+`PaytabsSplitPayout` on `splitPayout` (each with its `itemTotal`, `mscFlag`, and
+`PaytabsBeneficiary` details) to split the settled funds across beneficiaries after payment.
 
 ¹ PayTabs has no raw-PAN vault endpoint, so `vaultInstrument` is unsupported. Instead a
-reusable card token is created by setting `options['tokenise']` (1–6, e.g. `2` = Hex32)
+reusable card token is created by setting `PaytabsCheckoutOptions::$tokenise` (1–6, e.g. `2` = Hex32)
 on any checkout — the token arrives in the callback/status `token` field — then charged
 later with `chargeStoredCredential` (merchant-initiated → `recurring`, customer-initiated
 → `ecom`) and revoked with the driver's `deleteToken()`.

@@ -27,7 +27,7 @@ final class FawryChargePayload
     /**
      * Build a card (PayUsingCC) 3-D Secure charge body.
      *
-     * Card details are read from the request options bag under `card` as
+     * Card details are read from the checkout options' `card` field as
      * [number, expiryYear, expiryMonth, cvv].
      *
      * @return array<string, mixed>
@@ -65,7 +65,7 @@ final class FawryChargePayload
     /**
      * Build a mobile-wallet (MWALLET) charge body.
      *
-     * The wallet number is read from the request options bag under `wallet_number`.
+     * The wallet number is read from the checkout options' `walletNumber` field.
      *
      * @return array<string, mixed>
      */
@@ -140,7 +140,7 @@ final class FawryChargePayload
      * Build a bank instalment (CARD) charge body.
      *
      * Charges a card over a bank instalment plan: the card details are read from the
-     * request options bag under `card` as [number, expiryYear, expiryMonth, cvv], and
+     * checkout options' `card` field, and
      * the chosen plan from `installment_plan_id`. The instalment plan id participates in
      * the signature, which (unlike the PayUsingCC 3-D Secure charge) does not cover the
      * return URL.

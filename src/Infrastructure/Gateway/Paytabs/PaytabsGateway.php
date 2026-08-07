@@ -36,7 +36,7 @@ use Hyprpay\Payments\Infrastructure\Support\Value;
  * emailable link), the iframe Managed Form (`managed`), or a reusable PayLink
  * (`paylink`). {@see charge()} runs an Own Form charge of a browser-generated
  * `payment_token`, and {@see chargeStoredCredential()} charges a saved card token
- * (create one by setting `options['tokenise']` on a checkout; {@see deleteToken()}
+ * (create one by setting PaytabsCheckoutOptions::$tokenise on a checkout; {@see deleteToken()}
  * revokes it). Follow-ons are {@see capture()}, {@see refund()}, {@see void()},
  * {@see getTransaction()} (via `/payment/query`), and IPN/return callback verification.
  * Payer-auth, vaulting a raw PAN, and reversal are not part of this driver and inherit
@@ -75,8 +75,8 @@ final class PaytabsGateway extends AbstractPaymentGateway
      * returns an iframe-embeddable payment page; `paylink` creates a reusable PayLink
      * and returns its `link_url`; anything else (default, or `auth` for a hold) is the
      * Hosted Payment Page and returns a `redirect_url` plus the `tran_ref` used for
-     * follow-on capture/refund/void. Set `options['tokenise']` to have PayTabs vault the
-     * card and return a reusable `token` in the callback/status.
+     * follow-on capture/refund/void. Set PaytabsCheckoutOptions::$tokenise to have PayTabs
+     * vault the card and return a reusable `token` in the callback/status.
      */
     public function createCheckoutSession(CheckoutSessionRequest $request): CheckoutSession
     {

@@ -39,12 +39,12 @@ final class PaytabsPayload
      * Build the base body for a new sale or authorization on the Hosted Payment Page.
      *
      * The `paymentMethod` selector chooses the transaction type: `auth` places a hold
-     * to capture later, anything else is an immediate `sale`. `options['tran_class']`
-     * overrides the default `ecom` class (e.g. for `moto`), `options['webhook_url']`
-     * sets the server-to-server IPN callback, `options['tokenise']` (1–6) asks PayTabs
-     * to return a reusable card token, `options['agreement']` starts a repeat-billing
-     * agreement PayTabs then auto-bills on the given schedule, and `options['iframe']`
-     * renders the page in an embedded iframe instead of redirecting.
+     * to capture later, anything else is an immediate `sale`. The PaytabsCheckoutOptions
+     * fields refine the request: `tranClass` overrides the default `ecom` class (e.g. for
+     * `moto`), `webhookUrl` sets the server-to-server IPN callback, `tokenise` (1–6) asks
+     * PayTabs to return a reusable card token, `agreement` starts a repeat-billing
+     * agreement PayTabs then auto-bills on the given schedule, and `iframe` renders the
+     * page in an embedded iframe instead of redirecting.
      *
      * @return array<string, mixed>
      */
@@ -76,7 +76,7 @@ final class PaytabsPayload
     /**
      * Build the Invoice body — the Hosted body plus an itemised invoice.
      *
-     * Uses `options['line_items']` when supplied, otherwise a single line item for the
+     * Uses the options' `lineItems` when supplied, otherwise a single line item for the
      * full amount. PayTabs returns an `invoice_link` to email or share.
      *
      * @return array<string, mixed>

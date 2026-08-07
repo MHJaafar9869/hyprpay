@@ -125,13 +125,13 @@ it('applies typed PayPalCheckoutOptions to the experience context', function ():
         ->and($context['payment_method_preference'])->toBe('IMMEDIATE_PAYMENT_REQUIRED');
 });
 
-it('still accepts a legacy options array for the experience context', function (): void {
+it('builds options from a raw config array via fromArray', function (): void {
     $http = paypalHttp()->queueJson(['id' => 'ORDER123', 'status' => 'PAYER_ACTION_REQUIRED', 'links' => []]);
 
     (new PayPalGateway(paypalCredentials(), $http))->createCheckoutSession(new CheckoutSessionRequest(
         money: Money::minor(10000, 'USD'),
         returnUrl: 'https://shop.test/return',
-        options: ['brand_name' => 'Legacy Store', 'user_action' => 'CONTINUE'],
+        options: PayPalCheckoutOptions::fromArray(['brand_name' => 'Legacy Store', 'user_action' => 'CONTINUE']),
     ));
 
     $context = paypalBody($http)['payment_source']['paypal']['experience_context'];

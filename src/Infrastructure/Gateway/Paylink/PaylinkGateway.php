@@ -60,7 +60,7 @@ final class PaylinkGateway extends AbstractPaymentGateway
     /**
      * Create a PayLink invoice and return its checkout URL and invoice id.
      *
-     * Set `options['iframe'] = true` to have PayLink return an iframe-ready checkout
+     * Set PaylinkCheckoutOptions::$iframe to have PayLink return an iframe-ready checkout
      * URL (embed it in an <iframe>) instead of a full-page redirect URL. The flag is
      * sent unsigned, mirroring the server, so it never affects the request signature.
      */

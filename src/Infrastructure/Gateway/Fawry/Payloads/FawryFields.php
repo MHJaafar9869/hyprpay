@@ -74,7 +74,7 @@ final class FawryFields
     }
 
     /**
-     * Customer email, from the customer profile or the options bag.
+     * Customer email, from the customer profile or the checkout options.
      */
     public static function customerEmail(CheckoutSessionRequest $request): ?string
     {

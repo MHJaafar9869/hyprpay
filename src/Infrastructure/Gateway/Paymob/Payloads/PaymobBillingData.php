@@ -13,7 +13,7 @@ use Hyprpay\Payments\Infrastructure\Support\Value;
  *
  * Paymob rejects payment-key requests with missing billing fields, so every field
  * is always present and any value the caller did not supply (from the customer,
- * billing address, or options bag) falls back to the literal "NA" placeholder.
+ * billing address, or checkout options) falls back to the literal "NA" placeholder.
  */
 final class PaymobBillingData
 {
