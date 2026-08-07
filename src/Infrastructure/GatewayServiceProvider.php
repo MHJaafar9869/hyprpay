@@ -28,16 +28,17 @@ use Illuminate\Contracts\Events\Dispatcher as EventsDispatcher;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\ServiceProvider;
 use Psr\Log\LoggerInterface;
 
 /**
  * Laravel service provider that wires the gateway SDK into the container.
  *
- * Merges the package config, binds the HttpClient, CredentialResolver, and
- * EventDispatcher ports to their Laravel adapters, registers the
- * PaymentGatewayFactory as a singleton, registers the audit-logging payment-event
- * listener when enabled, and publishes the config file when running in the console.
+ * Merges the package config, registers a dedicated daily "hyprpay" log channel for the
+ * SDK's own logs, binds the HttpClient, CredentialResolver, and EventDispatcher ports to
+ * their Laravel adapters, registers the PaymentGatewayFactory as a singleton, registers the
+ * audit-logging payment-event listener when enabled, and publishes the config file in the console.
  */
 final class GatewayServiceProvider extends ServiceProvider
 {
@@ -48,6 +49,8 @@ final class GatewayServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../../config/gateway.php', 'gateway');
+
+        $this->registerPackageLogChannel($this->app);
 
         $this->app->bind(HttpClient::class, static function (Application $app): HttpClient {
             $config = $app->make(ConfigRepository::class);
@@ -92,9 +95,45 @@ final class GatewayServiceProvider extends ServiceProvider
                 $app->make(HttpClient::class),
                 $app->make(CredentialResolver::class),
                 Value::bool($config->get('gateway.events.enabled', true)) ? $app->make(EventDispatcher::class) : null,
-                Value::bool($config->get('gateway.log_operations')) ? $app->make(LoggerInterface::class) : null,
+                Value::bool($config->get('gateway.logging.operations')) ? self::packageLogger($app) : null,
             );
         });
+
+        $this->app->when(LoggingPaymentEventListener::class)
+            ->needs(LoggerInterface::class)
+            ->give(static fn (Application $app): LoggerInterface => self::packageLogger($app));
+    }
+
+    /**
+     * Register a dedicated daily "hyprpay" log channel (hyprpay-YYYY-MM-DD.log) unless the
+     * host has already defined one, so the SDK's logs stay out of the default application log.
+     */
+    private function registerPackageLogChannel(Application $app): void
+    {
+        $config = $app->make(ConfigRepository::class);
+
+        if (is_array($config->get('logging.channels.hyprpay'))) {
+            return;
+        }
+
+        $config->set('logging.channels.hyprpay', [
+            'driver' => 'daily',
+            'path' => $app->storagePath('logs/hyprpay.log'),
+            'days' => Value::int($config->get('gateway.logging.days'), 14),
+            'level' => Value::string($config->get('gateway.logging.level'), 'debug'),
+        ]);
+    }
+
+    /**
+     * Resolve the PSR-3 logger the SDK writes to — the configured channel, or the
+     * dedicated daily "hyprpay" channel.
+     */
+    private static function packageLogger(Application $app): LoggerInterface
+    {
+        $channel = $app->make(ConfigRepository::class)->get('gateway.logging.channel');
+        $name = is_string($channel) && $channel !== '' ? $channel : 'hyprpay';
+
+        return $app->make(LogManager::class)->channel($name);
     }
 
     /**

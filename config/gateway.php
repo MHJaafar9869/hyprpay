@@ -80,18 +80,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Operation logging
+    | Logging
     |--------------------------------------------------------------------------
     |
-    | When enabled, every gateway driver is wrapped in a LoggingGateway that logs
-    | each operation (with its duration and safe correlation context — gateway,
-    | order/transaction ids, amount) through the application's PSR-3 logger. The
-    | context carries no PAN, cvv, or tokens, and sensitive keys are masked as a
-    | backstop. This is distinct from `http.logging`, which logs the lower-level
-    | HTTP request/response metadata.
+    | The SDK writes its own logs — operation logs (when `operations` is on, each
+    | gateway driver is wrapped in a LoggingGateway that logs every call with its
+    | duration and safe, masked context) and the event audit log (see events.log)
+    | — to their own channel, kept out of your default application log.
+    |
+    | Leave `channel` null to log to a dedicated daily hyprpay-YYYY-MM-DD.log file
+    | under storage/logs (retained for `days`); set a channel name to route the
+    | logs into a channel you have defined in config/logging.php instead. This is
+    | distinct from `http.logging`, which logs lower-level HTTP metadata.
     |
     */
-    'log_operations' => (bool) env('GATEWAY_LOG_OPERATIONS', false),
+    'logging' => [
+        'operations' => (bool) env('GATEWAY_LOG_OPERATIONS', false),
+        'channel' => env('GATEWAY_LOG_CHANNEL'),
+        'days' => (int) env('GATEWAY_LOG_DAYS', 14),
+        'level' => env('GATEWAY_LOG_LEVEL', 'debug'),
+    ],
 
     /*
     |--------------------------------------------------------------------------

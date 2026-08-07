@@ -45,15 +45,35 @@ final readonly class LoggingGateway implements PaymentGatewayInterface
     /**
      * @param  PaymentGatewayInterface  $inner  The wrapped driver that performs the operation.
      * @param  LoggerInterface  $logger  PSR-3 logger the operation lines are written to.
+     * @param  array<string, mixed>  $extraContext  Extra fields merged into every log line (e.g. a component tag). Request-scoped correlation (request_id, ip, url) is better added once to your app's log context (a Monolog processor / Log::shareContext) so it lands on every line.
      */
     public function __construct(
         private PaymentGatewayInterface $inner,
         private LoggerInterface $logger,
+        private array $extraContext = [],
     ) {}
 
     protected function logger(): LoggerInterface
     {
         return $this->logger;
+    }
+
+    /**
+     * Identify the log by the gateway, not this generic decorator's class name.
+     */
+    protected function logName(): string
+    {
+        return $this->inner->name()->value;
+    }
+
+    /**
+     * Only the caller's extra fields — no `action`, since the gateway + operation already identify it.
+     *
+     * @return array<string, mixed>
+     */
+    protected function baseLogContext(): array
+    {
+        return $this->extraContext;
     }
 
     public function name(): GatewayName

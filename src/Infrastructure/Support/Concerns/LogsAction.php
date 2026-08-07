@@ -104,9 +104,33 @@ trait LogsAction
         $this->logger()->log($level, $this->buildLogMessage($message), $this->buildLogContext($context));
     }
 
+    /**
+     * The label the message is prefixed with — the class short name by default.
+     *
+     * Override to identify the log by something else (e.g. a decorator that has no
+     * meaningful "action" of its own can return the subject it wraps).
+     */
+    protected function logName(): string
+    {
+        return class_basename(static::class);
+    }
+
+    /**
+     * The base context merged into every log line — the fully-qualified class by default.
+     *
+     * Override to change or drop it — a generic wrapper whose class is already in the
+     * message prefix can return `[]` (or its own injected context) to avoid the noise.
+     *
+     * @return array<string, mixed>
+     */
+    protected function baseLogContext(): array
+    {
+        return ['action' => static::class];
+    }
+
     private function buildLogMessage(string $message): string
     {
-        return sprintf('[%s] %s', class_basename(static::class), $message);
+        return sprintf('[%s] %s', $this->logName(), $message);
     }
 
     /**
@@ -115,7 +139,7 @@ trait LogsAction
      */
     private function buildLogContext(array $context): array
     {
-        return $this->maskSensitiveData(array_merge(['action' => static::class], $context));
+        return $this->maskSensitiveData(array_merge($this->baseLogContext(), $context));
     }
 
     /**
