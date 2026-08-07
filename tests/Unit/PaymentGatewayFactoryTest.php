@@ -38,5 +38,5 @@ it('resolves a driver by its string name', function (): void {
 it('throws for an unknown gateway name', function (): void {
     $factory = new PaymentGatewayFactory(new FakeHttpClient, recordingResolver(testCredentials()));
 
-    expect(fn (): PaymentGatewayInterface => $factory->makeByName('paypal'))->toThrow(GatewayNotSupportedException::class);
+    expect(fn (): PaymentGatewayInterface => $factory->makeByName('unknown_gateway'))->toThrow(GatewayNotSupportedException::class);
 });

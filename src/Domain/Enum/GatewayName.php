@@ -18,6 +18,7 @@ enum GatewayName: string
     case Paymob = 'paymob';
     case Paylink = 'paylink';
     case Paytabs = 'paytabs';
+    case PayPal = 'paypal';
 
     /**
      * Human-readable display name for the gateway.
@@ -32,6 +33,7 @@ enum GatewayName: string
             self::Paymob => 'Paymob',
             self::Paylink => 'PayLink',
             self::Paytabs => 'PayTabs',
+            self::PayPal => 'PayPal',
         };
     }
 }

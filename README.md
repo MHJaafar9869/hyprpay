@@ -5,9 +5,9 @@
 📖 **Documentation:** <https://mhjaafar9869.github.io/hyprpay/>
 
 A self-contained, multi-gateway payment SDK for PHP. One clean interface, a factory
-that resolves the right driver, and a swappable HTTP transport — with five gateways
-built in: **CyberSource Unified Checkout**, **Fawry**, **Paymob**, **PayLink**, and
-**PayTabs**.
+that resolves the right driver, and a swappable HTTP transport — with six gateways
+built in: **CyberSource Unified Checkout**, **Fawry**, **Paymob**, **PayLink**,
+**PayTabs**, and **PayPal**.
 
 - **Domain-driven layering** — a pure `Domain` (contracts, commands, results, value
   objects, enums), a thin `Application` layer (`PaymentGatewayFactory`), and an
@@ -22,8 +22,9 @@ built in: **CyberSource Unified Checkout**, **Fawry**, **Paymob**, **PayLink**, 
   framework-agnostic.
 - **Raw REST, no vendor SDKs** — every driver speaks the gateway's REST API directly
   and signs requests itself (CyberSource HMAC HTTP-Signature, Fawry SHA-256, Paymob
-  HMAC-SHA512, PayLink HMAC-SHA256, PayTabs server-key auth + HMAC-SHA256 callbacks),
-  so there are no heavy third-party gateway dependencies.
+  HMAC-SHA512, PayLink HMAC-SHA256, PayTabs server-key auth + HMAC-SHA256 callbacks,
+  PayPal OAuth 2.0 client credentials + API webhook-signature verification), so there
+  are no heavy third-party gateway dependencies.
 - **Deterministic & idempotent** — request bodies are built deterministically (no
   hidden `uniqid()`/`time()`), and write operations carry an idempotency key.
 - **Exact money** — amounts are carried as minor units and never rounded.
@@ -284,6 +285,39 @@ final readonly class StartPaytabsCheckout
 }
 ```
 
+**PayPal** — create an order and redirect the buyer to PayPal to approve it, then
+complete the order once they return (pass `paymentMethod: 'authorize'` to place a hold
+you capture later instead of capturing on approval):
+
+```php
+use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
+use Hyprpay\Payments\Domain\Command\ChargeRequest;
+use Hyprpay\Payments\Domain\ValueObject\Money;
+use Hyprpay\Payments\Domain\Enum\GatewayName;
+
+$paypal = $factory->make(GatewayName::PayPal);
+
+// 1. Create the order and send the buyer to PayPal to approve it.
+$session = $paypal->createCheckoutSession(new CheckoutSessionRequest(
+    money: Money::minor(10000, 'USD'),
+    orderReference: 'ORDER-127',
+    description: 'Gold Plan',
+    returnUrl: 'https://shop.test/return',   // PayPal redirects here after approval
+    options: ['cancel_url' => 'https://shop.test/cancel', 'brand_name' => 'Example'],
+));
+
+// redirect to $session->redirectUrl (PayPal's approval page);
+// $session->reference is the PayPal order id — keep it for step 2.
+
+// 2. After the buyer approves and PayPal redirects them back, complete the order.
+$result = $paypal->charge(new ChargeRequest(
+    transientToken: $session->reference,     // the approved PayPal order id
+    money: Money::minor(10000, 'USD'),
+));
+// $result->status is Captured (or Authorized when charge sets capture: false),
+// and $result->transactionId is the capture/authorization id for follow-ons.
+```
+
 Passing credentials explicitly per call — this skips the resolver, so it works for
 any dynamic source (a one-off override, per-merchant, per-tenant, …):
 
@@ -305,19 +339,19 @@ Every driver implements the same `PaymentGatewayInterface`. Operations a gateway
 not support throw `UnsupportedOperationException`, so you can rely on the same surface
 everywhere.
 
-| Operation | CyberSource UC | Fawry | Paymob | PayLink | PayTabs |
-| --- | :---: | :---: | :---: | :---: | :---: |
-| `createCheckoutSession` | ✅ capture context | ✅ hosted / card / wallet / pay-at-Fawry / MyFawry / instalment | ✅ iframe flow | ✅ invoice link / iframe | ✅ hosted / invoice / paylink / managed |
-| `charge` (transient token) | ✅ | — | — | — | ✅ Own Form (payment token) |
-| `capture` | ✅ | ✅ (Auth/Capture) | ✅ | ✅ (settle) | ✅ |
-| `refund` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `void` | ✅ | ✅ (cancel auth) | ✅ | ✅ | ✅ |
-| `reverseAuthorization` | ✅ | — | — | ✅ | ✅ (release) |
-| `enrollPayerAuth` / `validatePayerAuth` (3-DS) | ✅ | — | — | — | — |
-| `vaultInstrument` / `chargeStoredCredential` | ✅ (TMS, MIT/CIT) | — | — | — | ✅ token (MIT/CIT)¹ |
-| `requestDccRate` (Dynamic Currency Conversion) | ✅ | — | — | — | — |
-| `getTransaction` / `searchTransaction` | ✅ | ✅ | ✅ | ✅ | ✅ query |
-| `verifyWebhook` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Operation | CyberSource UC | Fawry | Paymob | PayLink | PayTabs | PayPal |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: |
+| `createCheckoutSession` | ✅ capture context | ✅ hosted / card / wallet / pay-at-Fawry / MyFawry / instalment | ✅ iframe flow | ✅ invoice link / iframe | ✅ hosted / invoice / paylink / managed | ✅ order → approval redirect |
+| `charge` (transient token) | ✅ | — | — | — | ✅ Own Form (payment token) | ✅ complete approved order² |
+| `capture` | ✅ | ✅ (Auth/Capture) | ✅ | ✅ (settle) | ✅ | ✅ |
+| `refund` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `void` | ✅ | ✅ (cancel auth) | ✅ | ✅ | ✅ | ✅ |
+| `reverseAuthorization` | ✅ | — | — | ✅ | ✅ (release) | — |
+| `enrollPayerAuth` / `validatePayerAuth` (3-DS) | ✅ | — | — | — | — | — |
+| `vaultInstrument` / `chargeStoredCredential` | ✅ (TMS, MIT/CIT) | — | — | — | ✅ token (MIT/CIT)¹ | ✅ vault (MIT/CIT) |
+| `requestDccRate` (Dynamic Currency Conversion) | ✅ | — | — | — | — | — |
+| `getTransaction` / `searchTransaction` | ✅ | ✅ | ✅ | ✅ | ✅ query | ✅ order lookup |
+| `verifyWebhook` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ API |
 
 Provider-specific inputs (e.g. Fawry payment method, Paymob integration/iframe ids,
 card or wallet details) are passed through `CheckoutSessionRequest::$options` and the
@@ -361,6 +395,25 @@ reusable card token is created by setting `options['tokenise']` (1–6, e.g. `2`
 on any checkout — the token arrives in the callback/status `token` field — then charged
 later with `chargeStoredCredential` (merchant-initiated → `recurring`, customer-initiated
 → `ecom`) and revoked with the driver's `deleteToken()`.
+
+For **PayPal**, the driver speaks Orders v2 / Payments v2 and authenticates with OAuth 2.0
+client credentials (client id → `merchant_id`, client secret → `shared_secret`), fetching a
+bearer token once per request and reusing it across calls. `createCheckoutSession` creates
+an order (intent `CAPTURE`, or `AUTHORIZE` when `paymentMethod: 'authorize'`) and returns
+the buyer-approval redirect (`payer-action` link) plus the order id; `charge` then completes
+that approved order — its `transientToken` is the order id, capturing when `capture` is true
+and authorizing when false. Follow-ons act on the resulting payment resources: `capture`
+and `void` take an authorization id, `refund` a capture id, and `getTransaction` reads an
+order back by id. Cards are vaulted with `vaultInstrument` (PayPal's setup-token → payment-token
+flow) and charged card-on-file via `chargeStoredCredential`, which stamps the network
+stored-credential metadata (MIT → `RECURRING`, CIT → `ONE_TIME`). `verifyWebhook` posts the
+notification's `PayPal-Transmission-*` headers to PayPal's verify-signature API using the
+configured `webhook_id` (`PAYPAL_WEBHOOK_ID` → `webhook_secret`), so it makes one live call
+rather than checking a local HMAC.
+
+² For **PayPal**, `charge`'s `transientToken` is not a card token but the id of an order the
+buyer has already approved on PayPal (returned by `createCheckoutSession`); calling `charge`
+captures or authorizes that order server-to-server.
 
 ## Dynamic Currency Conversion (DCC)
 
@@ -417,6 +470,7 @@ Retries are safe. Every write is idempotent through two guarantees:
 | Paymob | `merchant_order_id` (= your order reference) |
 | PayLink | `Idempotency-Key` header |
 | PayTabs | `cart_id` (= your order reference) |
+| PayPal | `PayPal-Request-Id` header |
 
 For `charge` and `chargeStoredCredential` the key defaults to `orderReference`, so a
 retried charge for the same order is deduplicated automatically. For `capture`,
@@ -465,6 +519,7 @@ php artisan gateway:reconcile:cybersource_uc 7040000000000000001
 php artisan gateway:reconcile:fawry ORDER-124 ORDER-125   # accepts multiple ids
 php artisan gateway:reconcile:paymob 123456789
 php artisan gateway:reconcile:paylink INV-0001
+php artisan gateway:reconcile:paypal 7NK74838L4813105R   # a PayPal order id
 ```
 
 Each command prints a table of the transaction id, normalized `PaymentStatus`, amount, and

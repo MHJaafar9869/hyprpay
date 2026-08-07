@@ -137,5 +137,18 @@ return [
             'locale' => env('PAYTABS_LOCALE', 'en'),
             'currency' => env('PAYTABS_CURRENCY', 'SAR'),
         ],
+
+        'paypal' => [
+            'test_mode' => (bool) env('PAYPAL_TEST_MODE', true),
+            'live_host' => env('PAYPAL_HOST', 'api-m.paypal.com'),
+            'test_host' => env('PAYPAL_TEST_HOST', 'api-m.sandbox.paypal.com'),
+            'merchant_id' => env('PAYPAL_CLIENT_ID'),
+            'shared_secret' => env('PAYPAL_CLIENT_SECRET'),
+            'webhook_secret' => env('PAYPAL_WEBHOOK_ID'),
+
+            'country' => env('PAYPAL_COUNTRY', 'US'),
+            'locale' => env('PAYPAL_LOCALE', 'en-US'),
+            'currency' => env('PAYPAL_CURRENCY', 'USD'),
+        ],
     ],
 ];

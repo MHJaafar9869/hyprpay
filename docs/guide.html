@@ -69,22 +69,22 @@
   <aside class="tree" aria-label="Actions">
     <p class="tree-title">≡ Actions</p>
     <ul class="tree-flat">
-      <li data-gws="cyber fawry paymob paylink paytabs"><a href="#overview" data-spy="overview">Overview</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs"><a href="#create-checkout" data-spy="create-checkout">Create checkout</a></li>
+      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#overview" data-spy="overview">Overview</a></li>
+      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#create-checkout" data-spy="create-checkout">Create checkout</a></li>
       <li data-gws="cyber"><a href="#dcc-rate" data-spy="dcc-rate">DCC rate</a></li>
-      <li data-gws="cyber paytabs"><a href="#charge" data-spy="charge">Charge</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs"><a href="#capture" data-spy="capture">Capture</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs"><a href="#void" data-spy="void">Void</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs"><a href="#refund" data-spy="refund">Refund</a></li>
+      <li data-gws="cyber paytabs paypal"><a href="#charge" data-spy="charge">Charge</a></li>
+      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#capture" data-spy="capture">Capture</a></li>
+      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#void" data-spy="void">Void</a></li>
+      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#refund" data-spy="refund">Refund</a></li>
       <li data-gws="cyber paylink paytabs"><a href="#reverse-authorization" data-spy="reverse-authorization">Reverse authorization</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs"><a href="#get-transaction" data-spy="get-transaction">Get transaction</a></li>
+      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#get-transaction" data-spy="get-transaction">Get transaction</a></li>
       <li data-gws="cyber fawry paymob paylink"><a href="#search-transaction" data-spy="search-transaction">Search transaction</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs"><a href="#reconcile" data-spy="reconcile">Reconcile</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs"><a href="#verify-webhook" data-spy="verify-webhook">Verify webhook</a></li>
+      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#reconcile" data-spy="reconcile">Reconcile</a></li>
+      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#verify-webhook" data-spy="verify-webhook">Verify webhook</a></li>
       <li data-gws="cyber"><a href="#enroll-payer-auth" data-spy="enroll-payer-auth">Enroll payer auth</a></li>
       <li data-gws="cyber"><a href="#validate-payer-auth" data-spy="validate-payer-auth">Validate payer auth</a></li>
-      <li data-gws="cyber"><a href="#vault-instrument" data-spy="vault-instrument">Vault instrument</a></li>
-      <li data-gws="cyber paytabs"><a href="#charge-stored-credential" data-spy="charge-stored-credential">Charge stored credential</a></li>
+      <li data-gws="cyber paypal"><a href="#vault-instrument" data-spy="vault-instrument">Vault instrument</a></li>
+      <li data-gws="cyber paytabs paypal"><a href="#charge-stored-credential" data-spy="charge-stored-credential">Charge stored credential</a></li>
     </ul>
   </aside>
 
@@ -97,7 +97,7 @@
       <span class="meta">Checkout returns · <span data-ctx="ret">jwt (capture context)</span></span>
     </div>
 
-    <section id="overview" class="doc-section" data-gws="cyber fawry paymob paylink paytabs">
+    <section id="overview" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal">
       <p class="doc-eyebrow">Start here</p>
       <h2>Overview</h2>
       <p>You resolve one gateway from the factory and call its actions. Every method below takes a request
@@ -111,7 +111,7 @@
          on the left only shows what this driver actually implements.</p>
     </section>
 
-    <section id="create-checkout" class="doc-section" data-gws="cyber fawry paymob paylink paytabs">
+    <section id="create-checkout" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal">
       <p class="doc-eyebrow">Payment flow</p>
       <h2>Create checkout</h2>
       <p class="doc-sig"><span class="fn">createCheckoutSession</span>(CheckoutSessionRequest): <span class="rt">CheckoutSession</span></p>
@@ -184,6 +184,21 @@
 <span class="c">// redirect to $session->redirectUrl (hosted page); $session->reference is the tran_ref</span></code></pre>
         </div>
       </div>
+      <div class="gw-variant" data-gw="paypal">
+        <div class="code">
+<pre><code><span class="v">$session</span> = <span class="v">$gateway</span>-&gt;<span class="fn">createCheckoutSession</span>(<span class="k">new</span> <span class="t">CheckoutSessionRequest</span>(
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'USD'</span>),
+    <span class="a">orderReference:</span> <span class="s">'ORDER-127'</span>,
+    <span class="a">description:</span> <span class="s">'Gold Plan'</span>,
+    <span class="a">returnUrl:</span> <span class="s">'https://shop.test/return'</span>, <span class="c">// PayPal redirects here after approval</span>
+    <span class="a">paymentMethod:</span> <span class="s">'authorize'</span>,        <span class="c">// omit to capture on approval (intent CAPTURE)</span>
+    <span class="a">options:</span> [<span class="s">'cancel_url'</span> =&gt; <span class="s">'https://shop.test/cancel'</span>, <span class="s">'brand_name'</span> =&gt; <span class="s">'Example'</span>],
+));
+
+<span class="c">// redirect to $session->redirectUrl (PayPal approval page);</span>
+<span class="c">// $session->reference is the order id — pass it to charge() after approval</span></code></pre>
+        </div>
+      </div>
     </section>
 
     <section id="dcc-rate" class="doc-section" data-gws="cyber">
@@ -211,12 +226,13 @@
       </div>
     </section>
 
-    <section id="charge" class="doc-section" data-gws="cyber paytabs">
+    <section id="charge" class="doc-section" data-gws="cyber paytabs paypal">
       <p class="doc-eyebrow">Payment flow</p>
       <h2>Charge</h2>
       <p class="doc-sig"><span class="fn">charge</span>(ChargeRequest): <span class="rt">PaymentResult</span></p>
-      <p>Charge a one-time token server-to-server — a CyberSource transient token, or a PayTabs Own Form
-         <code>payment_token</code>. The idempotency key defaults to the order reference, so a retried
+      <p>Charge server-to-server against a one-time reference — a CyberSource transient token, a PayTabs
+         Own Form <code>payment_token</code>, or a PayPal order the buyer has already approved (its id, from
+         <code>createCheckoutSession</code>). The idempotency key defaults to the order reference, so a retried
          charge for the same order is deduplicated.</p>
 
       <div class="gw-variant" data-gw="cyber">
@@ -239,9 +255,21 @@
 <span class="c">// 3-D Secure card → status Pending + $result->raw['redirect_url'] to send the payer</span></code></pre>
         </div>
       </div>
+      <div class="gw-variant" data-gw="paypal">
+        <div class="code">
+<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="k">new</span> <span class="t">ChargeRequest</span>(
+    <span class="a">transientToken:</span> <span class="v">$session</span>-&gt;reference, <span class="c">// the approved PayPal order id</span>
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'USD'</span>),
+    <span class="a">capture:</span> <span class="k">true</span>,                    <span class="c">// capture the order; false authorizes a hold instead</span>
+));
+
+<span class="c">// status Captured (or Authorized when capture: false);</span>
+<span class="c">// $result->transactionId is the capture / authorization id for follow-ons</span></code></pre>
+        </div>
+      </div>
     </section>
 
-    <section id="capture" class="doc-section" data-gws="cyber fawry paymob paylink paytabs">
+    <section id="capture" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal">
       <p class="doc-eyebrow">Payment flow</p>
       <h2>Capture</h2>
       <p class="doc-sig"><span class="fn">capture</span>(CaptureRequest): <span class="rt">PaymentResult</span></p>
@@ -256,7 +284,7 @@
       </div>
     </section>
 
-    <section id="void" class="doc-section" data-gws="cyber fawry paymob paylink paytabs">
+    <section id="void" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal">
       <p class="doc-eyebrow">Payment flow</p>
       <h2>Void</h2>
       <p class="doc-sig"><span class="fn">void</span>(VoidRequest): <span class="rt">PaymentResult</span></p>
@@ -269,7 +297,7 @@
       </div>
     </section>
 
-    <section id="refund" class="doc-section" data-gws="cyber fawry paymob paylink paytabs">
+    <section id="refund" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal">
       <p class="doc-eyebrow">Payment flow</p>
       <h2>Refund</h2>
       <p class="doc-sig"><span class="fn">refund</span>(RefundRequest): <span class="rt">RefundResult</span></p>
@@ -300,7 +328,7 @@
       </div>
     </section>
 
-    <section id="get-transaction" class="doc-section" data-gws="cyber fawry paymob paylink paytabs">
+    <section id="get-transaction" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal">
       <p class="doc-eyebrow">After the payment</p>
       <h2>Get transaction</h2>
       <p class="doc-sig"><span class="fn">getTransaction</span>(id): <span class="rt">TransactionSnapshot</span></p>
@@ -327,7 +355,7 @@
       </div>
     </section>
 
-    <section id="reconcile" class="doc-section" data-gws="cyber fawry paymob paylink paytabs">
+    <section id="reconcile" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal">
       <p class="doc-eyebrow">After the payment</p>
       <h2>Reconcile</h2>
       <p class="doc-sig"><span class="fn">reconcile</span>(GatewayName, ids): <span class="rt">ReconciliationOutcome[]</span></p>
@@ -391,9 +419,20 @@
 }</code></pre>
         </div>
       </div>
+      <div class="gw-variant" data-gw="paypal">
+        <div class="code">
+<pre><code><span class="v">$outcomes</span> = <span class="v">$reconciler</span>-&gt;<span class="fn">reconcile</span>(<span class="t">GatewayName</span>::<span class="cn">PayPal</span>, [
+    <span class="s">'7NK74838L4813105R'</span>, <span class="c">// a PayPal order id</span>
+]);
+
+<span class="k">foreach</span> (<span class="v">$outcomes</span> <span class="k">as</span> <span class="v">$outcome</span>) {
+    <span class="c">// $outcome->reconciled(), $outcome->snapshot?->status, $outcome->error</span>
+}</code></pre>
+        </div>
+      </div>
     </section>
 
-    <section id="verify-webhook" class="doc-section" data-gws="cyber fawry paymob paylink paytabs">
+    <section id="verify-webhook" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal">
       <p class="doc-eyebrow">After the payment</p>
       <h2>Verify webhook</h2>
       <p class="doc-sig"><span class="fn">verifyWebhook</span>(payload, headers): <span class="rt">WebhookEvent</span></p>
@@ -429,23 +468,41 @@
       </div>
     </section>
 
-    <section id="vault-instrument" class="doc-section" data-gws="cyber">
+    <section id="vault-instrument" class="doc-section" data-gws="cyber paypal">
       <p class="doc-eyebrow">Stored credentials</p>
       <h2>Vault instrument</h2>
       <p class="doc-sig"><span class="fn">vaultInstrument</span>(TokenizeInstrumentRequest): <span class="rt">VaultedInstrument</span></p>
-      <p>Tokenizes a card in TMS and returns a <code>VaultedInstrument</code> you keep for later charges.</p>
-      <div class="code">
+      <p>Tokenizes a card and returns a <code>VaultedInstrument</code> you keep for later charges — CyberSource
+         stores it in TMS, while PayPal runs its setup-token → payment-token vault flow. Charge it later with
+         <code>chargeStoredCredential</code>.</p>
+
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
 <pre><code><span class="v">$vaulted</span> = <span class="v">$gateway</span>-&gt;<span class="fn">vaultInstrument</span>(<span class="k">new</span> <span class="t">TokenizeInstrumentRequest</span>(<span class="c">/* … */</span>));
-<span class="c">// keep $vaulted->id</span></code></pre>
+<span class="c">// keep $vaulted->paymentInstrumentId</span></code></pre>
+        </div>
+      </div>
+      <div class="gw-variant" data-gw="paypal">
+        <div class="code">
+<pre><code><span class="v">$vaulted</span> = <span class="v">$gateway</span>-&gt;<span class="fn">vaultInstrument</span>(<span class="k">new</span> <span class="t">TokenizeInstrumentRequest</span>(
+    <span class="a">cardNumber:</span> <span class="s">'4111111111111111'</span>,
+    <span class="a">expirationMonth:</span> <span class="s">'02'</span>,
+    <span class="a">expirationYear:</span> <span class="s">'2027'</span>,
+));
+
+<span class="c">// keep $vaulted->paymentInstrumentId (PayPal vault id) and $vaulted->customerId</span></code></pre>
+        </div>
       </div>
     </section>
 
-    <section id="charge-stored-credential" class="doc-section" data-gws="cyber paytabs">
+    <section id="charge-stored-credential" class="doc-section" data-gws="cyber paytabs paypal">
       <p class="doc-eyebrow">Stored credentials</p>
       <h2>Charge stored credential</h2>
       <p class="doc-sig"><span class="fn">chargeStoredCredential</span>(StoredCredentialChargeRequest): <span class="rt">PaymentResult</span></p>
       <p>Charges a saved token for merchant- or customer-initiated (MIT/CIT) transactions. On PayTabs a
-         merchant-initiated charge runs as <code>recurring</code>, a customer-initiated one as <code>ecom</code>.</p>
+         merchant-initiated charge runs as <code>recurring</code>, a customer-initiated one as <code>ecom</code>;
+         PayPal creates an order against the vaulted card, stamps the network stored-credential metadata
+         (MIT → <code>RECURRING</code>, CIT → <code>ONE_TIME</code>), and captures it.</p>
 
       <div class="gw-variant" data-gw="cyber">
         <div class="code">
@@ -467,6 +524,17 @@
 <span class="c">// create the token by setting options['tokenise' =&gt; 2] on any checkout</span></code></pre>
         </div>
       </div>
+      <div class="gw-variant" data-gw="paypal">
+        <div class="code">
+<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">chargeStoredCredential</span>(<span class="k">new</span> <span class="t">StoredCredentialChargeRequest</span>(
+    <span class="a">paymentInstrumentId:</span> <span class="v">$vaulted</span>-&gt;paymentInstrumentId, <span class="c">// the PayPal vault id</span>
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">50000</span>, <span class="s">'USD'</span>),
+    <span class="a">initiator:</span> <span class="t">CredentialInitiator</span>::<span class="cn">Merchant</span>, <span class="c">// MIT → RECURRING; Customer → ONE_TIME</span>
+));
+
+<span class="c">// vault the card first with vaultInstrument() to get $vaulted->paymentInstrumentId</span></code></pre>
+        </div>
+      </div>
     </section>
 
   </main>
@@ -480,6 +548,7 @@
       <li role="presentation"><button class="gw-opt" role="tab" data-gw="paymob"  aria-selected="false" style="--g:var(--paymob)">Paymob</button></li>
       <li role="presentation"><button class="gw-opt" role="tab" data-gw="paylink" aria-selected="false" style="--g:var(--paylink)">PayLink</button></li>
       <li role="presentation"><button class="gw-opt" role="tab" data-gw="paytabs" aria-selected="false" style="--g:var(--paytabs)">PayTabs</button></li>
+      <li role="presentation"><button class="gw-opt" role="tab" data-gw="paypal"  aria-selected="false" style="--g:var(--paypal)">PayPal</button></li>
     </ul>
     <p class="gw-nav-note">Switching a gateway rescopes the actions on the left and the examples in the center to that driver.</p>
   </aside>

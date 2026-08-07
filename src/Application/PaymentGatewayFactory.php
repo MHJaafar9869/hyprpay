@@ -14,6 +14,7 @@ use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Cybersour
 use Hyprpay\Payments\Infrastructure\Gateway\Fawry\FawryGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\Paylink\PaylinkGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\Paymob\PaymobGateway;
+use Hyprpay\Payments\Infrastructure\Gateway\PayPal\PayPalGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\Paytabs\PaytabsGateway;
 
 /**
@@ -52,6 +53,7 @@ final readonly class PaymentGatewayFactory
             GatewayName::Paymob => new PaymobGateway($resolved, $this->http),
             GatewayName::Paylink => new PaylinkGateway($resolved, $this->http),
             GatewayName::Paytabs => new PaytabsGateway($resolved, $this->http),
+            GatewayName::PayPal => new PayPalGateway($resolved, $this->http),
         };
     }
 
