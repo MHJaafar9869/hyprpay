@@ -5,30 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Docs — hyprpay/payments</title>
 <meta name="description" content="hyprpay/payments docs. Pick a gateway to see all of its actions — each operation in its own section: create checkout, charge, capture, void, refund, reverse, status, webhook and card extras." />
-<meta name="color-scheme" content="dark" />
+<meta name="color-scheme" content="dark light" />
+<script>document.documentElement.setAttribute("data-theme", localStorage.getItem("theme") || "dark");</script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="./assets/style.css" />
 <link rel="stylesheet" href="./assets/docs.css" />
-<link rel="icon" href="./assets/logo.svg" />
+<link rel="icon" type="image/png" href="./assets/logo.png" />
 </head>
 <body>
 <div class="grain" aria-hidden="true"></div>
 
 <header class="nav">
-  <a class="brand" href="./index.html" aria-label="hyprpay payments home">
+  <a class="brand" href="./index.html" aria-label="HyprPay home">
     <span class="brand-mark" aria-hidden="true"></span>
-    <span class="brand-name">hyprpay<span class="brand-slash">/</span>payments</span>
+    <span class="brand-name"><span class="brand-hypr">Hypr</span><span class="brand-pay">Pay</span></span>
   </a>
   <nav class="nav-links" aria-label="Primary">
     <a href="./index.html#features">Design</a>
     <a href="./index.html#gateways">Gateways</a>
     <a href="./index.html#matrix">Operations</a>
+    <a href="./index.html#start">Installation</a>
     <a href="./guide.html" aria-current="page" style="color:var(--text)">Docs</a>
+    <button class="theme-toggle" type="button" aria-label="Toggle light and dark theme" title="Toggle theme">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    </button>
     <a class="nav-cta" href="https://github.com/MHJaafar9869/hyprpay">GitHub&nbsp;↗</a>
   </nav>
 </header>
+
+<div class="scroll-progress" aria-hidden="true"><span></span></div>
 
 <section class="doc-hero">
   <p class="kicker">Documentation</p>
@@ -46,6 +54,7 @@
     <ul class="tree-flat">
       <li data-gws="cyber fawry paymob paylink"><a href="#overview" data-spy="overview">Overview</a></li>
       <li data-gws="cyber fawry paymob paylink"><a href="#create-checkout" data-spy="create-checkout">Create checkout</a></li>
+      <li data-gws="cyber"><a href="#dcc-rate" data-spy="dcc-rate">DCC rate</a></li>
       <li data-gws="cyber"><a href="#charge" data-spy="charge">Charge</a></li>
       <li data-gws="cyber fawry paymob paylink"><a href="#capture" data-spy="capture">Capture</a></li>
       <li data-gws="cyber fawry paymob paylink"><a href="#void" data-spy="void">Void</a></li>
@@ -133,10 +142,36 @@
     <span class="a">orderReference:</span> <span class="s">'ORDER-126'</span>,
     <span class="a">description:</span> <span class="s">'Gold Plan'</span>,
     <span class="a">returnUrl:</span> <span class="s">'https://shop.test/return'</span>,
+    <span class="a">options:</span> [<span class="s">'iframe'</span> =&gt; <span class="k">true</span>], <span class="c">// embeddable checkout URL</span>
 ));
 
-<span class="c">// redirect to $session->redirectUrl; reconcile by $session->reference</span></code></pre>
+<span class="c">// embed $session->redirectUrl in an &lt;iframe&gt; (or redirect without the option)</span></code></pre>
         </div>
+      </div>
+    </section>
+
+    <section id="dcc-rate" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Payment flow</p>
+      <h2>DCC rate</h2>
+      <p class="doc-sig"><span class="fn">requestDccRate</span>(DccRateRequest): <span class="rt">DccQuote</span></p>
+      <p>Quote a Dynamic Currency Conversion rate so a foreign cardholder pays in their own
+         currency. Thread the returned <code>DccQuote</code> into <code>charge</code> — and
+         <code>capture</code> / <code>refund</code> / <code>reverseAuthorization</code> — so the
+         same quoted rate is echoed across the lifecycle. Set <code>money</code> to the quote's
+         <code>convertedAmount</code>.</p>
+      <div class="code">
+<pre><code><span class="v">$quote</span> = <span class="v">$gateway</span>-&gt;<span class="fn">requestDccRate</span>(<span class="k">new</span> <span class="t">DccRateRequest</span>(
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">48000</span>, <span class="s">'EGP'</span>), <span class="c">// 480.00 EGP</span>
+    <span class="a">cardNumber:</span> <span class="s">'4111111111111111'</span>,
+));
+
+<span class="k">if</span> (<span class="v">$quote</span>-&gt;offered) {
+    <span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="k">new</span> <span class="t">ChargeRequest</span>(
+        <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>,
+        <span class="a">money:</span> <span class="v">$quote</span>-&gt;convertedAmount, <span class="c">// billing currency, quoted rate</span>
+        <span class="a">dcc:</span> <span class="v">$quote</span>,
+    ));
+}</code></pre>
       </div>
     </section>
 
@@ -372,7 +407,7 @@
 </div>
 
 <footer class="foot">
-  <div class="foot-brand"><span class="brand-mark" aria-hidden="true"></span><span>hyprpay/payments</span></div>
+  <div class="foot-brand"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name"><span class="brand-hypr">Hypr</span><span class="brand-pay">Pay</span></span></div>
   <nav class="foot-links" aria-label="Footer">
     <a href="./index.html">Home</a>
     <a href="https://github.com/MHJaafar9869/hyprpay">GitHub</a>
@@ -381,6 +416,8 @@
   </nav>
   <p class="foot-note">Domain-driven · ports &amp; adapters · deterministic · exact money.</p>
 </footer>
+
+<button class="to-top" type="button" aria-label="Back to top" title="Back to top">↑</button>
 
 <script src="./assets/docs.js"></script>
 </body>

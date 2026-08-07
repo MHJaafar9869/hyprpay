@@ -58,7 +58,11 @@ final class PaylinkGateway extends AbstractPaymentGateway
     }
 
     /**
-     * Create a PayLink invoice and return its hosted checkout URL and invoice id.
+     * Create a PayLink invoice and return its checkout URL and invoice id.
+     *
+     * Set `options['iframe'] = true` to have PayLink return an iframe-ready checkout
+     * URL (embed it in an <iframe>) instead of a full-page redirect URL. The flag is
+     * sent unsigned, mirroring the server, so it never affects the request signature.
      */
     public function createCheckoutSession(CheckoutSessionRequest $request): CheckoutSession
     {
@@ -85,6 +89,7 @@ final class PaylinkGateway extends AbstractPaymentGateway
                 'webhook_url' => $request->options['webhook_url'] ?? null,
                 'order_details' => $request->options['order_details'] ?? null,
                 'payment_mode' => $request->options['payment_mode'] ?? null,
+                'iframe' => filter_var($request->options['iframe'] ?? false, FILTER_VALIDATE_BOOLEAN) ?: null,
             ],
             Value::nullableString($request->options['idempotency_key'] ?? $request->orderReference),
             'create checkout session',

@@ -32,6 +32,7 @@ final class CapturePayload
                 'amountDetails' => [
                     'totalAmount' => $request->money->toDecimalString(),
                     'currency' => $request->money->currency,
+                    ...DccAmountDetails::fields($request->dcc),
                 ],
             ],
         ];

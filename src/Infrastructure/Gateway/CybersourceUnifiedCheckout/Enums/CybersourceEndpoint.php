@@ -20,6 +20,7 @@ enum CybersourceEndpoint: string
     case Refunds = '/pts/v2/payments/{id}/refunds';
     case Voids = '/pts/v2/payments/{id}/voids';
     case Reversals = '/pts/v2/payments/{id}/reversals';
+    case CurrencyConversion = '/vas/v1/currencyconversion';
     case Authentications = '/risk/v1/authentications';
     case AuthenticationResults = '/risk/v1/authentication-results';
     case InstrumentIdentifiers = '/tms/v1/instrumentidentifiers';

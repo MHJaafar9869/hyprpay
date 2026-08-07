@@ -1,6 +1,5 @@
-// Landing page behaviour: scroll reveals + copy-install button.
+/** Landing page: scroll reveals (IntersectionObserver, reduced-motion aware) + copy-install button. */
 (function () {
-  // Progressive-enhancement: reveal on scroll, honoring reduced-motion.
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var els = document.querySelectorAll('.reveal');
   if (reduce || !('IntersectionObserver' in window)) {
@@ -14,7 +13,6 @@
     els.forEach(function (el) { io.observe(el); });
   }
 
-  // Copy the install command.
   var btn = document.getElementById('copy-install');
   if (btn) {
     btn.addEventListener('click', function () {
@@ -23,6 +21,15 @@
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(done).catch(done);
       } else { done(); }
+    });
+  }
+
+  var themeBtn = document.querySelector('.theme-toggle');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', function () {
+      var next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('theme', next); } catch (e) {}
     });
   }
 })();

@@ -47,6 +47,33 @@ final readonly class Money
     }
 
     /**
+     * Named constructor building a Money from an exact decimal string (e.g. "100.00").
+     *
+     * The scale is inferred from the number of fractional digits ("9.60" → scale 2,
+     * "480" → scale 0), so {@see toDecimalString()} round-trips the value byte-for-byte.
+     * The currency is normalised to uppercase and no rounding is performed. Used to read
+     * the decimal amounts that gateways (e.g. CyberSource DCC) return as strings.
+     *
+     * @param  string  $amount  Decimal amount, optionally signed (e.g. "-12.500")
+     * @param  string  $currency  ISO 4217 currency code (normalised to uppercase)
+     *
+     * @throws InvalidArgumentException When the amount is not a valid decimal string
+     */
+    public static function fromDecimalString(string $amount, string $currency): self
+    {
+        if (preg_match('/^-?\d+(\.\d+)?$/', $amount) !== 1) {
+            throw new InvalidArgumentException("Invalid decimal amount: {$amount}");
+        }
+
+        $isNegative = str_starts_with($amount, '-');
+        [$whole, $fraction] = array_pad(explode('.', ltrim($amount, '-'), 2), 2, '');
+
+        $minorAmount = (int) ($whole.$fraction);
+
+        return new self($isNegative ? -$minorAmount : $minorAmount, strtoupper($currency), strlen($fraction));
+    }
+
+    /**
      * Render the amount as an exact decimal string (e.g. "100.00") without rounding.
      *
      * Splits the absolute minor amount into whole and fractional parts using integer

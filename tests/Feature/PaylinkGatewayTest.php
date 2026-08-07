@@ -64,6 +64,30 @@ it('creates an invoice and returns the checkout URL, signing the body', function
         ->and($request?->header('Idempotency-Key'))->toBe('ORD1');
 });
 
+it('sends an unsigned iframe flag and returns an iframe-ready checkout URL', function (): void {
+    $plainHttp = (new FakeHttpClient)->queueJson(['checkout_url' => 'https://pay.getpayin.com/c/abc', 'invoice_id' => 9001]);
+    (new PaylinkGateway(paylinkCredentials(), $plainHttp))->createCheckoutSession(new CheckoutSessionRequest(
+        money: Money::minor(25000, 'USD'),
+        orderReference: 'ORD1',
+        returnUrl: 'https://shop.test/return',
+        description: 'Gold Plan',
+    ));
+
+    $iframeHttp = (new FakeHttpClient)->queueJson(['checkout_url' => 'https://pay.getpayin.com/c/abc?iframe=1', 'invoice_id' => 9001]);
+    $session = (new PaylinkGateway(paylinkCredentials(), $iframeHttp))->createCheckoutSession(new CheckoutSessionRequest(
+        money: Money::minor(25000, 'USD'),
+        orderReference: 'ORD1',
+        returnUrl: 'https://shop.test/return',
+        description: 'Gold Plan',
+        options: ['iframe' => true],
+    ));
+
+    expect(paylinkBody($iframeHttp)['iframe'])->toBe('1')
+        ->and(paylinkBody($plainHttp))->not->toHaveKey('iframe')
+        ->and(paylinkBody($iframeHttp)['signature'])->toBe(paylinkBody($plainHttp)['signature'])
+        ->and($session->redirectUrl)->toBe('https://pay.getpayin.com/c/abc?iframe=1');
+});
+
 it('captures (settles) an authorized invoice', function (): void {
     $http = (new FakeHttpClient)->queueJson(['invoice_id' => 9001, 'paid_status' => 'PAID', 'auth_code' => 'A1']);
     $gateway = new PaylinkGateway(paylinkCredentials(), $http);

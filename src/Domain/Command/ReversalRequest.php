@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Hyprpay\Payments\Domain\Command;
 
+use Hyprpay\Payments\Domain\Result\DccQuote;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 
 /**
@@ -16,10 +17,11 @@ final readonly class ReversalRequest
 {
     /**
      * @param  string  $transactionId  Identifier of the authorisation to reverse
-     * @param  Money  $money  Amount and currency to reverse
+     * @param  Money  $money  Amount and currency to reverse (the cardholder's billing currency for a DCC reversal)
      * @param  string|null  $reason  Optional reason for the reversal
      * @param  string|null  $orderReference  Optional merchant order/reference number for reconciliation
      * @param  string|null  $idempotencyKey  Optional idempotency key; sent to the gateway so a retried reversal is not double-processed.
+     * @param  DccQuote|null  $dcc  Optional DCC quote from the authorization; marks the reversal amount as the cardholder's billing currency
      */
     public function __construct(
         public string $transactionId,
@@ -27,5 +29,6 @@ final readonly class ReversalRequest
         public ?string $reason = null,
         public ?string $orderReference = null,
         public ?string $idempotencyKey = null,
+        public ?DccQuote $dcc = null,
     ) {}
 }
