@@ -23,6 +23,7 @@ body:
         - Fawry
         - Paymob
         - PayLink
+        - PayTabs
         - Not gateway-specific
     validations:
       required: true

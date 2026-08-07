@@ -14,6 +14,7 @@ use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Cybersour
 use Hyprpay\Payments\Infrastructure\Gateway\Fawry\FawryGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\Paylink\PaylinkGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\Paymob\PaymobGateway;
+use Hyprpay\Payments\Infrastructure\Gateway\Paytabs\PaytabsGateway;
 
 /**
  * Composition-edge factory that constructs concrete gateway drivers.
@@ -50,6 +51,7 @@ final readonly class PaymentGatewayFactory
             GatewayName::Fawry => new FawryGateway($resolved, $this->http),
             GatewayName::Paymob => new PaymobGateway($resolved, $this->http),
             GatewayName::Paylink => new PaylinkGateway($resolved, $this->http),
+            GatewayName::Paytabs => new PaytabsGateway($resolved, $this->http),
         };
     }
 

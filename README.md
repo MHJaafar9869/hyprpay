@@ -5,8 +5,9 @@
 📖 **Documentation:** <https://mhjaafar9869.github.io/hyprpay/>
 
 A self-contained, multi-gateway payment SDK for PHP. One clean interface, a factory
-that resolves the right driver, and a swappable HTTP transport — with four gateways
-built in: **CyberSource Unified Checkout**, **Fawry**, **Paymob**, and **PayLink**.
+that resolves the right driver, and a swappable HTTP transport — with five gateways
+built in: **CyberSource Unified Checkout**, **Fawry**, **Paymob**, **PayLink**, and
+**PayTabs**.
 
 - **Domain-driven layering** — a pure `Domain` (contracts, commands, results, value
   objects, enums), a thin `Application` layer (`PaymentGatewayFactory`), and an
@@ -21,8 +22,8 @@ built in: **CyberSource Unified Checkout**, **Fawry**, **Paymob**, and **PayLink
   framework-agnostic.
 - **Raw REST, no vendor SDKs** — every driver speaks the gateway's REST API directly
   and signs requests itself (CyberSource HMAC HTTP-Signature, Fawry SHA-256, Paymob
-  HMAC-SHA512, PayLink HMAC-SHA256), so there are no heavy third-party gateway
-  dependencies.
+  HMAC-SHA512, PayLink HMAC-SHA256, PayTabs server-key auth + HMAC-SHA256 callbacks),
+  so there are no heavy third-party gateway dependencies.
 - **Deterministic & idempotent** — request bodies are built deterministically (no
   hidden `uniqid()`/`time()`), and write operations carry an idempotency key.
 - **Exact money** — amounts are carried as minor units and never rounded.
@@ -249,6 +250,40 @@ Origin, or the browser blocks framing.
 </script>
 ```
 
+**PayTabs** — start a hosted payment page and redirect the payer (pass
+`paymentMethod: 'auth'` to place a hold you capture later, and `options['webhook_url']`
+for the server-to-server IPN callback):
+
+```php
+use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
+use Hyprpay\Payments\Domain\ValueObject\Customer;
+use Hyprpay\Payments\Domain\ValueObject\Money;
+use Hyprpay\Payments\Domain\Enum\GatewayName;
+use Hyprpay\Payments\Application\PaymentGatewayFactory;
+
+final readonly class StartPaytabsCheckout
+{
+    public function __construct(private PaymentGatewayFactory $gateways) {}
+
+    public function handle(): void
+    {
+        $session = $this->gateways
+            ->make(GatewayName::Paytabs)
+            ->createCheckoutSession(new CheckoutSessionRequest(
+                money: Money::minor(12030, 'SAR'),
+                orderReference: 'ORDER-127',
+                description: 'Gold Plan',
+                returnUrl: 'https://shop.test/return',
+                customer: new Customer(email: 'john@example.com', firstName: 'John', lastName: 'Doe'),
+                options: ['webhook_url' => 'https://shop.test/ipn'],
+            ));
+
+        // redirect to $session->redirectUrl (the PayTabs hosted page);
+        // reconcile later by $session->reference (the PayTabs tran_ref)
+    }
+}
+```
+
 Passing credentials explicitly per call — this skips the resolver, so it works for
 any dynamic source (a one-off override, per-merchant, per-tenant, …):
 
@@ -270,23 +305,62 @@ Every driver implements the same `PaymentGatewayInterface`. Operations a gateway
 not support throw `UnsupportedOperationException`, so you can rely on the same surface
 everywhere.
 
-| Operation | CyberSource UC | Fawry | Paymob | PayLink |
-| --- | :---: | :---: | :---: | :---: |
-| `createCheckoutSession` | ✅ capture context | ✅ hosted / card / wallet / pay-at-Fawry / MyFawry / instalment | ✅ iframe flow | ✅ invoice link / iframe |
-| `charge` (transient token) | ✅ | — | — | — |
-| `capture` | ✅ | ✅ (Auth/Capture) | ✅ | ✅ (settle) |
-| `refund` | ✅ | ✅ | ✅ | ✅ |
-| `void` | ✅ | ✅ (cancel auth) | ✅ | ✅ |
-| `reverseAuthorization` | ✅ | — | — | ✅ |
-| `enrollPayerAuth` / `validatePayerAuth` (3-DS) | ✅ | — | — | — |
-| `vaultInstrument` / `chargeStoredCredential` | ✅ (TMS, MIT/CIT) | — | — | — |
-| `requestDccRate` (Dynamic Currency Conversion) | ✅ | — | — | — |
-| `getTransaction` / `searchTransaction` | ✅ | ✅ | ✅ | ✅ |
-| `verifyWebhook` | ✅ | ✅ | ✅ | ✅ |
+| Operation | CyberSource UC | Fawry | Paymob | PayLink | PayTabs |
+| --- | :---: | :---: | :---: | :---: | :---: |
+| `createCheckoutSession` | ✅ capture context | ✅ hosted / card / wallet / pay-at-Fawry / MyFawry / instalment | ✅ iframe flow | ✅ invoice link / iframe | ✅ hosted / invoice / paylink / managed |
+| `charge` (transient token) | ✅ | — | — | — | ✅ Own Form (payment token) |
+| `capture` | ✅ | ✅ (Auth/Capture) | ✅ | ✅ (settle) | ✅ |
+| `refund` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `void` | ✅ | ✅ (cancel auth) | ✅ | ✅ | ✅ |
+| `reverseAuthorization` | ✅ | — | — | ✅ | ✅ (release) |
+| `enrollPayerAuth` / `validatePayerAuth` (3-DS) | ✅ | — | — | — | — |
+| `vaultInstrument` / `chargeStoredCredential` | ✅ (TMS, MIT/CIT) | — | — | — | ✅ token (MIT/CIT)¹ |
+| `requestDccRate` (Dynamic Currency Conversion) | ✅ | — | — | — | — |
+| `getTransaction` / `searchTransaction` | ✅ | ✅ | ✅ | ✅ | ✅ query |
+| `verifyWebhook` | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 Provider-specific inputs (e.g. Fawry payment method, Paymob integration/iframe ids,
 card or wallet details) are passed through `CheckoutSessionRequest::$options` and the
 `GatewayCredentials::$extra` bag.
+
+For **PayTabs**, `paymentMethod` selects the integration type: `invoice` (an emailable
+Invoice link), `managed` (an iframe-embeddable Managed Form), `paylink` (a reusable
+PayLink), or the default Hosted Payment Page (pass `auth` for a hold to capture later).
+To keep the payer on your own site instead of redirecting, either embed the Hosted Page
+in an iframe with `options['iframe'] => true` (optionally `framed_return_top`,
+`framed_return_parent`, `framed_message_target` — an HTTPS URL on your domain that
+receives a `postMessage` when payment finishes so you can close the frame), or use
+**Own Form**: collect the card in your own form, tokenise it in the browser with
+PayTabs' client-side library, and charge the resulting `payment_token` via `charge()`
+(the raw PAN never touches your server, keeping you in the light PCI tier):
+
+```php
+use Hyprpay\Payments\Domain\Command\ChargeRequest;
+use Hyprpay\Payments\Domain\ValueObject\Money;
+
+$result = $gateway->charge(new ChargeRequest(
+    transientToken: $paymentToken,          // browser-generated by PayTabs' JS
+    money: Money::minor(9500, 'SAR'),
+    orderReference: 'ORDER-127',
+));
+
+// 3-D Secure card → $result->status is Pending and $result->raw['redirect_url']
+// holds the bank's 3DS page; a non-3DS card returns the final result inline.
+```
+
+Pass
+`options['agreement']` (description, `repeat_amount`, `repeat_every`,
+`first_installment_due_date`, …) on a checkout to start a Repeat Billing agreement — the
+customer completes the initial payment and consents, then PayTabs auto-bills the schedule
+(recurring execution and pause/cancel are managed PayTabs-side, not via the SDK). Pass
+`options['split_payout']` (an array of stakeholders, each with `item_total`, `msc_flag`,
+and `beneficiary` details) to split the settled funds across beneficiaries after payment.
+
+¹ PayTabs has no raw-PAN vault endpoint, so `vaultInstrument` is unsupported. Instead a
+reusable card token is created by setting `options['tokenise']` (1–6, e.g. `2` = Hex32)
+on any checkout — the token arrives in the callback/status `token` field — then charged
+later with `chargeStoredCredential` (merchant-initiated → `recurring`, customer-initiated
+→ `ecom`) and revoked with the driver's `deleteToken()`.
 
 ## Dynamic Currency Conversion (DCC)
 
@@ -342,6 +416,7 @@ Retries are safe. Every write is idempotent through two guarantees:
 | Fawry | `merchantRefNum` (= your order reference) |
 | Paymob | `merchant_order_id` (= your order reference) |
 | PayLink | `Idempotency-Key` header |
+| PayTabs | `cart_id` (= your order reference) |
 
 For `charge` and `chargeStoredCredential` the key defaults to `orderReference`, so a
 retried charge for the same order is deduplicated automatically. For `capture`,

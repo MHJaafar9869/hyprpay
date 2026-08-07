@@ -4,14 +4,14 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>HyprPay — one interface, every payment gateway</title>
-<meta name="description" content="A self-contained, multi-gateway payment SDK for PHP. One clean interface over CyberSource Unified Checkout, Fawry, Paymob and PayLink — deterministic, idempotent, exact-money, PHPStan level max." />
+<meta name="description" content="A self-contained, multi-gateway payment SDK for PHP. One clean interface over CyberSource Unified Checkout, Fawry, Paymob, PayLink and PayTabs — deterministic, idempotent, exact-money, PHPStan level max." />
 <meta name="color-scheme" content="dark light" />
 
 <!-- Open Graph / Twitter -->
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="HyprPay" />
 <meta property="og:title" content="HyprPay — one interface, every payment gateway" />
-<meta property="og:description" content="A self-contained, multi-gateway payment SDK for PHP. CyberSource, Fawry, Paymob & PayLink behind a single contract." />
+<meta property="og:description" content="A self-contained, multi-gateway payment SDK for PHP. CyberSource, Fawry, Paymob, PayLink & PayTabs behind a single contract." />
 <meta property="og:url" content="https://mhjaafar9869.github.io/hyprpay/" />
 <meta property="og:image" content="https://mhjaafar9869.github.io/hyprpay/assets/og.png" />
 <meta property="og:image:type" content="image/png" />
@@ -20,7 +20,7 @@
 <meta property="og:image:alt" content="HyprPay — one clean interface, every payment gateway" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="HyprPay — one interface, every payment gateway" />
-<meta name="twitter:description" content="A self-contained, multi-gateway payment SDK for PHP. CyberSource, Fawry, Paymob & PayLink behind a single contract." />
+<meta name="twitter:description" content="A self-contained, multi-gateway payment SDK for PHP. CyberSource, Fawry, Paymob, PayLink & PayTabs behind a single contract." />
 <meta name="twitter:image" content="https://mhjaafar9869.github.io/hyprpay/assets/og.png" />
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -65,7 +65,7 @@
     <p class="hero-sub reveal" data-d="3">
       A self-contained, multi-gateway payment SDK for PHP. A factory resolves the right
       driver, a swappable HTTP transport does the talking, and one contract covers
-      <b>CyberSource&nbsp;Unified&nbsp;Checkout</b>, <b>Fawry</b>, <b>Paymob</b> and <b>PayLink</b>.
+      <b>CyberSource&nbsp;Unified&nbsp;Checkout</b>, <b>Fawry</b>, <b>Paymob</b>, <b>PayLink</b> and <b>PayTabs</b>.
     </p>
 
     <div class="hero-cta reveal" data-d="4">
@@ -80,7 +80,7 @@
     </div>
 
     <ul class="hero-stats reveal" data-d="5">
-      <li><b>4</b><span>gateways, one contract</span></li>
+      <li><b>5</b><span>gateways, one contract</span></li>
       <li><b>0</b><span>vendor SDK deps</span></li>
       <li><b>max</b><span>PHPStan level, no baseline</span></li>
       <li><b>90+</b><span>Pest tests, network-free</span></li>
@@ -132,7 +132,7 @@
       <article class="card reveal">
         <span class="card-no">/04</span>
         <h3>Raw REST, no vendor SDKs</h3>
-        <p>Every driver speaks the gateway's REST API directly and signs its own requests — CyberSource HMAC HTTP-Signature, Fawry SHA-256, Paymob HMAC-SHA512, PayLink HMAC-SHA256. No heavy third-party gateway dependencies.</p>
+        <p>Every driver speaks the gateway's REST API directly and signs its own requests — CyberSource HMAC HTTP-Signature, Fawry SHA-256, Paymob HMAC-SHA512, PayLink HMAC-SHA256, PayTabs server-key auth with HMAC-SHA256 callbacks. No heavy third-party gateway dependencies.</p>
       </article>
       <article class="card reveal">
         <span class="card-no">/05</span>
@@ -151,7 +151,7 @@
   <section id="gateways" class="section">
     <div class="section-head reveal">
       <span class="section-no">02</span>
-      <h2>Four gateways.<br />One <em>PaymentGatewayInterface</em>.</h2>
+      <h2>Five gateways.<br />One <em>PaymentGatewayInterface</em>.</h2>
       <p>Each driver extends <code>AbstractPaymentGateway</code> and implements the same fat contract.</p>
     </div>
 
@@ -180,6 +180,12 @@
         <p>Create an invoice, then redirect to the hosted checkout or embed it in an iframe, and reconcile later by invoice id. Supports settle, refund, void and reverse-authorization.</p>
         <footer>invoice · iframe · settle · refund · reverse</footer>
       </article>
+      <article class="gw reveal" style="--gw:var(--paytabs)">
+        <header><span class="gw-tag">PayTabs</span><span class="gw-sig">Server key</span></header>
+        <h3>Every integration</h3>
+        <p>Hosted page, emailable Invoice, reusable PayLink, iframe Managed Form, or an Own Form charge of a payment token. Saves card tokens for recurring / customer-initiated charges, starts repeat-billing agreements, splits settled funds across beneficiaries, and verifies the signed IPN callback.</p>
+        <footer>hosted · invoice · paylink · managed · own form · tokens · recurring · split</footer>
+      </article>
     </div>
   </section>
 
@@ -200,19 +206,20 @@
             <th scope="col">Fawry</th>
             <th scope="col">Paymob</th>
             <th scope="col">PayLink</th>
+            <th scope="col">PayTabs</th>
           </tr>
         </thead>
         <tbody>
-          <tr><th scope="row"><code>createCheckoutSession</code></th><td class="y">capture context</td><td class="y">hosted / card / wallet</td><td class="y">iframe flow</td><td class="y">invoice / iframe</td></tr>
-          <tr><th scope="row"><code>charge</code> <small>(transient token)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
-          <tr><th scope="row"><code>capture</code></th><td class="y">✓</td><td class="y">Auth/Capture</td><td class="y">✓</td><td class="y">settle</td></tr>
-          <tr><th scope="row"><code>refund</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
-          <tr><th scope="row"><code>void</code></th><td class="y">✓</td><td class="y">cancel auth</td><td class="y">✓</td><td class="y">✓</td></tr>
-          <tr><th scope="row"><code>reverseAuthorization</code></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td></tr>
-          <tr><th scope="row"><code>enroll</code> / <code>validatePayerAuth</code> <small>(3-DS)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
-          <tr><th scope="row"><code>vault</code> / <code>chargeStoredCredential</code></th><td class="y">TMS · MIT/CIT</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
-          <tr><th scope="row"><code>getTransaction</code> / <code>searchTransaction</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
-          <tr><th scope="row"><code>verifyWebhook</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+          <tr><th scope="row"><code>createCheckoutSession</code></th><td class="y">capture context</td><td class="y">hosted / card / wallet</td><td class="y">iframe flow</td><td class="y">invoice / iframe</td><td class="y">hosted / invoice / paylink / managed</td></tr>
+          <tr><th scope="row"><code>charge</code> <small>(transient token)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">Own Form</td></tr>
+          <tr><th scope="row"><code>capture</code></th><td class="y">✓</td><td class="y">Auth/Capture</td><td class="y">✓</td><td class="y">settle</td><td class="y">✓</td></tr>
+          <tr><th scope="row"><code>refund</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+          <tr><th scope="row"><code>void</code></th><td class="y">✓</td><td class="y">cancel auth</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+          <tr><th scope="row"><code>reverseAuthorization</code></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="y">release</td></tr>
+          <tr><th scope="row"><code>enroll</code> / <code>validatePayerAuth</code> <small>(3-DS)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
+          <tr><th scope="row"><code>vault</code> / <code>chargeStoredCredential</code></th><td class="y">TMS · MIT/CIT</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">token · MIT/CIT</td></tr>
+          <tr><th scope="row"><code>getTransaction</code> / <code>searchTransaction</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">query</td></tr>
+          <tr><th scope="row"><code>verifyWebhook</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
         </tbody>
       </table>
     </div>
