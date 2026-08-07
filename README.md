@@ -640,6 +640,54 @@ With `enabled` off the factory returns bare drivers and nothing is dispatched. D
 through the framework-agnostic `Domain\Contract\EventDispatcher` port (the Laravel adapter
 forwards to the application's event dispatcher), so the core stays framework-independent.
 
+## Operation logging
+
+Enable operation logging to wrap every driver in a `LoggingGateway` that logs each call —
+`charge`, `capture`, `refund`, `getTransaction`, `verifyWebhook`, … — with its **duration**
+and a safe correlation context (gateway, order/transaction ids, amount) through your PSR-3
+logger. Normally you just flip the config toggle (`log_operations` below) and the factory does
+the wrapping for you.
+
+`LoggingGateway` is a plain decorator, so it's constructed at the composition edge (by the
+factory / service provider, like `LoggingHttpClient` and `EventDispatchingGateway`) rather than
+resolved from the container — the container can't know which inner driver and credentials to
+inject. To compose it yourself — outside Laravel, or around a driver you built — wrap it with
+any PSR-3 logger:
+
+```php
+use Hyprpay\Payments\Application\PaymentGatewayFactory;
+use Hyprpay\Payments\Infrastructure\Gateway\LoggingGateway;
+use Illuminate\Support\Facades\Log;
+
+final class PaymentGatewayProvider
+{
+    public function __construct(private PaymentGatewayFactory $factory) {}
+
+    /**
+     * Resolve a PayPal gateway that logs every operation with its duration.
+     *
+     * Wraps the driver in a LoggingGateway, so each call is recorded as
+     * `[LoggingGateway] {operation}` through the "payments" channel with a masked,
+     * PAN-free context. Enabling `gateway.log_operations` makes the factory do this
+     * automatically, so this wrapper becomes unnecessary.
+     */
+    public function payments(): PaymentGatewayInterface
+    {
+        return new LoggingGateway(
+            $this->factory->make(GatewayName::PayPal),
+            Log::channel('payments'),
+        );
+    }
+}
+```
+
+Each call is logged as `[LoggingGateway] {operation}` at info level; the context carries **no
+PAN, cvv, or tokens**, and the underlying `LogsAction` trait masks sensitive keys as a
+backstop. This is distinct from `http.logging`, which logs the lower-level HTTP request/response
+metadata. `LogsAction` (`Infrastructure\Support\Concerns\LogsAction`) is reusable on any class
+that exposes a PSR-3 `logger()`, offering level helpers (`logInfo`/`logError`/…), a
+class-name-prefixed message, sensitive-key masking, and `logTimedAction()` for timed calls.
+
 ## Architecture
 
 The code is organised in three DDD layers under `src/`, each its own namespace:
@@ -660,9 +708,10 @@ Domain/          the framework-agnostic core — no Laravel, no HTTP
 
 Infrastructure/  adapters for the ports — the only layer that touches Laravel & the network
   Gateway/{X}/     CybersourceUnifiedCheckout · Fawry · Paymob · Paylink · Paytabs · PayPal (extend AbstractPaymentGateway)
-  Gateway/         EventDispatchingGateway (decorator that emits events after each operation)
+  Gateway/         EventDispatchingGateway (emits events) · LoggingGateway (logs each operation) — driver decorators
   Http/            HttpClient decorator stack: RetryingHttpClient → LoggingHttpClient → RateLimitingHttpClient → LaravelHttpClient · FakeHttpClient (tests)
   Events/          LaravelEventDispatcher · LoggingPaymentEventListener · RecordingEventDispatcher (tests)
+  Support/         Value · Concerns\LogsAction (PSR-3 leveled logging + timing + masking)
   Credentials/     ConfigCredentialResolver
   Console/         ReconcileCommand (base) + one gateway:reconcile:{X} command per gateway
   GatewayServiceProvider (wires the ports + factory into the container, registers commands + the event listener)

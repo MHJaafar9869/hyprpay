@@ -9,6 +9,7 @@ use Hyprpay\Payments\Domain\Exception\GatewayNotSupportedException;
 use Hyprpay\Payments\Infrastructure\Events\RecordingEventDispatcher;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\CybersourceUnifiedCheckoutGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\EventDispatchingGateway;
+use Hyprpay\Payments\Infrastructure\Gateway\LoggingGateway;
 use Hyprpay\Payments\Infrastructure\Http\FakeHttpClient;
 
 it('builds the CyberSource driver from explicit credentials without touching the resolver', function (): void {
@@ -55,4 +56,11 @@ it('returns the bare driver when no dispatcher is supplied', function (): void {
 
     expect($factory->make(GatewayName::CybersourceUnifiedCheckout, testCredentials()))
         ->toBeInstanceOf(CybersourceUnifiedCheckoutGateway::class);
+});
+
+it('wraps the driver in a logging decorator when a logger is supplied', function (): void {
+    $factory = new PaymentGatewayFactory(new FakeHttpClient, recordingResolver(testCredentials()), null, new RecordingLogger);
+
+    expect($factory->make(GatewayName::CybersourceUnifiedCheckout, testCredentials()))
+        ->toBeInstanceOf(LoggingGateway::class);
 });

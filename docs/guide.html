@@ -82,6 +82,8 @@
       <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#reconcile" data-spy="reconcile">Reconcile</a></li>
       <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#verify-webhook" data-spy="verify-webhook">Verify webhook</a></li>
       <li data-gws="misc"><a href="#events" data-spy="events">Events</a></li>
+      <li data-gws="misc"><a href="#operation-logging" data-spy="operation-logging">Operation logging</a></li>
+      <li data-gws="misc"><a href="#configuration" data-spy="configuration">Configuration</a></li>
       <li data-gws="cyber"><a href="#enroll-payer-auth" data-spy="enroll-payer-auth">Enroll payer auth</a></li>
       <li data-gws="cyber"><a href="#validate-payer-auth" data-spy="validate-payer-auth">Validate payer auth</a></li>
       <li data-gws="cyber paypal"><a href="#vault-instrument" data-spy="vault-instrument">Vault instrument</a></li>
@@ -480,6 +482,78 @@
 
 <span class="c">// config/gateway.php — on by default; 'log' attaches the redaction-safe audit listener</span>
 <span class="s">'events'</span> =&gt; [<span class="s">'enabled'</span> =&gt; <span class="k">true</span>, <span class="s">'log'</span> =&gt; <span class="k">false</span>]</code></pre>
+      </div>
+    </section>
+
+    <section id="operation-logging" class="doc-section" data-gws="misc">
+      <p class="doc-eyebrow">Cross-cutting</p>
+      <h2>Operation logging</h2>
+      <p class="doc-sig"><span class="fn">LoggingGateway</span>(driver, logger): <span class="rt">PaymentGatewayInterface</span></p>
+      <p>Wrap every driver in a <code>LoggingGateway</code> that logs each operation — charge, capture,
+         refund, getTransaction, verifyWebhook, … — with its duration and a safe correlation context
+         (gateway, order/transaction ids, amount) through your PSR-3 logger. The context carries no PAN,
+         cvv or tokens, and the underlying <code>LogsAction</code> trait masks sensitive keys as a backstop.
+         Distinct from <code>http.logging</code>, which logs the lower-level HTTP request/response metadata.</p>
+      <p>With <code>gateway.log_operations</code> enabled the factory wraps every driver for you. To
+         compose it yourself — outside Laravel, or around a driver you built — wrap it with any PSR-3
+         logger:</p>
+      <div class="code">
+<pre><code><span class="k">use</span> <span class="t">Hyprpay\Payments\Application\PaymentGatewayFactory</span>;
+<span class="k">use</span> <span class="t">Hyprpay\Payments\Infrastructure\Gateway\LoggingGateway</span>;
+<span class="k">use</span> <span class="t">Illuminate\Support\Facades\Log</span>;
+
+<span class="k">final class</span> <span class="t">PaymentGatewayProvider</span>
+{
+    <span class="k">public function</span> <span class="fn">__construct</span>(<span class="k">private</span> <span class="t">PaymentGatewayFactory</span> <span class="v">$factory</span>) {}
+
+    <span class="c">/**
+     * Resolve a PayPal gateway that logs every operation with its duration.
+     *
+     * Wraps the driver in a LoggingGateway, so each call is recorded as
+     * [LoggingGateway] {operation} through the "payments" channel with a
+     * masked, PAN-free context. Enabling gateway.log_operations makes the
+     * factory do this automatically, so this wrapper becomes unnecessary.
+     */</span>
+    <span class="k">public function</span> <span class="fn">payments</span>(): <span class="t">PaymentGatewayInterface</span>
+    {
+        <span class="k">return new</span> <span class="t">LoggingGateway</span>(
+            <span class="v">$this</span>-&gt;factory-&gt;<span class="fn">make</span>(<span class="t">GatewayName</span>::<span class="cn">PayPal</span>),
+            <span class="t">Log</span>::<span class="fn">channel</span>(<span class="s">'payments'</span>),
+        );
+    }
+}</code></pre>
+      </div>
+    </section>
+
+    <section id="configuration" class="doc-section" data-gws="misc">
+      <p class="doc-eyebrow">Cross-cutting</p>
+      <h2>Configuration</h2>
+      <p class="doc-sig"><span class="fn">config</span>(<span class="s">'gateway.*'</span>): <span class="rt">mixed</span></p>
+      <p>Publish it with <code>php artisan vendor:publish --tag=gateway-config</code>. Every key, its
+         env var, and default, broken down below.</p>
+      <div class="code">
+<pre><code><span class="c">/**
+ * config/gateway.php — every setting at a glance.
+ *
+ * default                       string  Gateway used when make() is called without one.  (GATEWAY_DEFAULT)
+ *
+ * http.timeout                  int     Per-request timeout, seconds.                     (GATEWAY_HTTP_TIMEOUT = 30)
+ * http.retries                  int     Retries for transient failures (408/429/5xx).     (GATEWAY_HTTP_RETRIES = 2)
+ * http.retry_base_delay_ms      int     Base backoff in ms, doubled per retry.            (GATEWAY_HTTP_RETRY_BASE_MS = 200)
+ * http.logging                  bool    Log HTTP request/response metadata — no bodies.   (GATEWAY_HTTP_LOGGING = false)
+ * http.rate_limit               bool    Token-bucket throttle for outbound requests.      (GATEWAY_HTTP_RATE_LIMIT = false)
+ * http.rate_limit_max_requests  int     Bucket size / requests per window.                (GATEWAY_HTTP_RATE_LIMIT_MAX = 10)
+ * http.rate_limit_per_seconds   int     Refill window length, seconds.                    (GATEWAY_HTTP_RATE_LIMIT_PER = 1)
+ *
+ * commands.reconcile            bool    Register the gateway:reconcile:{X} commands.       (GATEWAY_RECONCILE_COMMANDS = true)
+ *
+ * events.enabled                bool    Wrap drivers to emit payment domain events.        (GATEWAY_EVENTS = true)
+ * events.log                    bool    Attach the redaction-safe audit-logging listener.  (GATEWAY_EVENTS_LOG = false)
+ *
+ * log_operations                bool    Wrap drivers in a LoggingGateway (per-call logs).  (GATEWAY_LOG_OPERATIONS = false)
+ *
+ * gateways.{key}                array   Per-gateway credentials — merchant id, secret, host, locale, currency.
+ */</span></code></pre>
       </div>
     </section>
 

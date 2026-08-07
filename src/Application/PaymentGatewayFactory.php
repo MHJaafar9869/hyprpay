@@ -14,19 +14,23 @@ use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\CybersourceUnifiedCheckoutGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\EventDispatchingGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\Fawry\FawryGateway;
+use Hyprpay\Payments\Infrastructure\Gateway\LoggingGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\Paylink\PaylinkGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\Paymob\PaymobGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\PayPal\PayPalGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\Paytabs\PaytabsGateway;
+use Psr\Log\LoggerInterface;
 
 /**
  * Composition-edge factory that constructs concrete gateway drivers.
  *
  * Selects the correct adapter for a GatewayName via a match expression, wiring
  * it with the shared HttpClient and the credentials for that gateway (resolved
- * through the CredentialResolver when none are provided by the caller). When an
- * EventDispatcher is supplied, each driver is wrapped in an EventDispatchingGateway
- * so it emits payment domain events; without one, the bare driver is returned.
+ * through the CredentialResolver when none are provided by the caller). Each driver is
+ * then optionally wrapped: in an EventDispatchingGateway when an EventDispatcher is
+ * supplied (so it emits payment domain events), and in a LoggingGateway when a logger is
+ * supplied (so each operation is logged with its duration). Without either, the bare
+ * driver is returned.
  */
 final readonly class PaymentGatewayFactory
 {
@@ -34,11 +38,13 @@ final readonly class PaymentGatewayFactory
      * @param  HttpClient  $http  The outbound-HTTP client shared with every constructed driver.
      * @param  CredentialResolver  $credentialResolver  Resolves credentials when a caller does not pass them explicitly.
      * @param  EventDispatcher|null  $events  Dispatcher every driver is wrapped to emit events through, or null to skip event dispatch.
+     * @param  LoggerInterface|null  $logger  Logger every driver is wrapped to log operations through, or null to skip operation logging.
      */
     public function __construct(
         private HttpClient $http,
         private CredentialResolver $credentialResolver,
         private ?EventDispatcher $events = null,
+        private ?LoggerInterface $logger = null,
     ) {}
 
     /**
@@ -62,7 +68,15 @@ final readonly class PaymentGatewayFactory
             GatewayName::PayPal => new PayPalGateway($resolved, $this->http),
         };
 
-        return $this->events instanceof EventDispatcher ? new EventDispatchingGateway($driver, $this->events) : $driver;
+        if ($this->events instanceof EventDispatcher) {
+            $driver = new EventDispatchingGateway($driver, $this->events);
+        }
+
+        if ($this->logger instanceof LoggerInterface) {
+            return new LoggingGateway($driver, $this->logger);
+        }
+
+        return $driver;
     }
 
     /**
