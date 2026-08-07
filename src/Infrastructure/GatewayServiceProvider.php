@@ -86,12 +86,13 @@ final class GatewayServiceProvider extends ServiceProvider
         ));
 
         $this->app->singleton(PaymentGatewayFactory::class, static function (Application $app): PaymentGatewayFactory {
-            $eventsEnabled = Value::bool($app->make(ConfigRepository::class)->get('gateway.events.enabled', true));
+            $config = $app->make(ConfigRepository::class);
 
             return new PaymentGatewayFactory(
                 $app->make(HttpClient::class),
                 $app->make(CredentialResolver::class),
-                $eventsEnabled ? $app->make(EventDispatcher::class) : null,
+                Value::bool($config->get('gateway.events.enabled', true)) ? $app->make(EventDispatcher::class) : null,
+                Value::bool($config->get('gateway.log_operations')) ? $app->make(LoggerInterface::class) : null,
             );
         });
     }

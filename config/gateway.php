@@ -80,6 +80,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Operation logging
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, every gateway driver is wrapped in a LoggingGateway that logs
+    | each operation (with its duration and safe correlation context — gateway,
+    | order/transaction ids, amount) through the application's PSR-3 logger. The
+    | context carries no PAN, cvv, or tokens, and sensitive keys are masked as a
+    | backstop. This is distinct from `http.logging`, which logs the lower-level
+    | HTTP request/response metadata.
+    |
+    */
+    'log_operations' => (bool) env('GATEWAY_LOG_OPERATIONS', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Gateway credentials (fallback)
     |--------------------------------------------------------------------------
     |
