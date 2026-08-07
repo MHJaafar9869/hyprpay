@@ -35,7 +35,7 @@ final readonly class CheckoutSessionRequest
      * @param  Customer|null  $customer  Optional customer profile (id/email/name) for the payment
      * @param  string|null  $paymentMethod  Gateway-specific method selector (e.g. Fawry: hosted, PayUsingCC, MWALLET, PAYATFAWRY)
      * @param  string|null  $description  Human-readable description of the order/items
-     * @param  array<string, mixed>  $options  Gateway-specific extras (e.g. Fawry card=[number,expiryMonth,expiryYear,cvv], wallet_number, customer_mobile)
+     * @param  array<string, mixed>  $options  Gateway-specific extras (e.g. Fawry card=[number,expiryMonth,expiryYear,cvv], wallet_number, customer_mobile; PayLink iframe=true for an embeddable checkout URL, plus webhook_url)
      */
     public function __construct(
         public Money $money,

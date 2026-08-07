@@ -197,7 +197,8 @@ final readonly class StartPaymobCheckout
 }
 ```
 
-**PayLink** — create an invoice and redirect to the hosted checkout:
+**PayLink** — create an invoice and redirect to the hosted checkout (or pass
+`options: ['iframe' => true]` to get an iframe-ready `redirectUrl` to embed instead):
 
 ```php
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
@@ -220,12 +221,32 @@ final readonly class StartPaylinkCheckout
                 description: 'Gold Plan',
                 returnUrl: 'https://shop.test/return',
                 customer: new Customer(email: 'john@example.com', firstName: 'John', lastName: 'Doe'),
-                options: ['webhook_url' => 'https://shop.test/webhook'],
+                options: ['webhook_url' => 'https://shop.test/webhook', 'iframe' => true],
             ));
 
-        // redirect to $session->redirectUrl; reconcile later by $session->reference (invoice id)
+        // embed $session->redirectUrl in an <iframe> (or redirect to it without iframe);
+        // reconcile later by $session->reference (invoice id)
     }
 }
+```
+
+In iframe mode the returned `redirectUrl` is embedded rather than redirected to. The
+frame needs `allow="payment *"` (so Apple Pay / Google Pay work inside it), and the
+checkout signals completion to the parent window via `postMessage` — a
+`{ type: 'paylink_payment', success }` event from your PayLink origin — instead of
+redirecting. The embedding page's origin must match your integration's registered
+Origin, or the browser blocks framing.
+
+```html
+<iframe src="$session->redirectUrl" allow="payment *"
+        style="width:100%;min-height:640px;border:0" title="Secure checkout"></iframe>
+<script>
+  addEventListener('message', function (e) {
+    if (e.origin !== 'https://pay.getpayin.com') return;
+    if (e.data?.type !== 'paylink_payment') return;
+    window.location.href = e.data.success ? '/thank-you' : '/checkout?failed=1';
+  });
+</script>
 ```
 
 Passing credentials explicitly per call — this skips the resolver, so it works for
@@ -251,7 +272,7 @@ everywhere.
 
 | Operation | CyberSource UC | Fawry | Paymob | PayLink |
 | --- | :---: | :---: | :---: | :---: |
-| `createCheckoutSession` | ✅ capture context | ✅ hosted / card / wallet / pay-at-Fawry / MyFawry / instalment | ✅ iframe flow | ✅ invoice link |
+| `createCheckoutSession` | ✅ capture context | ✅ hosted / card / wallet / pay-at-Fawry / MyFawry / instalment | ✅ iframe flow | ✅ invoice link / iframe |
 | `charge` (transient token) | ✅ | — | — | — |
 | `capture` | ✅ | ✅ (Auth/Capture) | ✅ | ✅ (settle) |
 | `refund` | ✅ | ✅ | ✅ | ✅ |

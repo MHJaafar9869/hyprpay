@@ -10,9 +10,9 @@ namespace Hyprpay\Payments\Infrastructure\Gateway\Paylink;
  * Each case's backing value is its request path, and {@see fields()} returns the
  * request fields in the EXACT order the server concatenates them when it rebuilds
  * the HMAC signature (the FormRequest `rules()` order, minus `token`/`signature`).
- * A field flagged unsigned (`payment_mode`) is sent in the body but excluded from
- * the signature. This mirrors the shared golden-signature contract used by every
- * PayLink SDK.
+ * Fields flagged unsigned (`payment_mode`, `iframe`) are sent in the body but
+ * excluded from the signature. This mirrors the shared golden-signature contract
+ * used by every PayLink SDK.
  */
 enum PaylinkEndpoint: string
 {
@@ -46,6 +46,7 @@ enum PaylinkEndpoint: string
                 ['name' => 'webhook_url', 'signed' => true],
                 ['name' => 'order_details', 'signed' => true],
                 ['name' => 'payment_mode', 'signed' => false],
+                ['name' => 'iframe', 'signed' => false],
             ],
             self::Void, self::ReverseAuthorization, self::CheckStatus => [
                 ['name' => 'invoice_id', 'signed' => true],
