@@ -26,6 +26,7 @@
   --paymob:  #8ab4ff;
   --paylink: #f79fd6;
   --paytabs: #c3a6ff;
+  --paypal:  #38bdf8;
 
   --display: "Bricolage Grotesque", "Times New Roman", serif;
   --sans:    "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
@@ -61,6 +62,7 @@
   --paymob:  #2f66cf;
   --paylink: #bb3f86;
   --paytabs: #6b3fce;
+  --paypal:  #0369a1;
 
   color-scheme: light;
 }
@@ -507,6 +509,7 @@ code:not(pre code) {
 .d.paymob { background: var(--paymob); box-shadow: 0 0 10px var(--paymob); }
 .d.paylink { background: var(--paylink); box-shadow: 0 0 10px var(--paylink); }
 .d.paytabs { background: var(--paytabs); box-shadow: 0 0 10px var(--paytabs); }
+.d.paypal { background: var(--paypal); box-shadow: 0 0 10px var(--paypal); }
 
 /* ── gateway deck (card stack, all screens) ───────────────── */
 .deck { display: none; max-width: 640px; } /* .js swaps the table for the deck; table is the no-JS fallback */
@@ -670,6 +673,7 @@ code:not(pre code) {
   --paymob: #8ab4ff;
   --paylink: #f79fd6;
   --paytabs: #c3a6ff;
+  --paypal: #38bdf8;
   background: var(--ink-1);
   border: 1px solid var(--line);
   border-radius: 0;

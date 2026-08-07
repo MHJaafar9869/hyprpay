@@ -5,7 +5,8 @@
     fawry:   { name: 'Fawry',   enumCase: 'Fawry',   hue: 'var(--fawry)',   sign: 'SHA-256',     ret: 'redirectUrl (hosted page)' },
     paymob:  { name: 'Paymob',  enumCase: 'Paymob',  hue: 'var(--paymob)',  sign: 'HMAC-SHA512', ret: 'redirectUrl (iframe)' },
     paylink: { name: 'PayLink', enumCase: 'Paylink', hue: 'var(--paylink)', sign: 'HMAC-SHA256', ret: 'redirectUrl (invoice / iframe)' },
-    paytabs: { name: 'PayTabs', enumCase: 'Paytabs', hue: 'var(--paytabs)', sign: 'server key + HMAC-SHA256', ret: 'redirectUrl (hosted page)' }
+    paytabs: { name: 'PayTabs', enumCase: 'Paytabs', hue: 'var(--paytabs)', sign: 'server key + HMAC-SHA256', ret: 'redirectUrl (hosted page)' },
+    paypal:  { name: 'PayPal',  enumCase: 'PayPal',  hue: 'var(--paypal)',  sign: 'OAuth 2.0 client credentials', ret: 'redirectUrl (approval link)' }
   };
   var opts     = [].slice.call(document.querySelectorAll('.gw-opt'));
   var sections = [].slice.call(document.querySelectorAll('.doc-section'));
