@@ -35,7 +35,7 @@ final readonly class CheckoutSessionRequest
      * @param  Customer|null  $customer  Optional customer profile (id/email/name) for the payment
      * @param  string|null  $paymentMethod  Gateway-specific method selector (e.g. Fawry: hosted, PayUsingCC, MWALLET, PAYATFAWRY)
      * @param  string|null  $description  Human-readable description of the order/items
-     * @param  array<string, mixed>  $options  Gateway-specific extras (e.g. Fawry card=[number,expiryMonth,expiryYear,cvv], wallet_number, customer_mobile; PayLink iframe=true for an embeddable checkout URL, plus webhook_url)
+     * @param  array<string, mixed>|CheckoutOptions  $options  Gateway-specific extras, either a typed per-gateway options DTO (e.g. PayPalCheckoutOptions) or a raw key/value bag (e.g. Fawry wallet_number/customer_mobile; PayLink iframe=true plus webhook_url). Drivers read it via {@see optionsArray()} or by narrowing to their own CheckoutOptions type.
      */
     public function __construct(
         public Money $money,
@@ -52,6 +52,20 @@ final readonly class CheckoutSessionRequest
         public ?Customer $customer = null,
         public ?string $paymentMethod = null,
         public ?string $description = null,
-        public array $options = [],
+        public array|CheckoutOptions $options = [],
     ) {}
+
+    /**
+     * Normalise the options to a raw key/value array.
+     *
+     * Returns the array as given, or a typed {@see CheckoutOptions} rendered through its
+     * {@see CheckoutOptions::toArray()} — so a driver that has not adopted a typed options
+     * DTO can keep reading option keys uniformly.
+     *
+     * @return array<string, mixed>
+     */
+    public function optionsArray(): array
+    {
+        return $this->options instanceof CheckoutOptions ? $this->options->toArray() : $this->options;
+    }
 }

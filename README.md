@@ -294,6 +294,8 @@ use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
+use Hyprpay\Payments\Infrastructure\Gateway\PayPal\PayPalCheckoutOptions;
+use Hyprpay\Payments\Infrastructure\Gateway\PayPal\Enums\PayPalUserAction;
 
 $paypal = $factory->make(GatewayName::PayPal);
 
@@ -303,7 +305,11 @@ $session = $paypal->createCheckoutSession(new CheckoutSessionRequest(
     orderReference: 'ORDER-127',
     description: 'Gold Plan',
     returnUrl: 'https://shop.test/return',   // PayPal redirects here after approval
-    options: ['cancel_url' => 'https://shop.test/cancel', 'brand_name' => 'Example'],
+    options: new PayPalCheckoutOptions(      // typed, per-gateway options — no ambiguous array
+        cancelUrl: 'https://shop.test/cancel',
+        brandName: 'Example',
+        userAction: PayPalUserAction::PayNow,
+    ),
 ));
 
 // redirect to $session->redirectUrl (PayPal's approval page);
@@ -355,7 +361,12 @@ everywhere.
 
 Provider-specific inputs (e.g. Fawry payment method, Paymob integration/iframe ids,
 card or wallet details) are passed through `CheckoutSessionRequest::$options` and the
-`GatewayCredentials::$extra` bag.
+`GatewayCredentials::$extra` bag. `$options` accepts either a raw key/value array or a
+typed, per-gateway options DTO implementing `CheckoutOptions` — **PayPal** ships
+`PayPalCheckoutOptions` (with `PayPalUserAction` / `PayPalShippingPreference` /
+`PayPalPaymentMethodPreference` enums) so the buyer-experience fields are named and
+type-checked rather than stringly-typed. Drivers read whichever form was supplied via
+`CheckoutSessionRequest::optionsArray()`, so passing an array stays fully supported.
 
 For **PayTabs**, `paymentMethod` selects the integration type: `invoice` (an emailable
 Invoice link), `managed` (an iframe-embeddable Managed Form), `paylink` (a reusable

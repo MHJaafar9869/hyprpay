@@ -17,6 +17,10 @@ use Hyprpay\Payments\Domain\Http\HttpRequest;
 use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
 use Hyprpay\Payments\Domain\ValueObject\Money;
+use Hyprpay\Payments\Infrastructure\Gateway\PayPal\Enums\PayPalPaymentMethodPreference;
+use Hyprpay\Payments\Infrastructure\Gateway\PayPal\Enums\PayPalShippingPreference;
+use Hyprpay\Payments\Infrastructure\Gateway\PayPal\Enums\PayPalUserAction;
+use Hyprpay\Payments\Infrastructure\Gateway\PayPal\PayPalCheckoutOptions;
 use Hyprpay\Payments\Infrastructure\Gateway\PayPal\PayPalGateway;
 use Hyprpay\Payments\Infrastructure\Http\FakeHttpClient;
 
@@ -87,7 +91,53 @@ it('creates an order and returns the approval redirect URL', function (): void {
         ->and(paypalBody($http)['intent'])->toBe('CAPTURE')
         ->and(paypalBody($http)['purchase_units'][0]['amount'])->toBe(['currency_code' => 'USD', 'value' => '100.00'])
         ->and(paypalBody($http)['purchase_units'][0]['custom_id'])->toBe('ORD1')
-        ->and(paypalBody($http)['payment_source']['paypal']['experience_context']['return_url'])->toBe('https://shop.test/return');
+        ->and(paypalBody($http)['payment_source']['paypal']['experience_context']['return_url'])->toBe('https://shop.test/return')
+        ->and(paypalBody($http)['payment_source']['paypal']['experience_context']['cancel_url'])->toBe('https://shop.test/return')
+        ->and(paypalBody($http)['payment_source']['paypal']['experience_context']['user_action'])->toBe('PAY_NOW')
+        ->and(paypalBody($http)['payment_source']['paypal']['experience_context']['shipping_preference'])->toBe('NO_SHIPPING');
+});
+
+it('applies typed PayPalCheckoutOptions to the experience context', function (): void {
+    $http = paypalHttp()->queueJson(['id' => 'ORDER123', 'status' => 'PAYER_ACTION_REQUIRED', 'links' => []]);
+
+    (new PayPalGateway(paypalCredentials(), $http))->createCheckoutSession(new CheckoutSessionRequest(
+        money: Money::minor(10000, 'USD'),
+        orderReference: 'ORD1',
+        returnUrl: 'https://shop.test/return',
+        options: new PayPalCheckoutOptions(
+            cancelUrl: 'https://shop.test/cancel',
+            brandName: 'Example Store',
+            locale: 'en-GB',
+            shippingPreference: PayPalShippingPreference::SetProvidedAddress,
+            userAction: PayPalUserAction::Continue_,
+            paymentMethodPreference: PayPalPaymentMethodPreference::ImmediatePaymentRequired,
+        ),
+    ));
+
+    $context = paypalBody($http)['payment_source']['paypal']['experience_context'];
+
+    expect($context['return_url'])->toBe('https://shop.test/return')
+        ->and($context['cancel_url'])->toBe('https://shop.test/cancel')
+        ->and($context['brand_name'])->toBe('Example Store')
+        ->and($context['locale'])->toBe('en-GB')
+        ->and($context['shipping_preference'])->toBe('SET_PROVIDED_ADDRESS')
+        ->and($context['user_action'])->toBe('CONTINUE')
+        ->and($context['payment_method_preference'])->toBe('IMMEDIATE_PAYMENT_REQUIRED');
+});
+
+it('still accepts a legacy options array for the experience context', function (): void {
+    $http = paypalHttp()->queueJson(['id' => 'ORDER123', 'status' => 'PAYER_ACTION_REQUIRED', 'links' => []]);
+
+    (new PayPalGateway(paypalCredentials(), $http))->createCheckoutSession(new CheckoutSessionRequest(
+        money: Money::minor(10000, 'USD'),
+        returnUrl: 'https://shop.test/return',
+        options: ['brand_name' => 'Legacy Store', 'user_action' => 'CONTINUE'],
+    ));
+
+    $context = paypalBody($http)['payment_source']['paypal']['experience_context'];
+
+    expect($context['brand_name'])->toBe('Legacy Store')
+        ->and($context['user_action'])->toBe('CONTINUE');
 });
 
 it('creates an authorize-intent order when the payment method is authorize', function (): void {

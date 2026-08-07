@@ -71,7 +71,7 @@ final class FawryChargePayload
     public static function wallet(CheckoutSessionRequest $request, GatewayCredentials $credentials): array
     {
         $amount = $request->money->toDecimalString();
-        $walletNumber = Value::string($request->options['wallet_number'] ?? null);
+        $walletNumber = Value::string($request->optionsArray()['wallet_number'] ?? null);
 
         $body = self::base($request, $credentials, FawryPaymentMethod::MobileWallet->value, $amount);
         $body['debitMobileWalletNo'] = $walletNumber;
@@ -150,7 +150,7 @@ final class FawryChargePayload
     {
         $amount = $request->money->toDecimalString();
         $card = self::cardDetails($request);
-        $planId = Value::string($request->options['installment_plan_id'] ?? null);
+        $planId = Value::string($request->optionsArray()['installment_plan_id'] ?? null);
 
         $body = self::withCardFields(
             self::base($request, $credentials, FawryPaymentMethod::CardInstallment->value, $amount),

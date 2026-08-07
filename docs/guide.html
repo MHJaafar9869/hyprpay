@@ -192,7 +192,11 @@
     <span class="a">description:</span> <span class="s">'Gold Plan'</span>,
     <span class="a">returnUrl:</span> <span class="s">'https://shop.test/return'</span>, <span class="c">// PayPal redirects here after approval</span>
     <span class="a">paymentMethod:</span> <span class="s">'authorize'</span>,        <span class="c">// omit to capture on approval (intent CAPTURE)</span>
-    <span class="a">options:</span> [<span class="s">'cancel_url'</span> =&gt; <span class="s">'https://shop.test/cancel'</span>, <span class="s">'brand_name'</span> =&gt; <span class="s">'Example'</span>],
+    <span class="a">options:</span> <span class="k">new</span> <span class="t">PayPalCheckoutOptions</span>(  <span class="c">// typed options — no ambiguous array</span>
+        <span class="a">cancelUrl:</span> <span class="s">'https://shop.test/cancel'</span>,
+        <span class="a">brandName:</span> <span class="s">'Example'</span>,
+        <span class="a">userAction:</span> <span class="t">PayPalUserAction</span>::<span class="cn">PayNow</span>,
+    ),
 ));
 
 <span class="c">// redirect to $session->redirectUrl (PayPal approval page);</span>

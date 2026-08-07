@@ -47,19 +47,20 @@ final class PaytabsPayload
     public static function hosted(CheckoutSessionRequest $request, GatewayCredentials $credentials): array
     {
         $customerDetails = self::customerDetails($request->customer, $request->billTo);
+        $options = $request->optionsArray();
 
         $body = self::withoutNulls([
             'profile_id' => self::profileId($credentials),
             'tran_type' => self::tranType($request->paymentMethod),
-            'tran_class' => Value::string($request->options['tran_class'] ?? null, 'ecom'),
+            'tran_class' => Value::string($options['tran_class'] ?? null, 'ecom'),
             'cart_id' => $request->orderReference,
             'cart_description' => $request->description ?? 'Payment',
             'cart_currency' => $request->money->currency,
             'cart_amount' => $request->money->toDecimalString(),
             'paypage_lang' => self::language($request, $credentials),
             'return' => $request->returnUrl,
-            'callback' => Value::nullableString($request->options['webhook_url'] ?? null),
-            'tokenise' => isset($request->options['tokenise']) ? Value::int($request->options['tokenise']) : null,
+            'callback' => Value::nullableString($options['webhook_url'] ?? null),
+            'tokenise' => isset($options['tokenise']) ? Value::int($options['tokenise']) : null,
             'agreement' => self::agreement($request),
             'split_payout' => self::splitPayout($request),
             'customer_details' => $customerDetails === [] ? null : $customerDetails,
@@ -296,7 +297,7 @@ final class PaytabsPayload
      */
     private static function agreement(CheckoutSessionRequest $request): ?array
     {
-        $agreement = $request->options['agreement'] ?? null;
+        $agreement = $request->optionsArray()['agreement'] ?? null;
 
         if (! is_array($agreement) || $agreement === []) {
             return null;
@@ -321,7 +322,8 @@ final class PaytabsPayload
      */
     private static function framedFields(CheckoutSessionRequest $request, bool $force): array
     {
-        $enabled = $force || filter_var($request->options['iframe'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $options = $request->optionsArray();
+        $enabled = $force || filter_var($options['iframe'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         if (! $enabled) {
             return [];
@@ -331,7 +333,7 @@ final class PaytabsPayload
             'framed' => true,
             'framed_return_top' => self::optionalBool($request, 'framed_return_top'),
             'framed_return_parent' => self::optionalBool($request, 'framed_return_parent'),
-            'framed_message_target' => Value::nullableString($request->options['framed_message_target'] ?? null),
+            'framed_message_target' => Value::nullableString($options['framed_message_target'] ?? null),
         ]);
     }
 
@@ -340,11 +342,13 @@ final class PaytabsPayload
      */
     private static function optionalBool(CheckoutSessionRequest $request, string $key): ?bool
     {
-        if (! array_key_exists($key, $request->options)) {
+        $options = $request->optionsArray();
+
+        if (! array_key_exists($key, $options)) {
             return null;
         }
 
-        return filter_var($request->options[$key], FILTER_VALIDATE_BOOLEAN);
+        return filter_var($options[$key], FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
@@ -358,7 +362,7 @@ final class PaytabsPayload
      */
     private static function splitPayout(CheckoutSessionRequest $request): ?array
     {
-        $split = $request->options['split_payout'] ?? null;
+        $split = $request->optionsArray()['split_payout'] ?? null;
 
         if (! is_array($split) || $split === []) {
             return null;
@@ -374,7 +378,7 @@ final class PaytabsPayload
      */
     private static function lineItems(CheckoutSessionRequest $request): array
     {
-        $items = $request->options['line_items'] ?? null;
+        $items = $request->optionsArray()['line_items'] ?? null;
 
         if (is_array($items) && $items !== []) {
             return array_values($items);

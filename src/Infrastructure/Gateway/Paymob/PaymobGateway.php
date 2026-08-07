@@ -91,7 +91,7 @@ final class PaymobGateway extends AbstractPaymentGateway
                 Value::string($orderId),
                 $authToken,
                 $integrationId,
-                Value::int($request->options['expiration'] ?? self::DEFAULT_EXPIRATION_SECONDS, self::DEFAULT_EXPIRATION_SECONDS),
+                Value::int($request->optionsArray()['expiration'] ?? self::DEFAULT_EXPIRATION_SECONDS, self::DEFAULT_EXPIRATION_SECONDS),
             ),
             $authToken,
             'create payment key',
@@ -267,7 +267,7 @@ final class PaymobGateway extends AbstractPaymentGateway
      */
     private function integrationId(CheckoutSessionRequest $request, PaymobPaymentMethod $method): string
     {
-        $integrationId = $request->options['integration_id']
+        $integrationId = $request->optionsArray()['integration_id']
             ?? $this->gatewayCredentials->extra("integrations.{$method->value}");
 
         if (blank($integrationId)) {
@@ -286,7 +286,7 @@ final class PaymobGateway extends AbstractPaymentGateway
      */
     private function iframeId(CheckoutSessionRequest $request, PaymobPaymentMethod $method): ?string
     {
-        $iframeId = $request->options['iframe_id']
+        $iframeId = $request->optionsArray()['iframe_id']
             ?? $this->gatewayCredentials->extra("iframes.{$method->value}");
 
         return Value::nullableString($iframeId);

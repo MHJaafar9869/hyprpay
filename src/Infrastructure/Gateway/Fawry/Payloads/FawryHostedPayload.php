@@ -40,8 +40,10 @@ final class FawryHostedPayload
             'description' => FawryFields::description($request),
         ];
 
-        if (isset($request->options['webhook_url'])) {
-            $body['orderWebHookUrl'] = Value::string($request->options['webhook_url']);
+        $options = $request->optionsArray();
+
+        if (isset($options['webhook_url'])) {
+            $body['orderWebHookUrl'] = Value::string($options['webhook_url']);
         }
 
         $body['signature'] = FawrySignature::hostedInit(

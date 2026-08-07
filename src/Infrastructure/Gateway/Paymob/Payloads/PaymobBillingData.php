@@ -31,7 +31,7 @@ final class PaymobBillingData
             'first_name' => self::value($customerFirstName ?? $billTo?->firstName),
             'last_name' => self::value($customerLastName ?? $billTo?->lastName),
             'email' => self::value($customerEmail ?? $billTo?->email),
-            'phone_number' => self::value($request->options['customer_mobile'] ?? $billTo?->phoneNumber),
+            'phone_number' => self::value($request->optionsArray()['customer_mobile'] ?? $billTo?->phoneNumber),
             'apartment' => self::value($billTo?->address2),
             'floor' => 'NA',
             'street' => self::value($billTo?->address1),

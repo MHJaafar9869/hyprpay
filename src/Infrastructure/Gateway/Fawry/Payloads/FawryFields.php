@@ -79,9 +79,10 @@ final class FawryFields
     public static function customerEmail(CheckoutSessionRequest $request): ?string
     {
         $customerEmail = $request->customer?->email;
+        $options = $request->optionsArray();
 
         return $customerEmail
-            ?? (isset($request->options['customer_email']) ? Value::string($request->options['customer_email']) : null);
+            ?? (isset($options['customer_email']) ? Value::string($options['customer_email']) : null);
     }
 
     /**
@@ -89,7 +90,9 @@ final class FawryFields
      */
     public static function customerMobile(CheckoutSessionRequest $request): ?string
     {
-        return isset($request->options['customer_mobile']) ? Value::string($request->options['customer_mobile']) : null;
+        $options = $request->optionsArray();
+
+        return isset($options['customer_mobile']) ? Value::string($options['customer_mobile']) : null;
     }
 
     /**
