@@ -243,14 +243,19 @@ composer require hyprpay/payments</code></pre></div>
           </li>
           <li>
             <h4><span>2</span> Configure <small>(optional)</small></h4>
-            <div class="code sm"><pre><code>php artisan vendor:publish <span class="p">\</span>
-  --tag=gateway-config</code></pre></div>
+            <div class="code sm"><pre><code>php artisan vendor:publish --tag=gateway-config</code></pre></div>
           </li>
           <li>
-            <h4><span>3</span> Reconcile from the CLI</h4>
-            <div class="code sm"><pre><code>php artisan gateway:reconcile:fawry <span class="p">\</span>
-  ORDER-124 ORDER-125</code></pre></div>
-            <p class="steps-note">Exits non-zero if any id can't be reconciled — drops straight into a scheduler or CI health check.</p>
+            <h4><span>3</span> Bind your ports</h4>
+            <div class="code sm"><pre><code><span class="v">$this</span>-&gt;app-&gt;<span class="fn">bind</span>(<span class="t">HttpClient</span>::<span class="k">class</span>, <span class="t">MyHttpClient</span>::<span class="k">class</span>);
+<span class="v">$this</span>-&gt;app-&gt;<span class="fn">bind</span>(<span class="t">CredentialResolver</span>::<span class="k">class</span>, <span class="t">MyCredentialResolver</span>::<span class="k">class</span>);</code></pre></div>
+            <p class="steps-note">External services are fully decoupled. <code>CredentialResolver</code> seamlessly resolves single-tenant static configs and multi-tenant per-tenant credentials.</p>
+          </li>
+          <li>
+            <h4><span>4</span> Charge</h4>
+            <div class="code sm"><pre><code><span class="v">$gateway</span> = <span class="v">$this</span>-&gt;gateways-&gt;<span class="fn">make</span>(<span class="t">GatewayName</span>::<span class="cn">Fawry</span>);
+<span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="v">$request</span>);</code></pre></div>
+            <p class="steps-note">One <code>charge()</code> call works across every gateway. The factory resolves the driver, so you program against one contract.</p>
           </li>
         </ol>
 

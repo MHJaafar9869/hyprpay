@@ -743,6 +743,8 @@ code:not(pre code) {
   .code pre { font-size: 12px; }
   .card, .gw { padding-left: 20px; padding-right: 20px; }
   .section-head h2, .cta h2 { font-size: clamp(26px, 7vw, 34px); }
+  .hero-title { font-size: clamp(25px, 7.3vw, 40px); margin-bottom: 20px; }
+  .hero-sub { font-size: 16px; margin-bottom: 30px; }
 }
 
 @media (max-width: 420px) {
