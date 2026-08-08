@@ -15,9 +15,8 @@ released minor version. Until a `1.0.0` release, please track the latest `0.x`.
 **Please do not open a public issue, pull request, or discussion for security
 vulnerabilities.**
 
-Report suspected vulnerabilities privately to **security@getpayin.com**. If you use
-GitHub, you may instead open a private advisory via the repository's
-**Security → Report a vulnerability** page.
+Report suspected vulnerabilities privately by opening a private advisory via the
+repository's **Security → Report a vulnerability** page.
 
 Please include:
 
