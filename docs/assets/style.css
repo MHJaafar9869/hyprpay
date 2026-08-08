@@ -189,9 +189,18 @@ code:not(pre code) {
   max-width: var(--maxw);
   margin: 0 auto;
   padding: 16px 24px;
-  background: color-mix(in oklab, var(--ink) 72%, transparent);
-  backdrop-filter: blur(14px) saturate(1.3);
+  /* opaque fallback: older iOS Safari / in-app WebViews support neither backdrop-filter
+     nor color-mix, and a translucent bar with no blur lets content bleed through */
+  background: var(--ink);
   border-bottom: 1px solid var(--line);
+}
+/* frosted glass only where the blur actually renders, so the bar is never see-through */
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .nav {
+    background: color-mix(in oklab, var(--ink) 72%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(1.3);
+    backdrop-filter: blur(14px) saturate(1.3);
+  }
 }
 .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; }
 .brand-mark {
