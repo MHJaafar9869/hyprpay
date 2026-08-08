@@ -8,6 +8,7 @@ use Hyprpay\Payments\Domain\Contract\HttpClient;
 use Hyprpay\Payments\Domain\Exception\GatewayRequestException;
 use Hyprpay\Payments\Domain\Http\HttpRequest;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
+use Hyprpay\Payments\Infrastructure\Support\Value;
 use JsonException;
 
 /**
@@ -54,7 +55,11 @@ final readonly class PaylinkClient
             throw GatewayRequestException::fromResponse($response, $context);
         }
 
-        return $response->json();
+        $json = $response->json();
+
+        // PayLink wraps successful payloads in a { "data": {...}, "success": true }
+        // envelope; unwrap it so callers read the response fields directly.
+        return is_array($json['data'] ?? null) ? Value::array($json['data']) : $json;
     }
 
     /**
