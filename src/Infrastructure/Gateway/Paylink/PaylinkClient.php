@@ -57,8 +57,6 @@ final readonly class PaylinkClient
 
         $json = $response->json();
 
-        // PayLink wraps successful payloads in a { "data": {...}, "success": true }
-        // envelope; unwrap it so callers read the response fields directly.
         return is_array($json['data'] ?? null) ? Value::array($json['data']) : $json;
     }
 
