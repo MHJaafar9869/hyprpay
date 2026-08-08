@@ -1,6 +1,9 @@
 # hyprpay/payments
 
 [![CI](https://github.com/MHJaafar9869/hyprpay/actions/workflows/ci.yml/badge.svg)](https://github.com/MHJaafar9869/hyprpay/actions/workflows/ci.yml)
+[![Latest Release](https://img.shields.io/github/v/release/MHJaafar9869/hyprpay)](https://github.com/MHJaafar9869/hyprpay/releases/latest)
+[![PHP Version](https://img.shields.io/badge/php-%E2%89%A5%208.2-777bb4)](composer.json)
+[![License: MIT](https://img.shields.io/github/license/MHJaafar9869/hyprpay)](LICENSE)
 
 📖 **Documentation:** <https://mhjaafar9869.github.io/hyprpay/>
 
