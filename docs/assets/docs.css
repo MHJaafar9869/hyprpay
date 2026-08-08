@@ -121,8 +121,10 @@
 /* ═══════════════  CENTER — content  ═══════════════ */
 .doc { min-width: 0; padding-bottom: 80px; }
 
-.doc-section { scroll-margin-top: calc(var(--nav-h) + 24px); padding-top: 12px; }
+.doc-section { scroll-margin-top: calc(var(--nav-h) + 24px); padding-top: 12px; min-width: 0; }
 .doc-section + .doc-section { margin-top: 56px; }
+/* long unbreakable tokens (class paths, file names) must wrap, not force the page wide */
+.doc :is(p, li) code { overflow-wrap: anywhere; }
 
 .doc-section > h2 {
   font-family: var(--display);
@@ -345,7 +347,7 @@
   .gw-nav-note { display: none; }
 }
 @media (max-width: 900px) {
-  .doc-shell { grid-template-columns: 1fr; gap: 20px; }
+  .doc-shell { grid-template-columns: minmax(0, 1fr); gap: 20px; }
   /* the action list becomes a compact, scrollable box so it doesn't push content down */
   .tree {
     position: static;
