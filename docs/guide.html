@@ -58,9 +58,9 @@
 <section class="doc-hero">
   <p class="kicker">Documentation</p>
   <h1>Pick a gateway. <em>See its actions.</em></h1>
-  <p>Choose a gateway on the right and the page scopes to that driver — the left lists each of its
-     operations in lifecycle order, and the center documents them one at a time, from creating a
-     checkout through refunds, status lookups and webhooks.</p>
+  <p>Choose a gateway and the page scopes to that driver — you get every operation it supports,
+     listed in lifecycle order and documented one at a time, from creating a checkout through
+     refunds, status lookups and webhooks.</p>
 </section>
 
 <div class="doc-shell">
@@ -110,8 +110,8 @@
 <pre><code><span class="v">$gateway</span> = <span class="v">$gateways</span>-&gt;<span class="fn">make</span>(<span class="t">GatewayName</span>::<span class="cn" data-gwenum>CybersourceUnifiedCheckout</span>);
 <span class="c">// every action below is called on $gateway</span></code></pre>
       </div>
-      <p>An action a gateway doesn't support throws <code>UnsupportedOperationException</code>, so the list
-         on the left only shows what this driver actually implements.</p>
+      <p>An action a gateway doesn't support throws <code>UnsupportedOperationException</code>, so the
+         action list only shows what this driver actually implements.</p>
     </section>
 
     <section id="create-checkout" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal">
@@ -708,7 +708,7 @@
       <li role="presentation"><button class="gw-opt" role="tab" data-gw="paypal"  aria-selected="false" style="--g:var(--paypal)">PayPal</button></li>
       <li role="presentation"><button class="gw-opt" role="tab" data-gw="misc"    aria-selected="false" style="--g:var(--muted)">Misc</button></li>
     </ul>
-    <p class="gw-nav-note">Switching a gateway rescopes the actions on the left and the examples in the center to that driver.</p>
+    <p class="gw-nav-note">Switching a gateway rescopes the action list and the examples to that driver.</p>
   </aside>
 
 </div>
