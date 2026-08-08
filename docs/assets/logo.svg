@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="HyprPay">
+  <rect x="1" y="1" width="98" height="98" rx="24" fill="#0b0c0b" stroke="#1b1e25" stroke-width="1.5"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="12">
+    <polyline points="24,31 46,50 24,69" stroke="#c8f14e"/>
+    <polyline points="49,31 71,50 49,69" stroke="#5e7726"/>
+  </g>
+</svg>
