@@ -182,8 +182,8 @@
       <article class="gw reveal" style="--gw:var(--paylink)">
         <header><span class="gw-tag">PayLink</span><span class="gw-sig">HMAC-SHA256</span></header>
         <h3>Invoice link</h3>
-        <p>Create an invoice, then redirect to the hosted checkout or embed it in an iframe, and reconcile later by invoice id. Supports settle, refund, void, reverse-authorization, and card tokenization — store a card in the TMS-backed vault and revoke it.</p>
-        <footer>invoice · iframe · settle · refund · reverse · vault</footer>
+        <p>Create an invoice, then redirect to the hosted checkout or embed it in an iframe, and reconcile later by invoice id. Supports settle, refund, void, reverse-authorization, and card tokenization — store a card in the TMS-backed vault, charge it as a stored credential, and revoke it.</p>
+        <footer>invoice · iframe · settle · refund · reverse · vault · charge</footer>
       </article>
       <article class="gw reveal" style="--gw:var(--paytabs)">
         <header><span class="gw-tag">PayTabs</span><span class="gw-sig">Server key</span></header>
@@ -238,7 +238,7 @@
           <tr><th scope="row"><code>void</code></th><td class="y">✓</td><td class="y">cancel auth</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
           <tr><th scope="row"><code>reverseAuthorization</code></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="y">release</td><td class="n">—</td><td class="y">✓</td></tr>
           <tr><th scope="row"><code>enroll</code> / <code>validatePayerAuth</code> <small>(3-DS)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td></tr>
-          <tr><th scope="row"><code>vault</code> / <code>chargeStoredCredential</code></th><td class="y">TMS · MIT/CIT</td><td class="n">—</td><td class="n">—</td><td class="y">vault · revoke</td><td class="y">token · MIT/CIT</td><td class="y">vault · MIT/CIT</td><td class="y">token · MIT/CIT</td></tr>
+          <tr><th scope="row"><code>vault</code> / <code>chargeStoredCredential</code></th><td class="y">TMS · MIT/CIT</td><td class="n">—</td><td class="n">—</td><td class="y">vault · charge · revoke</td><td class="y">token · MIT/CIT</td><td class="y">vault · MIT/CIT</td><td class="y">token · MIT/CIT</td></tr>
           <tr><th scope="row"><code>getTransaction</code> / <code>searchTransaction</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">query</td><td class="y">order lookup</td><td class="y">order lookup</td></tr>
           <tr><th scope="row"><code>verifyWebhook</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">API</td><td class="y">secret</td></tr>
         </tbody>
@@ -306,7 +306,7 @@
             <div class="op"><dt>void</dt><dd>&#10003;</dd></div>
             <div class="op"><dt>reverseAuthorization</dt><dd>&#10003;</dd></div>
             <div class="op off"><dt>enroll / validatePayerAuth</dt><dd>&mdash;</dd></div>
-            <div class="op"><dt>vault / chargeStoredCredential</dt><dd>vault &middot; revoke</dd></div>
+            <div class="op"><dt>vault / chargeStoredCredential</dt><dd>vault &middot; charge &middot; revoke</dd></div>
             <div class="op"><dt>getTransaction / searchTransaction</dt><dd>&#10003;</dd></div>
             <div class="op"><dt>verifyWebhook</dt><dd>&#10003;</dd></div>
           </dl>
