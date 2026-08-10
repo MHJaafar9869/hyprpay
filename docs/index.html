@@ -164,8 +164,8 @@
       <article class="gw reveal" style="--gw:var(--cyber)">
         <header><span class="gw-tag">CyberSource</span><span class="gw-sig">HMAC HTTP-Signature</span></header>
         <h3>Unified Checkout</h3>
-        <p>Mint a capture context for the widget, charge the transient token, run 3-DS payer-auth, and vault instruments for MIT/CIT stored credentials.</p>
-        <footer>capture context · charge · 3-DS · TMS vault</footer>
+        <p>Mint a capture context for the widget, charge the transient token or run the orchestrated flow and verify the signed result JWT, run 3-DS payer-auth, and vault instruments for MIT/CIT stored credentials.</p>
+        <footer>capture context · charge · orchestrated confirm · 3-DS · TMS vault</footer>
       </article>
       <article class="gw reveal" style="--gw:var(--fawry)">
         <header><span class="gw-tag">Fawry</span><span class="gw-sig">SHA-256</span></header>
@@ -231,8 +231,9 @@
           </tr>
         </thead>
         <tbody>
-          <tr><th scope="row"><code>createCheckoutSession</code></th><td class="y">capture context</td><td class="y">hosted / card / wallet</td><td class="y">iframe flow</td><td class="y">invoice / iframe</td><td class="y">hosted / invoice / paylink / managed</td><td class="y">order → approval</td><td class="y">hosted checkout</td></tr>
+          <tr><th scope="row"><code>createCheckoutSession</code></th><td class="y">capture context / orchestrated</td><td class="y">hosted / card / wallet</td><td class="y">iframe flow</td><td class="y">invoice / iframe</td><td class="y">hosted / invoice / paylink / managed</td><td class="y">order → approval</td><td class="y">hosted checkout</td></tr>
           <tr><th scope="row"><code>charge</code> <small>(transient token)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">Own Form</td><td class="y">approved order</td><td class="y">session</td></tr>
+          <tr><th scope="row"><code>confirmOrchestratedPayment</code> <small>(verify result JWT)</small></th><td class="y">RS256 · flx.jwk</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
           <tr><th scope="row"><code>capture</code></th><td class="y">✓</td><td class="y">Auth/Capture</td><td class="y">✓</td><td class="y">settle</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
           <tr><th scope="row"><code>refund</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
           <tr><th scope="row"><code>void</code></th><td class="y">✓</td><td class="y">cancel auth</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
@@ -256,6 +257,7 @@
           <dl class="deck-ops">
             <div class="op"><dt>createCheckoutSession</dt><dd>capture context</dd></div>
             <div class="op"><dt>charge</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>confirmOrchestratedPayment</dt><dd>verify result JWT</dd></div>
             <div class="op"><dt>capture</dt><dd>&#10003;</dd></div>
             <div class="op"><dt>refund</dt><dd>&#10003;</dd></div>
             <div class="op"><dt>void</dt><dd>&#10003;</dd></div>

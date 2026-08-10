@@ -8,6 +8,7 @@ use Hyprpay\Payments\Domain\AbstractPaymentGateway;
 use Hyprpay\Payments\Domain\Command\CaptureRequest;
 use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
+use Hyprpay\Payments\Domain\Command\ConfirmOrchestratedPaymentRequest;
 use Hyprpay\Payments\Domain\Command\DccRateRequest;
 use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
@@ -21,6 +22,7 @@ use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\Result\CheckoutSession;
 use Hyprpay\Payments\Domain\Result\DccQuote;
+use Hyprpay\Payments\Domain\Result\OrchestratedPaymentResult;
 use Hyprpay\Payments\Domain\Result\PayerAuthResult;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
 use Hyprpay\Payments\Domain\Result\RefundResult;
@@ -31,6 +33,7 @@ use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Concerns\ParsesTransientToken;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Concerns\VerifiesCybersourceWebhook;
+use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Concerns\VerifiesResultJwt;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Enums\CybersourceEndpoint;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Enums\CybersourceTransactionStatus;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CaptureContextPayload;
@@ -63,6 +66,7 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
 {
     use ParsesTransientToken;
     use VerifiesCybersourceWebhook;
+    use VerifiesResultJwt;
 
     private readonly CybersourceClient $client;
 
@@ -109,6 +113,26 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
             clientLibraryIntegrity: Value::nullableString($context['clientLibraryIntegrity'] ?? null),
             raw: $claims,
         );
+    }
+
+    /**
+     * Confirms a Unified Checkout v1 orchestrated (autoProcessing) payment from its result JWT.
+     *
+     * Sources the RS256 verification key from the capture context's embedded flx.jwk,
+     * cryptographically verifies the completed-payment result JWT (signature and lifetime),
+     * validates it against the request (issuer, order reference, amount and currency), and
+     * maps the verified claims — including the reusable TMS token for later stored-credential
+     * charges — into an OrchestratedPaymentResult. No server-side authorization and no
+     * transaction-search call is made: the signed result is trusted once verified.
+     */
+    public function confirmOrchestratedPayment(ConfirmOrchestratedPaymentRequest $request): OrchestratedPaymentResult
+    {
+        $key = $this->resultJwtVerificationKey($request->captureContextJwt);
+        $claims = $this->verifyResultJwtClaims($request->resultJwt, $key, $request->leewaySeconds);
+
+        $this->assertOrchestratedResultMatches($claims, $request);
+
+        return $this->orchestratedPaymentResult($claims);
     }
 
     /**

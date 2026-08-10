@@ -209,6 +209,42 @@
       </div>
     </section>
 
+    <section id="confirm-orchestrated" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Payment flow</p>
+      <h2>Confirm orchestrated payment</h2>
+      <p class="doc-sig"><span class="fn">confirmOrchestratedPayment</span>(ConfirmOrchestratedPaymentRequest): <span class="rt">OrchestratedPaymentResult</span></p>
+      <p>The orchestrated (autoProcessing) alternative to <code>charge</code>: pass a
+         <code>completeMandate</code> to <code>createCheckoutSession</code> so the widget runs
+         Decision Manager, 3-D Secure, authorization, and TMS tokenization client-side and
+         resolves with a signed result JWT, then verify that JWT here and trust it — no
+         <code>/pts/v2/payments</code> call and no transaction-search lag.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="c">// 1. Mint a capture context that tells the widget to auto-complete the payment.</span>
+<span class="v">$session</span> = <span class="v">$gateway</span>-&gt;<span class="fn">createCheckoutSession</span>(<span class="k">new</span> <span class="t">CheckoutSessionRequest</span>(
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'EGP'</span>),
+    <span class="a">targetOrigins:</span> [<span class="s">'https://shop.test'</span>],
+    <span class="a">orderReference:</span> <span class="s">'ORDER-123'</span>,
+    <span class="a">completeMandate:</span> <span class="t">MandateCompletionType</span>::<span class="cn">Capture</span>, <span class="c">// Capture (sale) | Auth (hold only)</span>
+));
+
+<span class="c">// hand $session->jwt to checkout.mount(); it resolves with a signed result JWT.</span>
+
+<span class="c">// 2. Verify that result JWT against the capture context and trust the outcome.</span>
+<span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">confirmOrchestratedPayment</span>(<span class="k">new</span> <span class="t">ConfirmOrchestratedPaymentRequest</span>(
+    <span class="a">resultJwt:</span> <span class="v">$resultJwt</span>,                <span class="c">// returned by checkout.mount() on the front end</span>
+    <span class="a">captureContextJwt:</span> <span class="v">$session</span>-&gt;jwt, <span class="c">// source of the RS256 verification key (flx.jwk)</span>
+    <span class="a">expectedMoney:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'EGP'</span>),
+    <span class="a">orderReference:</span> <span class="s">'ORDER-123'</span>,
+));
+
+<span class="c">// $result->status is Captured (Authorized for an AUTH mandate). For a real card,</span>
+<span class="c">// $result->instrumentIdentifierId / paymentInstrumentId / customerId are the reusable</span>
+<span class="c">// TMS token for later installments; a wallet sets $result->isWallet with no token.</span></code></pre>
+        </div>
+      </div>
+    </section>
+
     <section id="dcc-rate" class="doc-section" data-gws="cyber">
       <p class="doc-eyebrow">Payment flow</p>
       <h2>DCC rate</h2>
@@ -855,6 +891,7 @@
     <ul class="tree-flat">
       <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs"><a href="#overview" data-spy="overview">Overview</a></li>
       <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs"><a href="#create-checkout" data-spy="create-checkout">Create checkout</a></li>
+      <li data-gws="cyber"><a href="#confirm-orchestrated" data-spy="confirm-orchestrated">Confirm orchestrated payment</a></li>
       <li data-gws="cyber"><a href="#dcc-rate" data-spy="dcc-rate">DCC rate</a></li>
       <li data-gws="cyber paytabs paypal mpgs"><a href="#charge" data-spy="charge">Charge</a></li>
       <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs"><a href="#capture" data-spy="capture">Capture</a></li>
