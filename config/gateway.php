@@ -195,5 +195,21 @@ return [
             'locale' => env('PAYPAL_LOCALE', 'en-US'),
             'currency' => env('PAYPAL_CURRENCY', 'USD'),
         ],
+
+        'mpgs' => [
+            'test_mode' => (bool) env('MPGS_TEST_MODE', true),
+            'host' => env('MPGS_HOST', 'test-gateway.mastercard.com'),
+            'merchant_id' => env('MPGS_MERCHANT_ID'),
+            'shared_secret' => env('MPGS_API_PASSWORD'),
+            'webhook_secret' => env('MPGS_WEBHOOK_SECRET'),
+
+            'country' => env('MPGS_COUNTRY', 'US'),
+            'locale' => env('MPGS_LOCALE', 'en_US'),
+            'currency' => env('MPGS_CURRENCY', 'USD'),
+
+            'extra' => [
+                'api_version' => env('MPGS_API_VERSION', '100'),
+            ],
+        ],
     ],
 ];

@@ -10,6 +10,7 @@ use Hyprpay\Payments\Infrastructure\Events\RecordingEventDispatcher;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\CybersourceUnifiedCheckoutGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\EventDispatchingGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\LoggingGateway;
+use Hyprpay\Payments\Infrastructure\Gateway\Mpgs\MpgsGateway;
 use Hyprpay\Payments\Infrastructure\Http\FakeHttpClient;
 
 it('builds the CyberSource driver from explicit credentials without touching the resolver', function (): void {
@@ -29,6 +30,12 @@ it('falls back to the resolver when no credentials are supplied', function (): v
     $factory->make(GatewayName::CybersourceUnifiedCheckout);
 
     expect($resolver->called)->toBeTrue();
+});
+
+it('builds the MPGS driver', function (): void {
+    $factory = new PaymentGatewayFactory(new FakeHttpClient, recordingResolver(testCredentials()));
+
+    expect($factory->make(GatewayName::Mpgs, testCredentials()))->toBeInstanceOf(MpgsGateway::class);
 });
 
 it('resolves a driver by its string name', function (): void {

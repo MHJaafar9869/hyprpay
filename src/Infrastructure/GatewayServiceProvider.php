@@ -11,6 +11,7 @@ use Hyprpay\Payments\Domain\Contract\HttpClient;
 use Hyprpay\Payments\Domain\Event\PaymentEvent;
 use Hyprpay\Payments\Infrastructure\Console\ReconcileCybersourceCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcileFawryCommand;
+use Hyprpay\Payments\Infrastructure\Console\ReconcileMpgsCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcilePaylinkCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcilePaymobCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcilePayPalCommand;
@@ -162,6 +163,7 @@ final class GatewayServiceProvider extends ServiceProvider
                 ReconcilePaylinkCommand::class,
                 ReconcilePaytabsCommand::class,
                 ReconcilePayPalCommand::class,
+                ReconcileMpgsCommand::class,
             ]);
         }
     }
