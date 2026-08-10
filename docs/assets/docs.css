@@ -17,7 +17,7 @@
   margin: 0 auto;
   padding: 0 24px;
   display: grid;
-  grid-template-columns: 232px minmax(0, 1fr) 268px;
+  grid-template-columns: 268px minmax(0, 1fr) 232px;
   gap: var(--doc-gap);
   align-items: start;
 }
@@ -323,7 +323,7 @@
 /* ── responsive ───────────────────────────────────────────── */
 @media (max-width: 1240px) {
   /* gateway selector moves to the top, above the two remaining columns */
-  .doc-shell { grid-template-columns: 220px minmax(0, 1fr); }
+  .doc-shell { grid-template-columns: minmax(0, 1fr) 220px; }
   .gw-nav {
     grid-column: 1 / -1;
     grid-row: 1;
@@ -348,6 +348,9 @@
 }
 @media (max-width: 900px) {
   .doc-shell { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  /* keep the action list above the content — it trails main in source order now */
+  .tree { grid-row: 2; }
+  .doc { grid-row: 3; }
   /* the action list becomes a compact, scrollable box so it doesn't push content down */
   .tree {
     position: static;
