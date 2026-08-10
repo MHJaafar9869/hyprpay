@@ -220,10 +220,9 @@
       <p class="doc-eyebrow">Payment flow</p>
       <h2>Charge</h2>
       <p class="doc-sig"><span class="fn">charge</span>(ChargeRequest): <span class="rt">PaymentResult</span></p>
-      <p>Charge server-to-server against a one-time reference — a CyberSource transient token, a PayTabs
-         Own Form <code>payment_token</code>, or a PayPal order the buyer has already approved (its id, from
-         <code>createCheckoutSession</code>). The idempotency key defaults to the order reference, so a retried
-         charge for the same order is deduplicated.</p>
+      <p>Charge server-to-server against the one-time reference the checkout step returned — the token or
+         approved-order id captured up front. The idempotency key defaults to the order reference, so a
+         retried charge for the same order is deduplicated.</p>
 
       <div class="gw-variant" data-gw="cyber">
         <div class="code">
@@ -263,8 +262,8 @@
       <p class="doc-eyebrow">Payment flow</p>
       <h2>Capture</h2>
       <p class="doc-sig"><span class="fn">capture</span>(CaptureRequest): <span class="rt">PaymentResult</span></p>
-      <p>Settles a prior authorization — this is Fawry's Auth/Capture and PayLink's settle. Pass a key
-         unique to the operation; partial captures each need their own.</p>
+      <p>Settles a prior authorization. Pass a key unique to the operation; partial captures each need
+         their own.</p>
       <div class="code">
 <pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">capture</span>(<span class="k">new</span> <span class="t">CaptureRequest</span>(
     <span class="a">transactionId:</span> <span class="s">'7040000000000000001'</span>,
@@ -278,7 +277,7 @@
       <p class="doc-eyebrow">Payment flow</p>
       <h2>Void</h2>
       <p class="doc-sig"><span class="fn">void</span>(VoidRequest): <span class="rt">PaymentResult</span></p>
-      <p>Cancels an authorization before it settles (Fawry cancels the auth). Nothing is captured.</p>
+      <p>Cancels an authorization before it settles. Nothing is captured.</p>
       <div class="code">
 <pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">void</span>(<span class="k">new</span> <span class="t">VoidRequest</span>(
     <span class="a">transactionId:</span> <span class="s">'7040000000000000001'</span>,
@@ -306,9 +305,8 @@
       <p class="doc-eyebrow">Payment flow</p>
       <h2>Reverse authorization</h2>
       <p class="doc-sig"><span class="fn">reverseAuthorization</span>(ReversalRequest): <span class="rt">PaymentResult</span></p>
-      <p>Releases an auth hold without capturing (CyberSource, PayLink, and PayTabs' <code>release</code>).
-         A partial <code>money</code> releases only part of the hold. Use it when an order is abandoned
-         after authorization.</p>
+      <p>Releases an auth hold without capturing. A partial <code>money</code> releases only part of the
+         hold. Use it when an order is abandoned after authorization.</p>
       <div class="code">
 <pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">reverseAuthorization</span>(<span class="k">new</span> <span class="t">ReversalRequest</span>(
     <span class="a">transactionId:</span> <span class="s">'7040000000000000001'</span>,
@@ -697,9 +695,8 @@
       <p class="doc-eyebrow">Stored credentials</p>
       <h2>Vault instrument</h2>
       <p class="doc-sig"><span class="fn">vaultInstrument</span>(TokenizeInstrumentRequest): <span class="rt">VaultedInstrument</span></p>
-      <p>Tokenizes a card and returns a <code>VaultedInstrument</code> you keep for later charges — CyberSource
-         stores it in TMS, while PayPal runs its setup-token → payment-token vault flow. Charge it later with
-         <code>chargeStoredCredential</code>.</p>
+      <p>Tokenizes a card and returns a <code>VaultedInstrument</code> you keep for later charges. Charge it
+         later with <code>chargeStoredCredential</code>.</p>
 
       <div class="gw-variant" data-gw="cyber">
         <div class="code">
@@ -724,10 +721,8 @@
       <p class="doc-eyebrow">Stored credentials</p>
       <h2>Charge stored credential</h2>
       <p class="doc-sig"><span class="fn">chargeStoredCredential</span>(StoredCredentialChargeRequest): <span class="rt">PaymentResult</span></p>
-      <p>Charges a saved token for merchant- or customer-initiated (MIT/CIT) transactions. On PayTabs a
-         merchant-initiated charge runs as <code>recurring</code>, a customer-initiated one as <code>ecom</code>;
-         PayPal creates an order against the vaulted card, stamps the network stored-credential metadata
-         (MIT → <code>RECURRING</code>, CIT → <code>ONE_TIME</code>), and captures it.</p>
+      <p>Charges a saved token for merchant- or customer-initiated (MIT/CIT) transactions. The driver stamps
+         the right network stored-credential metadata for the initiator and settles the charge.</p>
 
       <div class="gw-variant" data-gw="cyber">
         <div class="code">
