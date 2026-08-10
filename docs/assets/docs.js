@@ -1,4 +1,4 @@
-/** Docs page: per-gateway scoping, live action tree (scroll-spy), reading progress bar, back-to-top. */
+/** Docs page: per-gateway scoping, live action tree (scroll-spy), back-to-top. */
 (function () {
   var GW = {
     cyber:   { name: 'CyberSource UC', enumCase: 'CybersourceUnifiedCheckout', hue: 'var(--cyber)',   sign: 'HMAC HTTP-Signature', ret: 'jwt (capture context)' },
@@ -16,7 +16,6 @@
   var links    = [].slice.call(document.querySelectorAll('.tree a[data-spy]'));
   var docMain  = document.querySelector('.doc');
   var ctx      = document.getElementById('gw-context');
-  var bar      = document.querySelector('.scroll-progress > span');
   var toTop    = document.querySelector('.to-top');
 
   /** Whether `el` applies to gateway `gw` (no data-gws attribute means all gateways). */
@@ -28,15 +27,13 @@
   var THRESHOLD = 120, ticking = false, spyLocked = false;
 
   /**
-   * Scroll handler. Updates the reading-progress bar and back-to-top visibility,
-   * then — unless a tree click has pinned the active item — activates the last
-   * action whose top has crossed the threshold, with a bottom-of-page guard so a
-   * short trailing action still activates at the very end.
+   * Scroll handler. Updates back-to-top visibility, then — unless a tree click has
+   * pinned the active item — activates the last action whose top has crossed the
+   * threshold, with a bottom-of-page guard so a short trailing action still
+   * activates at the very end.
    */
   function updateSpy() {
     ticking = false;
-    var max = document.documentElement.scrollHeight - window.innerHeight;
-    if (bar) bar.style.transform = 'scaleX(' + (max > 0 ? Math.min(1, window.scrollY / max) : 0) + ')';
     if (toTop) toTop.classList.toggle('show', window.scrollY > 400);
     if (spyLocked) return;
     var current = null, i;
