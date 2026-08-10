@@ -9,6 +9,7 @@ use Hyprpay\Payments\Domain\Command\CaptureRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
 use Hyprpay\Payments\Domain\Command\ReversalRequest;
+use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
 use Hyprpay\Payments\Domain\Contract\HttpClient;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
@@ -16,6 +17,7 @@ use Hyprpay\Payments\Domain\Result\CheckoutSession;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
 use Hyprpay\Payments\Domain\Result\RefundResult;
 use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
+use Hyprpay\Payments\Domain\Result\VaultedInstrument;
 use Hyprpay\Payments\Domain\Result\WebhookEvent;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
 use Hyprpay\Payments\Infrastructure\Gateway\Paylink\Enums\PaylinkPaidStatus;
@@ -28,9 +30,10 @@ use Hyprpay\Payments\Infrastructure\Support\Value;
  * per-request HMAC-signature contract the PayLink WooCommerce plugin and sibling
  * SDKs use. Implements the invoice lifecycle: {@see createCheckoutSession()} (init →
  * hosted checkout URL), {@see capture()} (settle), refund, void, reverse-authorization,
- * {@see getTransaction()} (check-status), and HMAC webhook verification. Card
- * tokenization, VCC, and recurring flows are out of scope here and inherit
- * {@see AbstractPaymentGateway}'s unsupported behaviour.
+ * {@see getTransaction()} (check-status), HMAC webhook verification, and card
+ * tokenization — {@see vaultInstrument()} (store a card, CyberSource-TMS backed) and
+ * {@see deleteToken()} (revoke it). VCC and recurring stored-credential charges are out
+ * of scope here and inherit {@see AbstractPaymentGateway}'s unsupported behaviour.
  *
  * Requests are built deterministically; PayLink also honours an `Idempotency-Key`
  * header, which the driver sets from the request's idempotency key or order reference.
@@ -164,6 +167,70 @@ final class PaylinkGateway extends AbstractPaymentGateway
             $request->idempotencyKey ?? $request->orderReference,
             'reverse authorization',
         ));
+    }
+
+    /**
+     * Store (tokenize) a card with PayLink and return the reusable token.
+     *
+     * Sends the card and billing details to PayLink's CyberSource-TMS-backed vault; the
+     * returned token id is exposed as both the instrument and payment-instrument id, to
+     * be revoked later with {@see deleteToken()}. PayLink requires the cardholder name and
+     * a country/address/city, and only accepts a state + postal code for US and CA cards,
+     * so those are sent solely for those countries (matching the server's validation and
+     * therefore the request signature).
+     */
+    public function vaultInstrument(TokenizeInstrumentRequest $request): VaultedInstrument
+    {
+        $billTo = $request->billTo;
+        $country = $billTo?->country;
+        $inNorthAmerica = $country === 'US' || $country === 'CA';
+
+        $response = $this->client->post(
+            PaylinkEndpoint::TokenizeCard,
+            [
+                'first_name' => $billTo?->firstName,
+                'last_name' => $billTo?->lastName,
+                'email' => $billTo?->email,
+                'customer_reference' => $request->customerReference,
+                'card_number' => $request->cardNumber,
+                'card_expiry_month' => $request->expirationMonth,
+                'card_expiry_year' => $request->expirationYear,
+                'country' => $country,
+                'address' => $billTo?->address1,
+                'city' => $billTo?->locality,
+                'us_state' => $country === 'US' ? $billTo?->administrativeArea : null,
+                'canada_state' => $country === 'CA' ? $billTo?->administrativeArea : null,
+                'postal_code' => $inNorthAmerica ? $billTo?->postalCode : null,
+            ],
+            null,
+            'vault instrument',
+        );
+
+        $token = Value::nullableString($response['token'] ?? null);
+
+        return new VaultedInstrument(
+            success: $token !== null,
+            instrumentIdentifierId: $token,
+            paymentInstrumentId: $token,
+            raw: $response,
+        );
+    }
+
+    /**
+     * Revoke a stored PayLink card token, returning whether the revocation succeeded.
+     *
+     * @param  string  $token  The PayLink card token to revoke.
+     */
+    public function deleteToken(string $token): bool
+    {
+        $response = $this->client->post(
+            PaylinkEndpoint::RevokeToken,
+            ['card_token' => $token],
+            null,
+            'delete token',
+        );
+
+        return ($response['success'] ?? false) === true;
     }
 
     /**

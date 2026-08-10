@@ -292,7 +292,7 @@ everywhere.
 | `void` | ✅ | ✅ (cancel auth) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `reverseAuthorization` | ✅ | — | — | ✅ | ✅ (release) | — | ✅ (void of auth) |
 | `enrollPayerAuth` / `validatePayerAuth` (3-DS) | ✅ | — | — | — | — | — | ✅ |
-| `vaultInstrument` / `chargeStoredCredential` | ✅ (TMS, MIT/CIT) | — | — | — | ✅ token (MIT/CIT)¹ | ✅ vault (MIT/CIT) | ✅ token (MIT/CIT) |
+| `vaultInstrument` / `chargeStoredCredential` | ✅ (TMS, MIT/CIT) | — | — | ✅ vault + revoke⁴ | ✅ token (MIT/CIT)¹ | ✅ vault (MIT/CIT) | ✅ token (MIT/CIT) |
 | `requestDccRate` (Dynamic Currency Conversion) | ✅ | — | — | — | — | — | — |
 | `getTransaction` / `searchTransaction` | ✅ | ✅ | ✅ | ✅ | ✅ query | ✅ order lookup | ✅ order lookup |
 | `verifyWebhook` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ API | ✅ notification secret |
@@ -371,4 +371,9 @@ against the order id (`orderReference`) and transaction id (`idempotencyKey`) in
 `capture`, `refund`, `void`, and `reverseAuthorization` settle against that order (`void` /
 `reverseAuthorization` target the prior transaction via `targetTransactionId`), and
 `getTransaction` / `searchTransaction` retrieve the order — the reconciliation unit.
+
+⁴ For **PayLink**, `vaultInstrument` stores a card in PayLink's CyberSource-TMS-backed
+vault (returning a reusable token) and `deleteToken` revokes it. Stored-credential charges
+(`chargeStoredCredential`) aren't wired yet — PayLink's token-charge endpoint requires the
+cardholder name and full billing address, which `StoredCredentialChargeRequest` does not carry.
 
