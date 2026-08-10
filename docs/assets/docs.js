@@ -7,6 +7,7 @@
     paylink: { name: 'PayLink', enumCase: 'Paylink', hue: 'var(--paylink)', sign: 'HMAC-SHA256', ret: 'redirectUrl (invoice / iframe)' },
     paytabs: { name: 'PayTabs', enumCase: 'Paytabs', hue: 'var(--paytabs)', sign: 'server key + HMAC-SHA256', ret: 'redirectUrl (hosted page)' },
     paypal:  { name: 'PayPal',  enumCase: 'PayPal',  hue: 'var(--paypal)',  sign: 'OAuth 2.0 client credentials', ret: 'redirectUrl (approval link)' },
+    mpgs:    { name: 'Mastercard MPGS', enumCase: 'Mpgs', hue: 'var(--mpgs)', sign: 'HTTP Basic (merchant.{id})', ret: 'reference (session id)' },
     misc:    { name: 'Misc', enumCase: '', hue: 'var(--muted)', sign: '—', ret: '—', meta: false }
   };
   var opts     = [].slice.call(document.querySelectorAll('.gw-opt'));

@@ -27,6 +27,7 @@
   --paylink: #f79fd6;
   --paytabs: #c3a6ff;
   --paypal:  #38bdf8;
+  --mpgs:    #ff9e64;
 
   --display: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
   --sans:    "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
@@ -63,6 +64,7 @@
   --paylink: #bb3f86;
   --paytabs: #6b3fce;
   --paypal:  #0369a1;
+  --mpgs:    #c2410c;
 
   color-scheme: light;
 }
@@ -683,6 +685,7 @@ code:not(pre code) {
   --paylink: #f79fd6;
   --paytabs: #c3a6ff;
   --paypal: #38bdf8;
+  --mpgs: #ff9e64;
   background: var(--ink-1);
   border: 1px solid var(--line);
   border-radius: 0;

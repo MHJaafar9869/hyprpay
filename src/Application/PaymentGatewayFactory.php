@@ -15,6 +15,7 @@ use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Cybersour
 use Hyprpay\Payments\Infrastructure\Gateway\EventDispatchingGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\Fawry\FawryGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\LoggingGateway;
+use Hyprpay\Payments\Infrastructure\Gateway\Mpgs\MpgsGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\Paylink\PaylinkGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\Paymob\PaymobGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\PayPal\PayPalGateway;
@@ -66,6 +67,7 @@ final readonly class PaymentGatewayFactory
             GatewayName::Paylink => new PaylinkGateway($resolved, $this->http),
             GatewayName::Paytabs => new PaytabsGateway($resolved, $this->http),
             GatewayName::PayPal => new PayPalGateway($resolved, $this->http),
+            GatewayName::Mpgs => new MpgsGateway($resolved, $this->http),
         };
 
         if ($this->events instanceof EventDispatcher) {
