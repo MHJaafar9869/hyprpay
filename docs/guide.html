@@ -104,10 +104,14 @@
         <div class="code">
 <pre><code><span class="v">$session</span> = <span class="v">$gateway</span>-&gt;<span class="fn">createCheckoutSession</span>(<span class="k">new</span> <span class="t">CheckoutSessionRequest</span>(
     <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'EGP'</span>),
-    <span class="a">targetOrigins:</span> [<span class="s">'https://shop.test'</span>],
+    <span class="a">targetOrigins:</span> [<span class="s">'https://shop.test'</span>],       <span class="c">// origin(s) that embed the widget</span>
+    <span class="a">orderReference:</span> <span class="s">'ORDER-123'</span>,                <span class="c">// reconcile — and default the charge idempotency key — off this</span>
+    <span class="a">allowedPaymentTypes:</span> [<span class="s">'PANENTRY'</span>, <span class="s">'GOOGLEPAY'</span>], <span class="c">// cards + wallets (defaults to ['PANENTRY'])</span>
 ));
 
-<span class="c">// hand $session->jwt to the Unified Checkout widget</span></code></pre>
+<span class="c">// load the widget script from $session->clientLibrary (pin it with</span>
+<span class="c">// $session->clientLibraryIntegrity), then initialise the widget with</span>
+<span class="c">// the capture context in $session->jwt</span></code></pre>
         </div>
       </div>
       <div class="gw-variant" data-gw="fawry">
