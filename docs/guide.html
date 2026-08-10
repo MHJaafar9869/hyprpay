@@ -785,7 +785,7 @@
       </div>
     </section>
 
-    <section id="charge-stored-credential" class="doc-section" data-gws="cyber paytabs paypal mpgs">
+    <section id="charge-stored-credential" class="doc-section" data-gws="cyber paytabs paypal mpgs paylink">
       <p class="doc-eyebrow">Stored credentials</p>
       <h2>Charge stored credential</h2>
       <p class="doc-sig"><span class="fn">chargeStoredCredential</span>(StoredCredentialChargeRequest): <span class="rt">PaymentResult</span></p>
@@ -833,6 +833,18 @@
 ));</code></pre>
         </div>
       </div>
+      <div class="gw-variant" data-gw="paylink">
+        <div class="code">
+<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">chargeStoredCredential</span>(<span class="k">new</span> <span class="t">StoredCredentialChargeRequest</span>(
+    <span class="a">paymentInstrumentId:</span> <span class="v">$vaulted</span>-&gt;paymentInstrumentId, <span class="c">// the PayLink card token</span>
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'USD'</span>),
+    <span class="a">initiator:</span> <span class="t">CredentialInitiator</span>::<span class="cn">Merchant</span>, <span class="c">// MIT rebill; Customer → CIT</span>
+    <span class="a">orderReference:</span> <span class="s">'ORDER-9'</span>,
+));
+
+<span class="c">// billing is reused from tokenize time — no cardholder/address is resent</span></code></pre>
+        </div>
+      </div>
     </section>
 
   </main>
@@ -861,7 +873,7 @@
       <li data-gws="cyber mpgs"><a href="#enroll-payer-auth" data-spy="enroll-payer-auth">Enroll payer auth</a></li>
       <li data-gws="cyber mpgs"><a href="#validate-payer-auth" data-spy="validate-payer-auth">Validate payer auth</a></li>
       <li data-gws="cyber paypal mpgs paylink"><a href="#vault-instrument" data-spy="vault-instrument">Vault instrument</a></li>
-      <li data-gws="cyber paytabs paypal mpgs"><a href="#charge-stored-credential" data-spy="charge-stored-credential">Charge stored credential</a></li>
+      <li data-gws="cyber paytabs paypal mpgs paylink"><a href="#charge-stored-credential" data-spy="charge-stored-credential">Charge stored credential</a></li>
     </ul>
   </aside>
 

@@ -9,6 +9,7 @@ use Hyprpay\Payments\Domain\Command\CaptureRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
 use Hyprpay\Payments\Domain\Command\ReversalRequest;
+use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
 use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
 use Hyprpay\Payments\Domain\Contract\HttpClient;
@@ -31,9 +32,10 @@ use Hyprpay\Payments\Infrastructure\Support\Value;
  * SDKs use. Implements the invoice lifecycle: {@see createCheckoutSession()} (init →
  * hosted checkout URL), {@see capture()} (settle), refund, void, reverse-authorization,
  * {@see getTransaction()} (check-status), HMAC webhook verification, and card
- * tokenization — {@see vaultInstrument()} (store a card, CyberSource-TMS backed) and
- * {@see deleteToken()} (revoke it). VCC and recurring stored-credential charges are out
- * of scope here and inherit {@see AbstractPaymentGateway}'s unsupported behaviour.
+ * tokenization — {@see vaultInstrument()} (store a card, CyberSource-TMS backed),
+ * {@see chargeStoredCredential()} (charge a saved token, MIT/CIT), and
+ * {@see deleteToken()} (revoke it). VCC and hosted recurring subscriptions are out of
+ * scope here and inherit {@see AbstractPaymentGateway}'s unsupported behaviour.
  *
  * Requests are built deterministically; PayLink also honours an `Idempotency-Key`
  * header, which the driver sets from the request's idempotency key or order reference.
@@ -231,6 +233,32 @@ final class PaylinkGateway extends AbstractPaymentGateway
         );
 
         return ($response['success'] ?? false) === true;
+    }
+
+    /**
+     * Charge a previously vaulted PayLink card token as a stored credential (MIT/CIT).
+     *
+     * Sends only the token, amount, and initiator; PayLink reuses the cardholder and
+     * billing captured when the card was tokenized, so no billing is resent. The order
+     * reference doubles as the product description and the reference number, and the
+     * idempotency key (falling back to the order reference) is sent as the
+     * `Idempotency-Key` header so a retried charge is not charged twice.
+     */
+    public function chargeStoredCredential(StoredCredentialChargeRequest $request): PaymentResult
+    {
+        return $this->toPaymentResult($this->client->post(
+            PaylinkEndpoint::ChargeToken,
+            [
+                'card_token' => $request->paymentInstrumentId,
+                'initiator' => $request->initiator->value,
+                'currency' => $request->money->currency,
+                'price' => $request->money->toDecimalString(),
+                'product' => $request->orderReference ?? 'Stored credential charge',
+                'reference_number' => $request->orderReference,
+            ],
+            Value::nullableString($request->idempotencyKey ?? $request->orderReference),
+            'charge stored credential',
+        ));
     }
 
     /**

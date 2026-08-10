@@ -7,8 +7,10 @@ use Hyprpay\Payments\Domain\Command\CaptureRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
 use Hyprpay\Payments\Domain\Command\ReversalRequest;
+use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
 use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
+use Hyprpay\Payments\Domain\Enum\CredentialInitiator;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
@@ -245,6 +247,38 @@ it('revokes a stored card token', function (): void {
         ->and($http->lastRequest()?->url)->toBe('https://pay.getpayin.com/api/v2/integration/tokens/revoke')
         ->and(paylinkBody($http)['card_token'])->toBe('tok_abc')
         ->and(paylinkBody($http))->toHaveKey('signature');
+});
+
+it('charges a stored credential token without re-sending billing', function (): void {
+    $http = (new FakeHttpClient)->queueJson([
+        'success' => true,
+        'data' => ['invoice_id' => 40777, 'amount' => 10000, 'currency' => 'USD', 'paid_status' => 'PAID', 'card_token' => 'tok_abc'],
+    ], 201);
+    $gateway = new PaylinkGateway(paylinkCredentials(), $http);
+
+    $result = $gateway->chargeStoredCredential(new StoredCredentialChargeRequest(
+        paymentInstrumentId: 'tok_abc',
+        money: Money::minor(10000, 'USD'),
+        initiator: CredentialInitiator::Merchant,
+        orderReference: 'ORDER-9',
+        idempotencyKey: 'idem-9',
+    ));
+
+    $request = $http->lastRequest();
+    $ordered = ['tok_abc', 'merchant', 'USD', '100.00', 'ORDER-9', 'ORDER-9'];
+    $expectedSignature = base64_encode(hash_hmac('sha256', implode('', $ordered), 'test_hash_token_abc123', true));
+
+    expect($result->success)->toBeTrue()
+        ->and($result->status)->toBe(PaymentStatus::Captured)
+        ->and($result->transactionId)->toBe('40777')
+        ->and($request?->url)->toBe('https://pay.getpayin.com/api/v2/integration/tokens/charge')
+        ->and($request?->header('Idempotency-Key'))->toBe('idem-9')
+        ->and(paylinkBody($http)['card_token'])->toBe('tok_abc')
+        ->and(paylinkBody($http)['initiator'])->toBe('merchant')
+        ->and(paylinkBody($http)['price'])->toBe('100.00')
+        ->and(paylinkBody($http)['product'])->toBe('ORDER-9')
+        ->and(paylinkBody($http))->not->toHaveKey('first_name')
+        ->and(paylinkBody($http)['signature'])->toBe($expectedSignature);
 });
 
 it('is resolvable through the factory', function (): void {

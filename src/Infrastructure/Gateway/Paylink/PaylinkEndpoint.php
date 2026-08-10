@@ -23,6 +23,7 @@ enum PaylinkEndpoint: string
     case ReverseAuthorization = '/api/integration/reverse-authorization';
     case CheckStatus = '/api/integration/check-status';
     case TokenizeCard = '/api/v2/integration/tokens/card';
+    case ChargeToken = '/api/v2/integration/tokens/charge';
     case RevokeToken = '/api/v2/integration/tokens/revoke';
 
     /**
@@ -67,6 +68,23 @@ enum PaylinkEndpoint: string
                 ['name' => 'card_expiry_month', 'signed' => true],
                 ['name' => 'card_expiry_year', 'signed' => true],
                 ['name' => 'card_cvv', 'signed' => true],
+                ['name' => 'country', 'signed' => true],
+                ['name' => 'address', 'signed' => true],
+                ['name' => 'city', 'signed' => true],
+                ['name' => 'us_state', 'signed' => true],
+                ['name' => 'canada_state', 'signed' => true],
+                ['name' => 'postal_code', 'signed' => true],
+            ],
+            self::ChargeToken => [
+                ['name' => 'card_token', 'signed' => true],
+                ['name' => 'initiator', 'signed' => true],
+                ['name' => 'first_name', 'signed' => true],
+                ['name' => 'last_name', 'signed' => true],
+                ['name' => 'email', 'signed' => true],
+                ['name' => 'currency', 'signed' => true],
+                ['name' => 'price', 'signed' => true],
+                ['name' => 'product', 'signed' => true],
+                ['name' => 'reference_number', 'signed' => true],
                 ['name' => 'country', 'signed' => true],
                 ['name' => 'address', 'signed' => true],
                 ['name' => 'city', 'signed' => true],
