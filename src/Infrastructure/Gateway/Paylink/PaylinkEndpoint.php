@@ -22,6 +22,8 @@ enum PaylinkEndpoint: string
     case Settle = '/api/integration/settle';
     case ReverseAuthorization = '/api/integration/reverse-authorization';
     case CheckStatus = '/api/integration/check-status';
+    case TokenizeCard = '/api/v2/integration/tokens/card';
+    case RevokeToken = '/api/v2/integration/tokens/revoke';
 
     /**
      * The ordered request fields for this endpoint.
@@ -54,6 +56,26 @@ enum PaylinkEndpoint: string
             self::Refund, self::Settle => [
                 ['name' => 'invoice_id', 'signed' => true],
                 ['name' => 'amount', 'signed' => true],
+            ],
+            self::TokenizeCard => [
+                ['name' => 'first_name', 'signed' => true],
+                ['name' => 'last_name', 'signed' => true],
+                ['name' => 'email', 'signed' => true],
+                ['name' => 'customer_reference', 'signed' => true],
+                ['name' => 'external_reference', 'signed' => true],
+                ['name' => 'card_number', 'signed' => true],
+                ['name' => 'card_expiry_month', 'signed' => true],
+                ['name' => 'card_expiry_year', 'signed' => true],
+                ['name' => 'card_cvv', 'signed' => true],
+                ['name' => 'country', 'signed' => true],
+                ['name' => 'address', 'signed' => true],
+                ['name' => 'city', 'signed' => true],
+                ['name' => 'us_state', 'signed' => true],
+                ['name' => 'canada_state', 'signed' => true],
+                ['name' => 'postal_code', 'signed' => true],
+            ],
+            self::RevokeToken => [
+                ['name' => 'card_token', 'signed' => true],
             ],
         };
     }

@@ -7,9 +7,11 @@ use Hyprpay\Payments\Domain\Command\CaptureRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
 use Hyprpay\Payments\Domain\Command\ReversalRequest;
+use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
+use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
 use Hyprpay\Payments\Domain\ValueObject\Customer;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
 use Hyprpay\Payments\Domain\ValueObject\Money;
@@ -167,6 +169,82 @@ it('rejects a tampered paylink webhook', function (): void {
     $payload = array_merge($case['input'], ['signature' => $case['expected'], 'invoice_status' => 'UNPAID']);
 
     expect($gateway->verifyWebhook((string) json_encode($payload), [])->verified)->toBeFalse();
+});
+
+it('stores a card and returns the token, signing the ordered body', function (): void {
+    $http = (new FakeHttpClient)->queueJson([
+        'success' => true,
+        'data' => ['token' => 'tok_abc', 'card' => ['brand' => 'VISA', 'last4' => '1111'], 'status' => 'active'],
+    ], 201);
+    $gateway = new PaylinkGateway(paylinkCredentials(), $http);
+
+    $vaulted = $gateway->vaultInstrument(new TokenizeInstrumentRequest(
+        cardNumber: '4111111111111111',
+        expirationMonth: '05',
+        expirationYear: '2027',
+        billTo: new BillingAddress(
+            firstName: 'Jane',
+            lastName: 'Roe',
+            email: 'jane@example.com',
+            address1: '1 Main St',
+            locality: 'Riyadh',
+            country: 'SA',
+        ),
+        customerReference: 'CUST-9',
+    ));
+
+    $ordered = ['Jane', 'Roe', 'jane@example.com', 'CUST-9', '4111111111111111', '05', '2027', 'SA', '1 Main St', 'Riyadh'];
+    $expectedSignature = base64_encode(hash_hmac('sha256', implode('', $ordered), 'test_hash_token_abc123', true));
+
+    expect($vaulted->success)->toBeTrue()
+        ->and($vaulted->paymentInstrumentId)->toBe('tok_abc')
+        ->and($http->lastRequest()?->url)->toBe('https://pay.getpayin.com/api/v2/integration/tokens/card')
+        ->and(paylinkBody($http)['token'])->toBe('PUBLIC_TOKEN')
+        ->and(paylinkBody($http)['card_number'])->toBe('4111111111111111')
+        ->and(paylinkBody($http)['customer_reference'])->toBe('CUST-9')
+        ->and(paylinkBody($http))->not->toHaveKey('us_state')
+        ->and(paylinkBody($http))->not->toHaveKey('postal_code')
+        ->and(paylinkBody($http)['signature'])->toBe($expectedSignature);
+});
+
+it('sends the state and postal code only for US cards, keeping the signature order', function (): void {
+    $http = (new FakeHttpClient)->queueJson(['success' => true, 'data' => ['token' => 'tok_us']], 201);
+    $gateway = new PaylinkGateway(paylinkCredentials(), $http);
+
+    $gateway->vaultInstrument(new TokenizeInstrumentRequest(
+        cardNumber: '4111111111111111',
+        expirationMonth: '05',
+        expirationYear: '2027',
+        billTo: new BillingAddress(
+            firstName: 'John',
+            lastName: 'Doe',
+            address1: '1 Market St',
+            locality: 'San Francisco',
+            administrativeArea: 'CA',
+            postalCode: '94105',
+            country: 'US',
+        ),
+    ));
+
+    $ordered = ['John', 'Doe', '4111111111111111', '05', '2027', 'US', '1 Market St', 'San Francisco', 'CA', '94105'];
+    $expectedSignature = base64_encode(hash_hmac('sha256', implode('', $ordered), 'test_hash_token_abc123', true));
+
+    expect(paylinkBody($http)['us_state'])->toBe('CA')
+        ->and(paylinkBody($http)['postal_code'])->toBe('94105')
+        ->and(paylinkBody($http))->not->toHaveKey('canada_state')
+        ->and(paylinkBody($http)['signature'])->toBe($expectedSignature);
+});
+
+it('revokes a stored card token', function (): void {
+    $http = (new FakeHttpClient)->queueJson(['success' => true, 'message' => 'Token revoked.']);
+    $gateway = new PaylinkGateway(paylinkCredentials(), $http);
+
+    $revoked = $gateway->deleteToken('tok_abc');
+
+    expect($revoked)->toBeTrue()
+        ->and($http->lastRequest()?->url)->toBe('https://pay.getpayin.com/api/v2/integration/tokens/revoke')
+        ->and(paylinkBody($http)['card_token'])->toBe('tok_abc')
+        ->and(paylinkBody($http))->toHaveKey('signature');
 });
 
 it('is resolvable through the factory', function (): void {

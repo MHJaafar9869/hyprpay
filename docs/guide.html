@@ -732,7 +732,7 @@
       </div>
     </section>
 
-    <section id="vault-instrument" class="doc-section" data-gws="cyber paypal mpgs">
+    <section id="vault-instrument" class="doc-section" data-gws="cyber paypal mpgs paylink">
       <p class="doc-eyebrow">Stored credentials</p>
       <h2>Vault instrument</h2>
       <p class="doc-sig"><span class="fn">vaultInstrument</span>(TokenizeInstrumentRequest): <span class="rt">VaultedInstrument</span></p>
@@ -765,6 +765,22 @@
 ));
 
 <span class="c">// keep $vaulted->paymentInstrumentId (the MPGS token)</span></code></pre>
+        </div>
+      </div>
+      <div class="gw-variant" data-gw="paylink">
+        <div class="code">
+<pre><code><span class="v">$vaulted</span> = <span class="v">$gateway</span>-&gt;<span class="fn">vaultInstrument</span>(<span class="k">new</span> <span class="t">TokenizeInstrumentRequest</span>(
+    <span class="a">cardNumber:</span> <span class="s">'4111111111111111'</span>,
+    <span class="a">expirationMonth:</span> <span class="s">'05'</span>,
+    <span class="a">expirationYear:</span> <span class="s">'2027'</span>,
+    <span class="a">billTo:</span> <span class="k">new</span> <span class="t">BillingAddress</span>(     <span class="c">// PayLink requires the cardholder name + country/address/city</span>
+        <span class="a">firstName:</span> <span class="s">'Jane'</span>, <span class="a">lastName:</span> <span class="s">'Roe'</span>,
+        <span class="a">country:</span> <span class="s">'SA'</span>, <span class="a">address1:</span> <span class="s">'1 Main St'</span>, <span class="a">locality:</span> <span class="s">'Riyadh'</span>,
+    ),
+));
+
+<span class="c">// keep $vaulted->paymentInstrumentId (the PayLink card token);</span>
+<span class="c">// revoke it later with $gateway->deleteToken($token)</span></code></pre>
         </div>
       </div>
     </section>
@@ -844,7 +860,7 @@
       <li data-gws="misc"><a href="#configuration" data-spy="configuration">Configuration</a></li>
       <li data-gws="cyber mpgs"><a href="#enroll-payer-auth" data-spy="enroll-payer-auth">Enroll payer auth</a></li>
       <li data-gws="cyber mpgs"><a href="#validate-payer-auth" data-spy="validate-payer-auth">Validate payer auth</a></li>
-      <li data-gws="cyber paypal mpgs"><a href="#vault-instrument" data-spy="vault-instrument">Vault instrument</a></li>
+      <li data-gws="cyber paypal mpgs paylink"><a href="#vault-instrument" data-spy="vault-instrument">Vault instrument</a></li>
       <li data-gws="cyber paytabs paypal mpgs"><a href="#charge-stored-credential" data-spy="charge-stored-credential">Charge stored credential</a></li>
     </ul>
   </aside>
