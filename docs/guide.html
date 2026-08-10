@@ -65,32 +65,19 @@
 
 <div class="doc-shell">
 
-  <!-- ═══════════  LEFT: one entry per action  ═══════════ -->
-  <aside class="tree" aria-label="Actions">
-    <p class="tree-title">≡ Actions</p>
-    <ul class="tree-flat">
-      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#overview" data-spy="overview">Overview</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#create-checkout" data-spy="create-checkout">Create checkout</a></li>
-      <li data-gws="cyber"><a href="#dcc-rate" data-spy="dcc-rate">DCC rate</a></li>
-      <li data-gws="cyber paytabs paypal"><a href="#charge" data-spy="charge">Charge</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#capture" data-spy="capture">Capture</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#void" data-spy="void">Void</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#refund" data-spy="refund">Refund</a></li>
-      <li data-gws="cyber paylink paytabs"><a href="#reverse-authorization" data-spy="reverse-authorization">Reverse authorization</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#get-transaction" data-spy="get-transaction">Get transaction</a></li>
-      <li data-gws="cyber fawry paymob paylink"><a href="#search-transaction" data-spy="search-transaction">Search transaction</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#reconcile" data-spy="reconcile">Reconcile</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#verify-webhook" data-spy="verify-webhook">Verify webhook</a></li>
-      <li data-gws="misc"><a href="#events" data-spy="events">Events</a></li>
-      <li data-gws="misc"><a href="#operation-logging" data-spy="operation-logging">Operation logging</a></li>
-      <li data-gws="misc"><a href="#credential-resolver" data-spy="credential-resolver">Credential resolver</a></li>
-      <li data-gws="misc"><a href="#http-client" data-spy="http-client">HTTP client</a></li>
-      <li data-gws="misc"><a href="#configuration" data-spy="configuration">Configuration</a></li>
-      <li data-gws="cyber"><a href="#enroll-payer-auth" data-spy="enroll-payer-auth">Enroll payer auth</a></li>
-      <li data-gws="cyber"><a href="#validate-payer-auth" data-spy="validate-payer-auth">Validate payer auth</a></li>
-      <li data-gws="cyber paypal"><a href="#vault-instrument" data-spy="vault-instrument">Vault instrument</a></li>
-      <li data-gws="cyber paytabs paypal"><a href="#charge-stored-credential" data-spy="charge-stored-credential">Charge stored credential</a></li>
+  <!-- ═══════════  LEFT: gateway selector  ═══════════ -->
+  <aside class="gw-nav" aria-label="Choose a gateway">
+    <p class="gw-nav-title">◱ Gateway</p>
+    <ul role="tablist" aria-orientation="vertical">
+      <li role="presentation"><button class="gw-opt" role="tab" data-gw="cyber"   aria-selected="true"  style="--g:var(--cyber)">CyberSource UC</button></li>
+      <li role="presentation"><button class="gw-opt" role="tab" data-gw="fawry"   aria-selected="false" style="--g:var(--fawry)">Fawry</button></li>
+      <li role="presentation"><button class="gw-opt" role="tab" data-gw="paymob"  aria-selected="false" style="--g:var(--paymob)">Paymob</button></li>
+      <li role="presentation"><button class="gw-opt" role="tab" data-gw="paylink" aria-selected="false" style="--g:var(--paylink)">PayLink</button></li>
+      <li role="presentation"><button class="gw-opt" role="tab" data-gw="paytabs" aria-selected="false" style="--g:var(--paytabs)">PayTabs</button></li>
+      <li role="presentation"><button class="gw-opt" role="tab" data-gw="paypal"  aria-selected="false" style="--g:var(--paypal)">PayPal</button></li>
+      <li role="presentation"><button class="gw-opt" role="tab" data-gw="misc"    aria-selected="false" style="--g:var(--muted)">Misc</button></li>
     </ul>
+    <p class="gw-nav-note">Switching a gateway rescopes the action list and the examples to that driver.</p>
   </aside>
 
   <!-- ═══════════  CENTER: content, scoped to the selected gateway  ═══════════ -->
@@ -783,19 +770,32 @@
 
   </main>
 
-  <!-- ═══════════  RIGHT: gateway selector  ═══════════ -->
-  <aside class="gw-nav" aria-label="Choose a gateway">
-    <p class="gw-nav-title">◱ Gateway</p>
-    <ul role="tablist" aria-orientation="vertical">
-      <li role="presentation"><button class="gw-opt" role="tab" data-gw="cyber"   aria-selected="true"  style="--g:var(--cyber)">CyberSource UC</button></li>
-      <li role="presentation"><button class="gw-opt" role="tab" data-gw="fawry"   aria-selected="false" style="--g:var(--fawry)">Fawry</button></li>
-      <li role="presentation"><button class="gw-opt" role="tab" data-gw="paymob"  aria-selected="false" style="--g:var(--paymob)">Paymob</button></li>
-      <li role="presentation"><button class="gw-opt" role="tab" data-gw="paylink" aria-selected="false" style="--g:var(--paylink)">PayLink</button></li>
-      <li role="presentation"><button class="gw-opt" role="tab" data-gw="paytabs" aria-selected="false" style="--g:var(--paytabs)">PayTabs</button></li>
-      <li role="presentation"><button class="gw-opt" role="tab" data-gw="paypal"  aria-selected="false" style="--g:var(--paypal)">PayPal</button></li>
-      <li role="presentation"><button class="gw-opt" role="tab" data-gw="misc"    aria-selected="false" style="--g:var(--muted)">Misc</button></li>
+  <!-- ═══════════  RIGHT: one entry per action  ═══════════ -->
+  <aside class="tree" aria-label="Actions">
+    <p class="tree-title">≡ Actions</p>
+    <ul class="tree-flat">
+      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#overview" data-spy="overview">Overview</a></li>
+      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#create-checkout" data-spy="create-checkout">Create checkout</a></li>
+      <li data-gws="cyber"><a href="#dcc-rate" data-spy="dcc-rate">DCC rate</a></li>
+      <li data-gws="cyber paytabs paypal"><a href="#charge" data-spy="charge">Charge</a></li>
+      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#capture" data-spy="capture">Capture</a></li>
+      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#void" data-spy="void">Void</a></li>
+      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#refund" data-spy="refund">Refund</a></li>
+      <li data-gws="cyber paylink paytabs"><a href="#reverse-authorization" data-spy="reverse-authorization">Reverse authorization</a></li>
+      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#get-transaction" data-spy="get-transaction">Get transaction</a></li>
+      <li data-gws="cyber fawry paymob paylink"><a href="#search-transaction" data-spy="search-transaction">Search transaction</a></li>
+      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#reconcile" data-spy="reconcile">Reconcile</a></li>
+      <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#verify-webhook" data-spy="verify-webhook">Verify webhook</a></li>
+      <li data-gws="misc"><a href="#events" data-spy="events">Events</a></li>
+      <li data-gws="misc"><a href="#operation-logging" data-spy="operation-logging">Operation logging</a></li>
+      <li data-gws="misc"><a href="#credential-resolver" data-spy="credential-resolver">Credential resolver</a></li>
+      <li data-gws="misc"><a href="#http-client" data-spy="http-client">HTTP client</a></li>
+      <li data-gws="misc"><a href="#configuration" data-spy="configuration">Configuration</a></li>
+      <li data-gws="cyber"><a href="#enroll-payer-auth" data-spy="enroll-payer-auth">Enroll payer auth</a></li>
+      <li data-gws="cyber"><a href="#validate-payer-auth" data-spy="validate-payer-auth">Validate payer auth</a></li>
+      <li data-gws="cyber paypal"><a href="#vault-instrument" data-spy="vault-instrument">Vault instrument</a></li>
+      <li data-gws="cyber paytabs paypal"><a href="#charge-stored-credential" data-spy="charge-stored-credential">Charge stored credential</a></li>
     </ul>
-    <p class="gw-nav-note">Switching a gateway rescopes the action list and the examples to that driver.</p>
   </aside>
 
 </div>
