@@ -38,6 +38,7 @@ built in: **CyberSource Unified Checkout**, **Fawry**, **Paymob**, **PayLink**,
 
 - PHP `^8.2`
 - `illuminate/support` and `illuminate/http` `^10 | ^11 | ^12 | ^13`
+- `firebase/php-jwt` `^6.10 | ^7.0` (CyberSource orchestrated-flow result-JWT verification)
 
 ## Installation
 
