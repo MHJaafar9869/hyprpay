@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Hyprpay\Payments\Domain\Command;
 
+use Hyprpay\Payments\Domain\Enum\MandateCompletionType;
 use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
 use Hyprpay\Payments\Domain\ValueObject\Customer;
 use Hyprpay\Payments\Domain\ValueObject\Money;
@@ -36,6 +37,7 @@ final readonly class CheckoutSessionRequest
      * @param  string|null  $paymentMethod  Gateway-specific method selector (e.g. Fawry: hosted, PayUsingCC, MWALLET, PAYATFAWRY)
      * @param  string|null  $description  Human-readable description of the order/items
      * @param  CheckoutOptions|null  $options  Gateway-specific extras as a typed per-gateway options DTO (e.g. PayPalCheckoutOptions, PaytabsCheckoutOptions). Each driver narrows this to its own CheckoutOptions type; build one from a raw config array with the DTO's own fromArray() when needed.
+     * @param  MandateCompletionType|null  $completeMandate  UC v1: when set, the widget orchestrates the whole payment (Decision Manager, 3DS, authorization, TMS) client-side and returns a signed result JWT — Capture for a sale, Auth for an authorization hold. Leave null for the manual transient-token flow.
      */
     public function __construct(
         public Money $money,
@@ -53,6 +55,7 @@ final readonly class CheckoutSessionRequest
         public ?string $paymentMethod = null,
         public ?string $description = null,
         public ?CheckoutOptions $options = null,
+        public ?MandateCompletionType $completeMandate = null,
     ) {}
 
     /**

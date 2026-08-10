@@ -35,6 +35,42 @@ final readonly class StartCybersourceCheckout
 }
 ```
 
+For the **orchestrated (autoProcessing) flow** — pass a `completeMandate` so the widget
+runs Decision Manager, 3-D Secure, authorization, and TMS tokenization client-side and
+resolves with a signed result JWT, then verify that JWT server-side and trust it (no
+`/pts/v2/payments` authorization and no transaction-search lag):
+
+```php
+use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
+use Hyprpay\Payments\Domain\Command\ConfirmOrchestratedPaymentRequest;
+use Hyprpay\Payments\Domain\Enum\GatewayName;
+use Hyprpay\Payments\Domain\Enum\MandateCompletionType;
+use Hyprpay\Payments\Domain\ValueObject\Money;
+
+$cybersource = $factory->make(GatewayName::CybersourceUnifiedCheckout);
+
+// 1. Mint a capture context that tells the widget to auto-complete the payment.
+$session = $cybersource->createCheckoutSession(new CheckoutSessionRequest(
+    money: Money::minor(10000, 'EGP'),
+    targetOrigins: ['https://shop.test'],
+    orderReference: 'ORDER-123',
+    completeMandate: MandateCompletionType::Capture,   // CAPTURE (sale) | AUTH (hold only)
+));
+
+// hand $session->jwt to checkout.mount(); it resolves with a signed result JWT.
+
+// 2. Verify that result JWT against the capture context and trust the outcome.
+$result = $cybersource->confirmOrchestratedPayment(new ConfirmOrchestratedPaymentRequest(
+    resultJwt: $resultJwt,                 // returned by checkout.mount() on the front end
+    captureContextJwt: $session->jwt,      // source of the RS256 verification key (flx.jwk)
+    expectedMoney: Money::minor(10000, 'EGP'),
+    orderReference: 'ORDER-123',
+));
+// $result->status is Captured (or Authorized for an AUTH mandate). For a real card,
+// $result->instrumentIdentifierId / paymentInstrumentId / customerId hold the reusable TMS
+// token for later stored-credential installments; a wallet sets $result->isWallet with no token.
+```
+
 **Fawry** — start a hosted checkout and redirect the payer:
 
 ```php
@@ -285,8 +321,9 @@ everywhere.
 
 | Operation | CyberSource UC | Fawry | Paymob | PayLink | PayTabs | PayPal | Mastercard MPGS |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| `createCheckoutSession` | ✅ capture context | ✅ hosted / card / wallet / pay-at-Fawry / MyFawry / instalment | ✅ iframe flow | ✅ invoice link / iframe | ✅ hosted / invoice / paylink / managed | ✅ order → approval redirect | ✅ hosted checkout session |
+| `createCheckoutSession` | ✅ capture context / orchestrated (autoProcessing) | ✅ hosted / card / wallet / pay-at-Fawry / MyFawry / instalment | ✅ iframe flow | ✅ invoice link / iframe | ✅ hosted / invoice / paylink / managed | ✅ order → approval redirect | ✅ hosted checkout session |
 | `charge` (transient token) | ✅ | — | — | — | ✅ Own Form (payment token) | ✅ complete approved order² | ✅ session (PAY / AUTHORIZE)³ |
+| `confirmOrchestratedPayment` (verify result JWT) | ✅ RS256 (flx.jwk) | — | — | — | — | — | — |
 | `capture` | ✅ | ✅ (Auth/Capture) | ✅ | ✅ (settle) | ✅ | ✅ | ✅ |
 | `refund` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `void` | ✅ | ✅ (cancel auth) | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -306,6 +343,18 @@ every field is named and type-checked (including enums like `PayPalUserAction` a
 nested value objects like `PaytabsAgreement` / `PaytabsSplitPayout` / `PaytabsLineItem`
 and `FawryCard`) rather than stringly-typed. Each DTO's static `fromArray()` builds one
 from a raw config array when you need to; each driver narrows `$options` to its own type.
+
+For **CyberSource Unified Checkout**, the driver supports two flows. In the manual flow
+`createCheckoutSession` mints a capture context, the widget returns a transient token, and
+`charge` authorizes it server-side via `/pts/v2/payments`. In the orchestrated
+(autoProcessing) flow, passing `completeMandate` (`CAPTURE` or `AUTH`) makes the widget run
+Decision Manager, 3-D Secure, authorization, and TMS tokenization client-side and resolve
+with a signed completed-payment result JWT; `confirmOrchestratedPayment` then
+cryptographically verifies that JWT against the RS256 public key embedded in the capture
+context (`flx.jwk`), validates its issuer, order reference, and amount, and returns the
+outcome plus the reusable TMS token — making no `/pts/v2/payments` call and no
+transaction-search lookup. A wallet result (Apple Pay / Google Pay) yields no reusable
+credential, flagged via `OrchestratedPaymentResult::$isWallet`.
 
 For **PayTabs**, `paymentMethod` selects the integration type: `invoice` (an emailable
 Invoice link), `managed` (an iframe-embeddable Managed Form), `paylink` (a reusable
