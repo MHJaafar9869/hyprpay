@@ -83,6 +83,8 @@
       <li data-gws="cyber fawry paymob paylink paytabs paypal"><a href="#verify-webhook" data-spy="verify-webhook">Verify webhook</a></li>
       <li data-gws="misc"><a href="#events" data-spy="events">Events</a></li>
       <li data-gws="misc"><a href="#operation-logging" data-spy="operation-logging">Operation logging</a></li>
+      <li data-gws="misc"><a href="#credential-resolver" data-spy="credential-resolver">Credential resolver</a></li>
+      <li data-gws="misc"><a href="#http-client" data-spy="http-client">HTTP client</a></li>
       <li data-gws="misc"><a href="#configuration" data-spy="configuration">Configuration</a></li>
       <li data-gws="cyber"><a href="#enroll-payer-auth" data-spy="enroll-payer-auth">Enroll payer auth</a></li>
       <li data-gws="cyber"><a href="#validate-payer-auth" data-spy="validate-payer-auth">Validate payer auth</a></li>
@@ -566,6 +568,91 @@
     <span class="s">"currency"</span>: <span class="s">"USD"</span>,
     <span class="s">"duration_ms"</span>: <span class="n">84.2</span>
 }</code></pre>
+      </div>
+    </section>
+
+    <section id="credential-resolver" class="doc-section" data-gws="misc">
+      <p class="doc-eyebrow">Cross-cutting</p>
+      <h2>Credential resolver</h2>
+      <p class="doc-sig"><span class="fn">CredentialResolver::resolve</span>(GatewayName): <span class="rt">GatewayCredentials</span></p>
+      <p>The factory never reads keys itself — it asks a <code>CredentialResolver</code> port. The default
+         <code>ConfigCredentialResolver</code> loads the <code>gateway.gateways.{key}</code> block from
+         Laravel config and hydrates a <code>GatewayCredentials</code> DTO, throwing
+         <code>MissingCredentialsException</code> when the block is missing, blank or incomplete. Rebind the
+         port to source credentials from anywhere — a per-tenant table, a secrets manager, an encrypted
+         vault — and every driver the factory builds picks them up, no driver code touched.</p>
+      <div class="code">
+<pre><code><span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Contract\CredentialResolver</span>;
+<span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Enum\GatewayName</span>;
+<span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Exception\MissingCredentialsException</span>;
+<span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\ValueObject\GatewayCredentials</span>;
+
+<span class="c">// resolve the active tenant's keys instead of static config</span>
+<span class="k">final readonly class</span> <span class="t">TenantCredentialResolver</span> <span class="k">implements</span> <span class="t">CredentialResolver</span>
+{
+    <span class="k">public function</span> <span class="fn">__construct</span>(<span class="k">private</span> <span class="t">TenantContext</span> <span class="v">$tenant</span>) {}
+
+    <span class="k">public function</span> <span class="fn">resolve</span>(<span class="t">GatewayName</span> <span class="v">$gateway</span>): <span class="t">GatewayCredentials</span>
+    {
+        <span class="v">$secrets</span> = <span class="v">$this</span>-&gt;tenant-&gt;<span class="fn">current</span>()
+            -&gt;<span class="fn">gatewaySecrets</span>(<span class="v">$gateway</span>-&gt;value)
+            ?? <span class="k">throw</span> <span class="t">MissingCredentialsException</span>::<span class="fn">forGateway</span>(<span class="v">$gateway</span>);
+
+        <span class="k">return</span> <span class="t">GatewayCredentials</span>::<span class="fn">fromConfig</span>(<span class="v">$secrets</span>);
+    }
+}
+
+<span class="c">// swap the port once, in a service provider — the factory now uses it everywhere</span>
+<span class="v">$this</span>-&gt;app-&gt;<span class="fn">bind</span>(<span class="t">CredentialResolver</span>::<span class="k">class</span>, <span class="t">TenantCredentialResolver</span>::<span class="k">class</span>);</code></pre>
+      </div>
+    </section>
+
+    <section id="http-client" class="doc-section" data-gws="misc">
+      <p class="doc-eyebrow">Cross-cutting</p>
+      <h2>HTTP client</h2>
+      <p class="doc-sig"><span class="fn">HttpClient::send</span>(HttpRequest): <span class="rt">HttpResponse</span></p>
+      <p>Every driver reaches its gateway API through the <code>HttpClient</code> port — one
+         <code>send(HttpRequest): HttpResponse</code> method, no Laravel HTTP types leaking into the domain.
+         The container assembles the default stack for you from the <code>http.*</code> config: a
+         <code>LaravelHttpClient</code> transport, optionally wrapped by <code>RateLimitingHttpClient</code>
+         and <code>LoggingHttpClient</code>, with <code>RetryingHttpClient</code> on the outside. Each
+         decorator is just another <code>HttpClient</code>, so you can add your own — tracing, a circuit
+         breaker, a signing proxy — by extending the binding, keeping the retry/rate-limit/logging stack the
+         SDK already built.</p>
+      <div class="code">
+<pre><code><span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Contract\HttpClient</span>;
+<span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Http\HttpRequest</span>;
+<span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Http\HttpResponse</span>;
+
+<span class="c">// a decorator that records every outbound call on your APM span</span>
+<span class="k">final readonly class</span> <span class="t">TracingHttpClient</span> <span class="k">implements</span> <span class="t">HttpClient</span>
+{
+    <span class="k">public function</span> <span class="fn">__construct</span>(<span class="k">private</span> <span class="t">HttpClient</span> <span class="v">$inner</span>) {}
+
+    <span class="k">public function</span> <span class="fn">send</span>(<span class="t">HttpRequest</span> <span class="v">$request</span>): <span class="t">HttpResponse</span>
+    {
+        <span class="k">return</span> <span class="t">Tracer</span>::<span class="fn">span</span>(<span class="s">"http {$request->method} {$request->url}"</span>, <span class="k">fn</span> () =&gt; <span class="v">$this</span>-&gt;inner-&gt;<span class="fn">send</span>(<span class="v">$request</span>));
+    }
+}
+
+<span class="c">// wrap whatever the SDK already built — its stack stays underneath yours</span>
+<span class="v">$this</span>-&gt;app-&gt;<span class="fn">extend</span>(<span class="t">HttpClient</span>::<span class="k">class</span>, <span class="k">fn</span> (<span class="t">HttpClient</span> <span class="v">$inner</span>) =&gt; <span class="k">new</span> <span class="t">TracingHttpClient</span>(<span class="v">$inner</span>));</code></pre>
+      </div>
+      <p>In tests, bind the same port to <code>FakeHttpClient</code>: it records every request and replays
+         queued responses in order (falling back to a <code>200 {}</code>), so you assert on what the driver
+         sent without touching the network.</p>
+      <div class="code">
+<pre><code><span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Contract\HttpClient</span>;
+<span class="k">use</span> <span class="t">Hyprpay\Payments\Infrastructure\Http\FakeHttpClient</span>;
+
+<span class="v">$http</span> = (<span class="k">new</span> <span class="t">FakeHttpClient</span>())
+    -&gt;<span class="fn">queueJson</span>([<span class="s">'status'</span> =&gt; <span class="s">'captured'</span>]);
+
+<span class="v">$this</span>-&gt;app-&gt;<span class="fn">instance</span>(<span class="t">HttpClient</span>::<span class="k">class</span>, <span class="v">$http</span>);
+
+<span class="c">// ... exercise a gateway action, then assert on the captured request</span>
+<span class="v">$this</span>-&gt;<span class="fn">assertSame</span>(<span class="n">1</span>, <span class="v">$http</span>-&gt;<span class="fn">requestCount</span>());
+<span class="v">$this</span>-&gt;<span class="fn">assertSame</span>(<span class="s">'POST'</span>, <span class="v">$http</span>-&gt;<span class="fn">lastRequest</span>()-&gt;method);</code></pre>
       </div>
     </section>
 
