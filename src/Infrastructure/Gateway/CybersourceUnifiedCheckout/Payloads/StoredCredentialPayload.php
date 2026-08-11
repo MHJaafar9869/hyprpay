@@ -20,9 +20,10 @@ final class StoredCredentialPayload
      *
      * Carries the client reference code, processing information (capture, internet commerce
      * indicator, and initiator/stored-credential options — adding merchantInitiatedTransaction
-     * for MIT), the saved payment instrument (and optional customer) reference, and the order amount.
+     * for MIT), the saved payment instrument (and optional customer) reference, the order amount,
+     * and an optional device fingerprint session id for fraud screening.
      *
-     * @param  StoredCredentialChargeRequest  $request  Stored-credential inputs (initiator type, first-charge flag, payment instrument id, optional customer id, amount, order reference).
+     * @param  StoredCredentialChargeRequest  $request  Stored-credential inputs (initiator type, first-charge flag, payment instrument id, optional customer id, amount, order reference, device fingerprint id).
      * @return array<string, mixed>
      */
     public static function build(StoredCredentialChargeRequest $request): array
@@ -44,7 +45,7 @@ final class StoredCredentialPayload
             $paymentInformation['customer'] = ['id' => $request->customerId];
         }
 
-        return [
+        $payload = [
             'clientReferenceInformation' => [
                 'code' => ClientReference::code($request->orderReference, $request->paymentInstrumentId),
             ],
@@ -61,5 +62,13 @@ final class StoredCredentialPayload
                 ],
             ],
         ];
+
+        $deviceInformation = DeviceInformation::fields($request->deviceFingerprintId, $request->useRawFingerprintSessionId);
+
+        if (filled($deviceInformation)) {
+            $payload['deviceInformation'] = $deviceInformation;
+        }
+
+        return $payload;
     }
 }

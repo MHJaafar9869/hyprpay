@@ -40,6 +40,80 @@ if ($quote->offered) {
 amount, the exchange rate, and the `currencyConversion.id` that pins the transaction to the
 rate CyberSource returned — all echoed unchanged on capture, refund, and reversal.
 
+## Device fingerprinting (Decision Manager)
+
+CyberSource Decision Manager profiles the shopper's device so a transaction can be
+fraud-screened. Integration has **two halves**: a profiling tag you embed on the checkout
+page (collects the device data), and a session id you send on the API request (tells
+Decision Manager which profiled device the transaction belongs to). The SDK owns the
+second half — the browser tag is yours to embed, because this package never renders HTML.
+
+### 1. Embed the profiling tag on your checkout page
+
+Add the `tags.js` script and its `<noscript>` fallback immediately above the closing
+`</body>` tag of your checkout page. Give the profiling code 3–5 seconds to run before the
+shopper submits the order. `session_id` is your **merchant id concatenated with a unique
+session id** (`<merchant id><session id>`, no separator):
+
+```html
+<script type="text/javascript"
+  src="https://h.online-metrix.net/fp/tags.js?org_id=<org id>&session_id=<merchant id><session id>"></script>
+<noscript>
+  <iframe style="width: 100px; height: 100px; border: 0; position: absolute; top: -5000px;"
+    src="https://h.online-metrix.net/fp/tags?org_id=<org id>&session_id=<merchant id><session id>"></iframe>
+</noscript>
+```
+
+- `org_id` — CyberSource's standard Decision Manager profiling org id (a shared value, not a
+  per-merchant secret): **`1snn5n9w`** in test, **`k8vif92e`** in production. Confirm yours
+  with your CyberSource representative. Because the SDK is backend-only and never renders the
+  tag, the org id lives in your checkout page, not in this package's config.
+- `<session id>` — a per-page-load unique string, max **88 characters**, using only
+  letters, digits, hyphens, and underscores (`[A-Za-z0-9_-]`). A fresh `crypto.randomUUID()`
+  per page load is ideal; reuse across page loads breaks profiling.
+- `tags.js` supersedes the legacy `check.js`. For production, serve the tag from a local
+  URL that your web server redirects to `h.online-metrix.net`, so the fingerprint host is
+  not visible in the address bar.
+
+In practice you pick the org id by test mode, build `session_id` as `merchant id + a fresh
+UUID`, inject the tag, and keep the UUID to send to your server:
+
+```html
+<script>
+  const orgId      = isTestMode ? '1snn5n9w' : 'k8vif92e';
+  const merchantId = '<your CyberSource merchant id>';
+  const sessionId  = crypto.randomUUID();               // the <session id>; send THIS to the API
+  const tag        = document.createElement('script');
+  tag.src = 'https://h.online-metrix.net/fp/tags.js?org_id=' + orgId +
+            '&session_id=' + encodeURIComponent(merchantId + sessionId);
+  document.head.appendChild(tag);
+</script>
+```
+
+### 2. Send the session id on the API request
+
+On the request, send **only the `<session id>` part** — *not* the merchant-prefixed value
+from the tag. Pass it as `deviceFingerprintId`; it maps to
+`deviceInformation.fingerprintSessionId`. It is accepted on `charge`,
+`chargeStoredCredential`, and `enrollPayerAuth`:
+
+```php
+use Hyprpay\Payments\Domain\Command\ChargeRequest;
+use Hyprpay\Payments\Domain\ValueObject\Money;
+
+$result = $cybersource->charge(new ChargeRequest(
+    transientToken: $tokenFromWidget,
+    money: Money::minor(10000, 'EGP'),
+    orderReference: 'ORDER-123',
+    deviceFingerprintId: $sessionId, // the UUID from the tag (the <session id> part), NOT merchantId + UUID
+));
+```
+
+Set `useRawFingerprintSessionId: true` only if you sent the session id to the tag **without**
+the merchant-id prefix — it tells CyberSource to look the device up by the raw session id
+instead of re-prefixing it with your merchant id. For the standard tag above
+(`session_id=<merchant id><session id>`), leave it at its default `false`.
+
 ## Idempotency
 
 Retries are safe. Every write is idempotent through two guarantees:

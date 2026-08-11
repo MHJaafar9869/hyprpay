@@ -5,12 +5,14 @@ declare(strict_types=1);
 use Hyprpay\Payments\Domain\Command\CaptureRequest;
 use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
+use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
 use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
 use Hyprpay\Payments\Domain\Enum\CredentialInitiator;
 use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CaptureContextPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CapturePayload;
+use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\PayerAuthEnrollPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\PaymentPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\StoredCredentialPayload;
 
@@ -41,6 +43,7 @@ it('builds a payment payload carrying the transient token, amount and capture fl
         orderReference: 'ORDER-9',
         consumerAuthentication: ['cavv' => 'abc', 'eci' => '05'],
         deviceFingerprintId: 'fp_1',
+        useRawFingerprintSessionId: true,
     );
 
     $payload = PaymentPayload::build($request);
@@ -50,7 +53,17 @@ it('builds a payment payload carrying the transient token, amount and capture fl
         ->and($payload['orderInformation']['amountDetails'])->toBe(['totalAmount' => '25.99', 'currency' => 'USD'])
         ->and($payload['clientReferenceInformation']['code'])->toBe('ORDER-9')
         ->and($payload['consumerAuthenticationInformation'])->toBe(['cavv' => 'abc', 'eci' => '05'])
-        ->and($payload['deviceInformation']['fingerprintSessionId'])->toBe('fp_1');
+        ->and($payload['deviceInformation'])->toBe(['fingerprintSessionId' => 'fp_1', 'useRawFingerprintSessionId' => true]);
+});
+
+it('emits the fingerprint session id without the raw flag by default', function (): void {
+    $payload = PaymentPayload::build(new ChargeRequest(
+        transientToken: 'tok',
+        money: Money::minor(100, 'USD'),
+        deviceFingerprintId: 'fp_default',
+    ));
+
+    expect($payload['deviceInformation'])->toBe(['fingerprintSessionId' => 'fp_default']);
 });
 
 it('omits optional payment sections when not provided', function (): void {
@@ -84,5 +97,27 @@ it('marks a stored-credential charge as merchant-initiated with stored credentia
         ->and($initiator['storedCredentialUsed'])->toBeTrue()
         ->and($initiator)->toHaveKey('merchantInitiatedTransaction')
         ->and($payload['paymentInformation']['paymentInstrument']['id'])->toBe('pi_1')
-        ->and($payload['paymentInformation']['customer']['id'])->toBe('cust_1');
+        ->and($payload['paymentInformation']['customer']['id'])->toBe('cust_1')
+        ->and($payload)->not->toHaveKey('deviceInformation');
+});
+
+it('attaches the device fingerprint to a stored-credential charge', function (): void {
+    $payload = StoredCredentialPayload::build(new StoredCredentialChargeRequest(
+        paymentInstrumentId: 'pi_1',
+        money: Money::minor(1500, 'USD'),
+        deviceFingerprintId: 'fp_2',
+    ));
+
+    expect($payload['deviceInformation'])->toBe(['fingerprintSessionId' => 'fp_2']);
+});
+
+it('attaches the device fingerprint to a payer-auth enrollment', function (): void {
+    $payload = PayerAuthEnrollPayload::build(new PayerAuthEnrollRequest(
+        transientToken: 'tok',
+        money: Money::minor(2000, 'USD'),
+        deviceFingerprintId: 'fp_3',
+        useRawFingerprintSessionId: true,
+    ));
+
+    expect($payload['deviceInformation'])->toBe(['fingerprintSessionId' => 'fp_3', 'useRawFingerprintSessionId' => true]);
 });

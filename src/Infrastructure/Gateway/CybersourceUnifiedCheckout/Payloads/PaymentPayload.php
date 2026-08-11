@@ -61,8 +61,10 @@ final class PaymentPayload
             $payload['consumerAuthenticationInformation'] = $request->consumerAuthentication;
         }
 
-        if (filled($request->deviceFingerprintId)) {
-            $payload['deviceInformation'] = ['fingerprintSessionId' => $request->deviceFingerprintId];
+        $deviceInformation = DeviceInformation::fields($request->deviceFingerprintId, $request->useRawFingerprintSessionId);
+
+        if (filled($deviceInformation)) {
+            $payload['deviceInformation'] = $deviceInformation;
         }
 
         return $payload;

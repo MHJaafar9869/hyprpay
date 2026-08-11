@@ -19,9 +19,9 @@ final class PayerAuthEnrollPayload
      *
      * Carries the client reference code, the transient-token card reference, the order
      * amount and optional billing address, plus optional return URL and reference id
-     * under consumerAuthenticationInformation.
+     * under consumerAuthenticationInformation and an optional device fingerprint session id.
      *
-     * @param  PayerAuthEnrollRequest  $request  Enrollment inputs (transient token, amount, optional billTo, returnUrl, referenceId, order reference).
+     * @param  PayerAuthEnrollRequest  $request  Enrollment inputs (transient token, amount, optional billTo, returnUrl, referenceId, order reference, device fingerprint id).
      * @return array<string, mixed>
      */
     public static function build(PayerAuthEnrollRequest $request): array
@@ -59,6 +59,12 @@ final class PayerAuthEnrollPayload
 
         if (filled($consumerAuthenticationInformation)) {
             $payload['consumerAuthenticationInformation'] = $consumerAuthenticationInformation;
+        }
+
+        $deviceInformation = DeviceInformation::fields($request->deviceFingerprintId, $request->useRawFingerprintSessionId);
+
+        if (filled($deviceInformation)) {
+            $payload['deviceInformation'] = $deviceInformation;
         }
 
         return $payload;

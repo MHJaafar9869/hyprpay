@@ -23,6 +23,8 @@ final readonly class PayerAuthEnrollRequest
      * @param  string|null  $returnUrl  URL the issuer redirects back to after a 3DS challenge
      * @param  string|null  $referenceId  Optional device-data-collection reference id from setup
      * @param  BillingAddress|null  $billTo  Optional billing address for the payer
+     * @param  string|null  $deviceFingerprintId  Optional device fingerprint session id for fraud screening
+     * @param  bool  $useRawFingerprintSessionId  When true, CyberSource uses the device fingerprint session id exactly as sent instead of the default merchant-prefixed lookup
      */
     public function __construct(
         public string $transientToken,
@@ -31,5 +33,7 @@ final readonly class PayerAuthEnrollRequest
         public ?string $returnUrl = null,
         public ?string $referenceId = null,
         public ?BillingAddress $billTo = null,
+        public ?string $deviceFingerprintId = null,
+        public bool $useRawFingerprintSessionId = false,
     ) {}
 }
