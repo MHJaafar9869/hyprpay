@@ -8,6 +8,7 @@ use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
 use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
 use Hyprpay\Payments\Domain\Enum\CredentialInitiator;
+use Hyprpay\Payments\Domain\Enum\MandateCompletionType;
 use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CaptureContextPayload;
@@ -33,6 +34,36 @@ it('builds a capture-context payload with amount, mandate and optional billTo', 
         ->and($payload['captureMandate']['billingType'])->toBe('FULL')
         ->and($payload['orderInformation']['billTo'])->toBe(['firstName' => 'Ada', 'country' => 'EG'])
         ->and($payload['country'])->toBe('EG');
+});
+
+it('runs Decision Manager by default in the orchestrated completeMandate block', function (): void {
+    $payload = CaptureContextPayload::build(new CheckoutSessionRequest(
+        money: Money::minor(10000, 'EGP'),
+        targetOrigins: ['https://shop.test'],
+        completeMandate: MandateCompletionType::Capture,
+    ), testCredentials());
+
+    expect($payload['completeMandate'])->toBe(['type' => 'CAPTURE', 'decisionManager' => true]);
+});
+
+it('lets the orchestrated flow opt out of Decision Manager', function (): void {
+    $payload = CaptureContextPayload::build(new CheckoutSessionRequest(
+        money: Money::minor(10000, 'EGP'),
+        targetOrigins: ['https://shop.test'],
+        completeMandate: MandateCompletionType::Capture,
+        decisionManager: false,
+    ), testCredentials());
+
+    expect($payload['completeMandate'])->toBe(['type' => 'CAPTURE', 'decisionManager' => false]);
+});
+
+it('omits completeMandate for the manual transient-token flow', function (): void {
+    $payload = CaptureContextPayload::build(new CheckoutSessionRequest(
+        money: Money::minor(10000, 'EGP'),
+        targetOrigins: ['https://shop.test'],
+    ), testCredentials());
+
+    expect($payload)->not->toHaveKey('completeMandate');
 });
 
 it('builds a payment payload carrying the transient token, amount and capture flag', function (): void {

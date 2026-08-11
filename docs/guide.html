@@ -356,6 +356,11 @@
       </div>
       <p>Set <code>useRawFingerprintSessionId: true</code> only when you sent the session id to the tag
          <em>without</em> the merchant-id prefix; for the standard tag above, leave it <code>false</code>.</p>
+      <p>In the <em>orchestrated</em> flow (a <code>completeMandate</code> on
+         <code>createCheckoutSession</code>) there is no <code>fingerprintSessionId</code> to send — the
+         widget runs Decision Manager itself. Toggle it with <code>decisionManager</code> on
+         <code>CheckoutSessionRequest</code> (default <code>true</code>), emitted as
+         <code>completeMandate.decisionManager</code>.</p>
     </section>
 
     <section id="capture" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs">
