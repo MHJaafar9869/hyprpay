@@ -20,6 +20,7 @@ use Hyprpay\Payments\Domain\Exception\UnsupportedOperationException;
 use Hyprpay\Payments\Domain\Http\HttpResponse;
 use Hyprpay\Payments\Domain\Result\DccQuote;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
+use Hyprpay\Payments\Domain\ValueObject\BrowserDeviceData;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 use Hyprpay\Payments\Infrastructure\Gateway\Mpgs\MpgsGateway;
@@ -295,7 +296,47 @@ it('authenticates the payer on the enrolled transaction', function (): void {
     expect($result->success)->toBeTrue()
         ->and($http->lastRequest()?->url)->toBe('https://test-gateway.mastercard.com/api/rest/version/100/merchant/TESTMERCHANT/order/ORD1/transaction/AUTH1')
         ->and(mpgsBody($http)['apiOperation'])->toBe('AUTHENTICATE_PAYER')
-        ->and(data_get(mpgsBody($http), 'session.id'))->toBe('sess-1');
+        ->and(data_get(mpgsBody($http), 'session.id'))->toBe('sess-1')
+        ->and(mpgsBody($http))->not->toHaveKey('device');
+});
+
+it('sends 3-D Secure browser device data on the authenticate call when provided', function (): void {
+    [$gateway, $http] = mpgsWithFakeHttp();
+    $http->queueJson(['result' => 'SUCCESS', 'authentication' => ['version' => '3DS2'], 'transaction' => ['id' => 'AUTH1']]);
+
+    $gateway->validatePayerAuth(new ValidatePayerAuthRequest(
+        authenticationTransactionId: 'AUTH1',
+        money: Money::minor(10000, 'USD'),
+        transientToken: 'sess-1',
+        orderReference: 'ORD1',
+        device: new BrowserDeviceData(
+            ipAddress: '203.0.113.7',
+            userAgent: 'Mozilla/5.0',
+            acceptHeaders: 'application/json',
+            colorDepth: 24,
+            javaEnabled: false,
+            javaScriptEnabled: true,
+            language: 'en-US',
+            screenHeight: 640,
+            screenWidth: 480,
+            timeZone: 273,
+            challengeWindowSize: 'FULL_SCREEN',
+        ),
+    ));
+
+    $device = data_get(mpgsBody($http), 'device');
+
+    expect($device['browser'])->toBe('Mozilla/5.0')
+        ->and($device['ipAddress'])->toBe('203.0.113.7')
+        ->and($device['browserDetails']['3DSecureChallengeWindowSize'])->toBe('FULL_SCREEN')
+        ->and($device['browserDetails']['acceptHeaders'])->toBe('application/json')
+        ->and($device['browserDetails']['colorDepth'])->toBe(24)
+        ->and($device['browserDetails']['javaEnabled'])->toBeFalse()
+        ->and($device['browserDetails']['javascriptEnabled'])->toBeTrue()
+        ->and($device['browserDetails']['language'])->toBe('en-US')
+        ->and($device['browserDetails']['screenHeight'])->toBe(640)
+        ->and($device['browserDetails']['screenWidth'])->toBe(480)
+        ->and($device['browserDetails']['timeZone'])->toBe(273);
 });
 
 it('retrieves an order as a transaction snapshot', function (): void {
