@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hyprpay\Payments\Infrastructure\Gateway\Mpgs\Payloads;
 
 use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
+use Hyprpay\Payments\Domain\ValueObject\BrowserDeviceData;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 
 /**
@@ -99,6 +100,43 @@ final class MpgsPayloadParts
         ], static fn (mixed $value): bool => $value !== null);
 
         return $addressBlock === [] ? [] : ['address' => $addressBlock];
+    }
+
+    /**
+     * Build the MPGS `device` block from 3-D Secure browser device data, or an empty array
+     * when none is present.
+     *
+     * Maps the EMV 3-D Secure browser fields to MPGS's device shape — the user agent to
+     * `device.browser`, the screen/locale characteristics and challenge window size to
+     * `device.browserDetails`, and the client IP to `device.ipAddress`. Only populated
+     * fields are included; booleans and zero values are preserved.
+     *
+     * @param  BrowserDeviceData|null  $device  Browser device data to serialise, if any.
+     * @return array<string, mixed>
+     */
+    public static function device(?BrowserDeviceData $device): array
+    {
+        if (! $device instanceof BrowserDeviceData || $device->isEmpty()) {
+            return [];
+        }
+
+        $browserDetails = array_filter([
+            '3DSecureChallengeWindowSize' => $device->challengeWindowSize,
+            'acceptHeaders' => $device->acceptHeaders,
+            'colorDepth' => $device->colorDepth,
+            'javaEnabled' => $device->javaEnabled,
+            'javascriptEnabled' => $device->javaScriptEnabled,
+            'language' => $device->language,
+            'screenHeight' => $device->screenHeight,
+            'screenWidth' => $device->screenWidth,
+            'timeZone' => $device->timeZone,
+        ], static fn (mixed $value): bool => $value !== null);
+
+        return array_filter([
+            'browser' => $device->userAgent,
+            'browserDetails' => $browserDetails === [] ? null : $browserDetails,
+            'ipAddress' => $device->ipAddress,
+        ], static fn (mixed $value): bool => $value !== null);
     }
 
     /**

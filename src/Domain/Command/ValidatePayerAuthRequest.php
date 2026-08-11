@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Hyprpay\Payments\Domain\Command;
 
+use Hyprpay\Payments\Domain\ValueObject\BrowserDeviceData;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 
 /**
@@ -20,11 +21,13 @@ final readonly class ValidatePayerAuthRequest
      * @param  Money  $money  Amount and currency being authenticated
      * @param  string|null  $transientToken  Optional Unified Checkout transient token for the card
      * @param  string|null  $orderReference  Optional merchant order/reference number for reconciliation
+     * @param  BrowserDeviceData|null  $device  Optional 3-D Secure browser device data (user agent, browser details, IP) to improve frictionless/risk-based authentication
      */
     public function __construct(
         public string $authenticationTransactionId,
         public Money $money,
         public ?string $transientToken = null,
         public ?string $orderReference = null,
+        public ?BrowserDeviceData $device = null,
     ) {}
 }

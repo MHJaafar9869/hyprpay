@@ -805,6 +805,26 @@
       <div class="code">
 <pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">validatePayerAuth</span>(<span class="k">new</span> <span class="t">ValidatePayerAuthRequest</span>(<span class="c">/* … */</span>));</code></pre>
       </div>
+      <p><em>MPGS:</em> pass 3-D Secure browser device data via a <code>BrowserDeviceData</code> on
+         <code>ValidatePayerAuthRequest.device</code> — the user agent, <code>browserDetails</code>
+         (screen size, colour depth, language, time zone, challenge window size), and client IP. MPGS
+         forwards it as <code>device</code> on the <code>AUTHENTICATE_PAYER</code> call so the issuer can
+         risk-assess and grant a frictionless (no-challenge) authentication more often.</p>
+      <div class="gw-variant" data-gw="mpgs">
+        <div class="code">
+<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">validatePayerAuth</span>(<span class="k">new</span> <span class="t">ValidatePayerAuthRequest</span>(
+    <span class="a">authenticationTransactionId:</span> <span class="v">$authTxnId</span>,
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'USD'</span>),
+    <span class="a">device:</span> <span class="k">new</span> <span class="t">BrowserDeviceData</span>(
+        <span class="a">ipAddress:</span> <span class="v">$request</span>-&gt;<span class="fn">ip</span>(),
+        <span class="a">userAgent:</span> <span class="v">$request</span>-&gt;<span class="fn">userAgent</span>(),
+        <span class="a">colorDepth:</span> <span class="n">24</span>, <span class="a">screenHeight:</span> <span class="n">640</span>, <span class="a">screenWidth:</span> <span class="n">480</span>,
+        <span class="a">language:</span> <span class="s">'en-US'</span>, <span class="a">timeZone:</span> <span class="n">273</span>, <span class="a">javaScriptEnabled:</span> <span class="k">true</span>,
+        <span class="a">challengeWindowSize:</span> <span class="s">'FULL_SCREEN'</span>,
+    ),
+));</code></pre>
+        </div>
+      </div>
     </section>
 
     <section id="vault-instrument" class="doc-section" data-gws="cyber paypal mpgs paylink">
