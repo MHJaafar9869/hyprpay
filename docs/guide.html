@@ -324,6 +324,33 @@
       </div>
     </section>
 
+    <section id="device-fingerprint" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Fraud screening</p>
+      <h2>Device fingerprinting</h2>
+      <p>Decision Manager profiles the shopper's device so a charge can be fraud-screened. It has two
+         halves: a profiling tag you embed on the checkout page, and a session id you send on the request.
+         The browser tag is yours to embed — this package never renders HTML.</p>
+      <p>Add the tag above <code>&lt;/body&gt;</code>. <code>session_id</code> is your merchant id
+         concatenated with a per-page-load unique id (max 88 chars, <code>[A-Za-z0-9_-]</code>):</p>
+      <div class="code">
+<pre><code><span class="c">&lt;!-- org_id comes from your CyberSource rep; tags.js supersedes the legacy check.js --&gt;</span>
+&lt;script src=<span class="s">"https://h.online-metrix.net/fp/tags.js?org_id=&lt;org id&gt;&amp;session_id=&lt;merchant id&gt;&lt;session id&gt;"</span>&gt;&lt;/script&gt;</code></pre>
+      </div>
+      <p>On the request, send <code>only</code> the <code>&lt;session id&gt;</code> part as
+         <code>deviceFingerprintId</code> — it maps to <code>deviceInformation.fingerprintSessionId</code>.
+         It is accepted on <code>charge</code>, <code>chargeStoredCredential</code>, and
+         <code>enrollPayerAuth</code>:</p>
+      <div class="code">
+<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="k">new</span> <span class="t">ChargeRequest</span>(
+    <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>,
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'EGP'</span>),
+    <span class="a">deviceFingerprintId:</span> <span class="v">$sessionId</span>, <span class="c">// the &lt;session id&gt; part only, matching the tag</span>
+));</code></pre>
+      </div>
+      <p>Set <code>useRawFingerprintSessionId: true</code> only when you sent the session id to the tag
+         <em>without</em> the merchant-id prefix; for the standard tag above, leave it <code>false</code>.</p>
+    </section>
+
     <section id="capture" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs">
       <p class="doc-eyebrow">Payment flow</p>
       <h2>Capture</h2>
@@ -894,6 +921,7 @@
       <li data-gws="cyber"><a href="#confirm-orchestrated" data-spy="confirm-orchestrated">Confirm orchestrated</a></li>
       <li data-gws="cyber"><a href="#dcc-rate" data-spy="dcc-rate">DCC rate</a></li>
       <li data-gws="cyber paytabs paypal mpgs"><a href="#charge" data-spy="charge">Charge</a></li>
+      <li data-gws="cyber"><a href="#device-fingerprint" data-spy="device-fingerprint">Device fingerprinting</a></li>
       <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs"><a href="#capture" data-spy="capture">Capture</a></li>
       <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs"><a href="#void" data-spy="void">Void</a></li>
       <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs"><a href="#refund" data-spy="refund">Refund</a></li>
