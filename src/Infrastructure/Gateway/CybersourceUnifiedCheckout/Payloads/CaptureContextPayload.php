@@ -25,7 +25,8 @@ final class CaptureContextPayload
      * and the order amount and optional billing address. When the request carries a
      * completeMandate, a completeMandate block is added so the widget orchestrates the
      * whole payment client-side (UC v1 autoProcessing) instead of returning a transient
-     * token for server-side authorization.
+     * token for server-side authorization — including running Decision Manager (device
+     * fingerprinting) when decisionManager is enabled.
      *
      * @param  CheckoutSessionRequest  $request  Checkout session inputs (amount, allowed networks/types, origins, locale/country, optional billTo, optional completeMandate).
      * @param  GatewayCredentials  $credentials  Merchant credentials providing default country and locale fallbacks.
@@ -64,7 +65,10 @@ final class CaptureContextPayload
         ];
 
         if ($request->completeMandate instanceof MandateCompletionType) {
-            $payload['completeMandate'] = ['type' => $request->completeMandate->value];
+            $payload['completeMandate'] = [
+                'type' => $request->completeMandate->value,
+                'decisionManager' => $request->decisionManager,
+            ];
         }
 
         return $payload;
