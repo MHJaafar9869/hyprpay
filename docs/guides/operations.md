@@ -64,15 +64,31 @@ session id** (`<merchant id><session id>`, no separator):
 </noscript>
 ```
 
-- `org_id` — supplied by your CyberSource representative (a different value for test vs.
-  production). Not a config key in this SDK; you own the tag.
+- `org_id` — CyberSource's standard Decision Manager profiling org id (a shared value, not a
+  per-merchant secret): **`1snn5n9w`** in test, **`k8vif92e`** in production. Confirm yours
+  with your CyberSource representative. Because the SDK is backend-only and never renders the
+  tag, the org id lives in your checkout page, not in this package's config.
 - `<session id>` — a per-page-load unique string, max **88 characters**, using only
-  letters, digits, hyphens, and underscores (`[A-Za-z0-9_-]`). It must be fresh on every
-  page load (an ideal value is your web session id plus a timestamp). Reuse across page
-  loads breaks profiling.
+  letters, digits, hyphens, and underscores (`[A-Za-z0-9_-]`). A fresh `crypto.randomUUID()`
+  per page load is ideal; reuse across page loads breaks profiling.
 - `tags.js` supersedes the legacy `check.js`. For production, serve the tag from a local
   URL that your web server redirects to `h.online-metrix.net`, so the fingerprint host is
   not visible in the address bar.
+
+In practice you pick the org id by test mode, build `session_id` as `merchant id + a fresh
+UUID`, inject the tag, and keep the UUID to send to your server:
+
+```html
+<script>
+  const orgId      = isTestMode ? '1snn5n9w' : 'k8vif92e';
+  const merchantId = '<your CyberSource merchant id>';
+  const sessionId  = crypto.randomUUID();               // the <session id>; send THIS to the API
+  const tag        = document.createElement('script');
+  tag.src = 'https://h.online-metrix.net/fp/tags.js?org_id=' + orgId +
+            '&session_id=' + encodeURIComponent(merchantId + sessionId);
+  document.head.appendChild(tag);
+</script>
+```
 
 ### 2. Send the session id on the API request
 
@@ -89,7 +105,7 @@ $result = $cybersource->charge(new ChargeRequest(
     transientToken: $tokenFromWidget,
     money: Money::minor(10000, 'EGP'),
     orderReference: 'ORDER-123',
-    deviceFingerprintId: $sessionId, // the <session id> part only, matching the tag
+    deviceFingerprintId: $sessionId, // the UUID from the tag (the <session id> part), NOT merchantId + UUID
 ));
 ```
 

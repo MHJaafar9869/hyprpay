@@ -330,11 +330,18 @@
       <p>Decision Manager profiles the shopper's device so a charge can be fraud-screened. It has two
          halves: a profiling tag you embed on the checkout page, and a session id you send on the request.
          The browser tag is yours to embed — this package never renders HTML.</p>
-      <p>Add the tag above <code>&lt;/body&gt;</code>. <code>session_id</code> is your merchant id
-         concatenated with a per-page-load unique id (max 88 chars, <code>[A-Za-z0-9_-]</code>):</p>
+      <p><code>org_id</code> is CyberSource's standard Decision Manager profiling org id (shared, not a
+         per-merchant secret): <code>1snn5n9w</code> in test, <code>k8vif92e</code> in production.
+         <code>session_id</code> is your merchant id concatenated with a fresh per-page-load
+         <code>crypto.randomUUID()</code> (max 88 chars, <code>[A-Za-z0-9_-]</code>). Add it above
+         <code>&lt;/body&gt;</code> — <code>tags.js</code> supersedes the legacy <code>check.js</code>:</p>
       <div class="code">
-<pre><code><span class="c">&lt;!-- org_id comes from your CyberSource rep; tags.js supersedes the legacy check.js --&gt;</span>
-&lt;script src=<span class="s">"https://h.online-metrix.net/fp/tags.js?org_id=&lt;org id&gt;&amp;session_id=&lt;merchant id&gt;&lt;session id&gt;"</span>&gt;&lt;/script&gt;</code></pre>
+<pre><code><span class="k">const</span> <span class="v">orgId</span>      = <span class="v">isTestMode</span> ? <span class="s">'1snn5n9w'</span> : <span class="s">'k8vif92e'</span>;
+<span class="k">const</span> <span class="v">sessionId</span>  = <span class="v">crypto</span>.<span class="fn">randomUUID</span>();               <span class="c">// the &lt;session id&gt;; send THIS to the API</span>
+<span class="k">const</span> <span class="v">tag</span>        = <span class="v">document</span>.<span class="fn">createElement</span>(<span class="s">'script'</span>);
+<span class="v">tag</span>.src = <span class="s">'https://h.online-metrix.net/fp/tags.js?org_id='</span> + <span class="v">orgId</span> +
+          <span class="s">'&amp;session_id='</span> + <span class="fn">encodeURIComponent</span>(<span class="v">merchantId</span> + <span class="v">sessionId</span>);
+<span class="v">document</span>.head.<span class="fn">appendChild</span>(<span class="v">tag</span>);</code></pre>
       </div>
       <p>On the request, send <code>only</code> the <code>&lt;session id&gt;</code> part as
          <code>deviceFingerprintId</code> — it maps to <code>deviceInformation.fingerprintSessionId</code>.
@@ -344,7 +351,7 @@
 <pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="k">new</span> <span class="t">ChargeRequest</span>(
     <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>,
     <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'EGP'</span>),
-    <span class="a">deviceFingerprintId:</span> <span class="v">$sessionId</span>, <span class="c">// the &lt;session id&gt; part only, matching the tag</span>
+    <span class="a">deviceFingerprintId:</span> <span class="v">$sessionId</span>, <span class="c">// the UUID from the tag (the &lt;session id&gt; part), NOT merchantId + UUID</span>
 ));</code></pre>
       </div>
       <p>Set <code>useRawFingerprintSessionId: true</code> only when you sent the session id to the tag
