@@ -38,6 +38,7 @@ final readonly class CheckoutSessionRequest
      * @param  string|null  $description  Human-readable description of the order/items
      * @param  CheckoutOptions|null  $options  Gateway-specific extras as a typed per-gateway options DTO (e.g. PayPalCheckoutOptions, PaytabsCheckoutOptions). Each driver narrows this to its own CheckoutOptions type; build one from a raw config array with the DTO's own fromArray() when needed.
      * @param  MandateCompletionType|null  $completeMandate  UC v1: when set, the widget orchestrates the whole payment (Decision Manager, 3DS, authorization, TMS) client-side and returns a signed result JWT — Capture for a sale, Auth for an authorization hold. Leave null for the manual transient-token flow.
+     * @param  bool  $decisionManager  UC v1 orchestrated flow only: whether the widget runs Decision Manager (and its device fingerprinting) as part of the mandate. Emitted as completeMandate.decisionManager; ignored unless completeMandate is set. Defaults to true so orchestrated payments are fraud-screened.
      */
     public function __construct(
         public Money $money,
@@ -56,6 +57,7 @@ final readonly class CheckoutSessionRequest
         public ?string $description = null,
         public ?CheckoutOptions $options = null,
         public ?MandateCompletionType $completeMandate = null,
+        public bool $decisionManager = true,
     ) {}
 
     /**

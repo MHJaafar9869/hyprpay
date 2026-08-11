@@ -181,7 +181,7 @@ it('adds a completeMandate block to the capture context when orchestration is re
 
     $body = json_decode((string) $http->lastRequest()?->body, true);
 
-    expect($body['completeMandate'])->toBe(['type' => 'CAPTURE']);
+    expect($body['completeMandate'])->toBe(['type' => 'CAPTURE', 'decisionManager' => true]);
 });
 
 it('omits the completeMandate block for the manual transient-token flow', function (): void {

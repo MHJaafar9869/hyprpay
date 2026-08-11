@@ -114,6 +114,32 @@ the merchant-id prefix — it tells CyberSource to look the device up by the raw
 instead of re-prefixing it with your merchant id. For the standard tag above
 (`session_id=<merchant id><session id>`), leave it at its default `false`.
 
+### Orchestrated flow (completeMandate)
+
+The steps above apply to the **manual transient-token flow**, where you call `charge` /
+`chargeStoredCredential` / `enrollPayerAuth` server-side. The **orchestrated flow**
+(`CheckoutSessionRequest` with a `completeMandate`) has no server-side payments call — the
+Unified Checkout widget runs Decision Manager, 3DS, authorization, and TMS itself and
+collects the device data on its own. There is no `fingerprintSessionId` to pass there;
+instead Decision Manager (device fingerprinting included) is toggled by
+`completeMandate.decisionManager`, which the SDK emits from `CheckoutSessionRequest`:
+
+```php
+use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
+use Hyprpay\Payments\Domain\Enum\MandateCompletionType;
+use Hyprpay\Payments\Domain\ValueObject\Money;
+
+$session = $cybersource->createCheckoutSession(new CheckoutSessionRequest(
+    money: Money::minor(10000, 'EGP'),
+    targetOrigins: ['https://shop.test'],
+    completeMandate: MandateCompletionType::Capture, // orchestrate the whole payment
+    // decisionManager defaults to true — pass false to skip Decision Manager
+));
+```
+
+`decisionManager` defaults to `true`, so orchestrated sales are fraud-screened out of the
+box; set it to `false` to opt out. It is ignored unless `completeMandate` is set.
+
 ## Idempotency
 
 Retries are safe. Every write is idempotent through two guarantees:
