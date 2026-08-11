@@ -24,6 +24,8 @@ final readonly class StoredCredentialChargeRequest
      * @param  string|null  $customerId  Optional vault customer identifier owning the instrument
      * @param  string|null  $orderReference  Optional merchant order/reference number for reconciliation
      * @param  string|null  $idempotencyKey  Optional idempotency key; sent to the gateway so a retried charge is not double-processed. Defaults to the order reference when omitted.
+     * @param  string|null  $deviceFingerprintId  Optional device fingerprint session id for fraud screening
+     * @param  bool  $useRawFingerprintSessionId  When true, CyberSource uses the device fingerprint session id exactly as sent instead of the default merchant-prefixed lookup
      */
     public function __construct(
         public string $paymentInstrumentId,
@@ -33,5 +35,7 @@ final readonly class StoredCredentialChargeRequest
         public ?string $customerId = null,
         public ?string $orderReference = null,
         public ?string $idempotencyKey = null,
+        public ?string $deviceFingerprintId = null,
+        public bool $useRawFingerprintSessionId = false,
     ) {}
 }

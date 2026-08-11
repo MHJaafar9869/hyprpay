@@ -30,6 +30,7 @@ final readonly class ChargeRequest
      * @param  string|null  $deviceFingerprintId  Optional device fingerprint session id for fraud screening
      * @param  string|null  $idempotencyKey  Optional idempotency key; sent to the gateway so a retried charge is not double-processed. Defaults to the order reference when omitted.
      * @param  DccQuote|null  $dcc  Optional DCC quote to bill the cardholder in their currency; set `money` to the quote's converted amount so the quoted rate is applied
+     * @param  bool  $useRawFingerprintSessionId  When true, CyberSource uses the device fingerprint session id exactly as sent instead of the default merchant-prefixed lookup
      */
     public function __construct(
         public string $transientToken,
@@ -43,5 +44,6 @@ final readonly class ChargeRequest
         public ?string $deviceFingerprintId = null,
         public ?string $idempotencyKey = null,
         public ?DccQuote $dcc = null,
+        public bool $useRawFingerprintSessionId = false,
     ) {}
 }
