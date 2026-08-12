@@ -206,8 +206,8 @@
       <article class="gw reveal" style="--gw:var(--authorizenet)">
         <header><span class="gw-tag">Authorize.Net</span><span class="gw-sig">Name / Transaction Key</span></header>
         <h3>Accept.js charge</h3>
-        <p>Charge an Accept.js opaque-data token — the card is tokenised in the browser, so no PAN reaches your server — then capture, refund or void by transaction id. Look up a transaction for reconciliation, and verify the HMAC-SHA512 webhook signature.</p>
-        <footer>Accept.js charge · capture · refund · void · getTransaction · webhook</footer>
+        <p>Charge an Accept.js opaque-data token — the card is tokenised in the browser, so no PAN reaches your server — then capture, refund or void by transaction id. Vault the same token into a CIM profile for MIT/CIT stored-credential charges, look up a transaction for reconciliation, and verify the HMAC-SHA512 webhook signature.</p>
+        <footer>Accept.js charge · capture · refund · void · CIM vault · getTransaction · webhook</footer>
       </article>
     </div>
   </section>
@@ -246,7 +246,7 @@
           <tr><th scope="row"><code>void</code></th><td class="y">✓</td><td class="y">cancel auth</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
           <tr><th scope="row"><code>reverseAuthorization</code></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="y">release</td><td class="n">—</td><td class="y">✓</td><td class="n">—</td></tr>
           <tr><th scope="row"><code>enroll</code> / <code>validatePayerAuth</code> <small>(3-DS)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="n">—</td></tr>
-          <tr><th scope="row"><code>vault</code> / <code>chargeStoredCredential</code></th><td class="y">TMS · MIT/CIT</td><td class="n">—</td><td class="n">—</td><td class="y">vault · charge · revoke</td><td class="y">token · MIT/CIT</td><td class="y">vault · MIT/CIT</td><td class="y">token · MIT/CIT</td><td class="n">—</td></tr>
+          <tr><th scope="row"><code>vault</code> / <code>chargeStoredCredential</code></th><td class="y">TMS · MIT/CIT</td><td class="n">—</td><td class="n">—</td><td class="y">vault · charge · revoke</td><td class="y">token · MIT/CIT</td><td class="y">vault · MIT/CIT</td><td class="y">token · MIT/CIT</td><td class="y">CIM · MIT/CIT</td></tr>
           <tr><th scope="row"><code>getTransaction</code> / <code>searchTransaction</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">query</td><td class="y">order lookup</td><td class="y">order lookup</td><td class="y">transaction details</td></tr>
           <tr><th scope="row"><code>verifyWebhook</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">API</td><td class="y">secret</td><td class="y">HMAC-SHA512</td></tr>
         </tbody>
@@ -375,7 +375,7 @@
             <div class="op"><dt>void</dt><dd>&#10003;</dd></div>
             <div class="op off"><dt>reverseAuthorization</dt><dd>&mdash;</dd></div>
             <div class="op off"><dt>enroll / validatePayerAuth</dt><dd>&mdash;</dd></div>
-            <div class="op off"><dt>vault / chargeStoredCredential</dt><dd>&mdash;</dd></div>
+            <div class="op"><dt>vault / chargeStoredCredential</dt><dd>CIM &middot; MIT/CIT</dd></div>
             <div class="op"><dt>getTransaction / searchTransaction</dt><dd>transaction details</dd></div>
             <div class="op"><dt>verifyWebhook</dt><dd>HMAC-SHA512</dd></div>
           </dl>

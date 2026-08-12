@@ -72,16 +72,17 @@ Method:
 | `$useRawFingerprintSessionId` | `bool` | `false` | When true, use the fingerprint session id exactly as sent |
 
 ### TokenizeInstrumentRequest
-`Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest` — tokenises (vaults) a raw card into a reusable payment instrument, later charged via `StoredCredentialChargeRequest`.
+`Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest` — tokenises (vaults) a card into a reusable payment instrument, later charged via `StoredCredentialChargeRequest`. Supply either the raw card fields **or** a `$transientToken` (a browser-tokenised nonce such as Authorize.Net Accept.js opaque data) to vault without the PAN touching the server.
 
 | param | type | default | meaning |
 |---|---|---|---|
-| `$cardNumber` | `string` | — | Primary account number (PAN) to vault |
-| `$expirationMonth` | `string` | — | Two-digit card expiry month (MM) |
-| `$expirationYear` | `string` | — | Four-digit card expiry year (YYYY) |
+| `$cardNumber` | `string` | `''` | Primary account number (PAN); leave blank when vaulting from a transient token |
+| `$expirationMonth` | `string` | `''` | Two-digit card expiry month (MM); blank when using a transient token |
+| `$expirationYear` | `string` | `''` | Four-digit card expiry year (YYYY); blank when using a transient token |
 | `$cardType` | `?string` | `null` | Gateway card-type code (e.g. Visa/Mastercard identifier) |
 | `$billTo` | `?BillingAddress` | `null` | Billing address to store with the instrument |
 | `$customerReference` | `?string` | `null` | Merchant customer reference to associate with the vaulted instrument |
+| `$transientToken` | `?string` | `null` | Browser-tokenised payment nonce (e.g. Accept.js opaque data) to vault without handling the raw card |
 
 ## Transaction lifecycle (capture / void / refund / reversal)
 

@@ -66,6 +66,26 @@ final readonly class AuthorizeNetClient
     }
 
     /**
+     * POST a createCustomerProfileRequest to vault a payment profile and return the decoded response.
+     *
+     * The validation mode follows the credentials' test flag, so a live vault runs the card through
+     * Authorize.Net's real validation and a sandbox vault through the test one.
+     *
+     * @param  array<string, mixed>  $profile  The ordered profile body (merchantCustomerId, paymentProfiles).
+     * @return array<string, mixed>
+     */
+    public function createCustomerProfile(array $profile, string $context): array
+    {
+        return $this->send([
+            'createCustomerProfileRequest' => [
+                'merchantAuthentication' => $this->merchantAuthentication(),
+                'profile' => $profile,
+                'validationMode' => $this->credentials->testMode ? 'testMode' : 'liveMode',
+            ],
+        ], $context);
+    }
+
+    /**
      * Encode the envelope, POST it, and return the normalized decoded body.
      *
      * @param  array<string, mixed>  $body

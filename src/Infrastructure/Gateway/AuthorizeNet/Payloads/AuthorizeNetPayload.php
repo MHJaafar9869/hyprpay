@@ -7,7 +7,10 @@ namespace Hyprpay\Payments\Infrastructure\Gateway\AuthorizeNet\Payloads;
 use Hyprpay\Payments\Domain\Command\CaptureRequest;
 use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
+use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
+use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
+use Hyprpay\Payments\Domain\Enum\CredentialInitiator;
 use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
 use Hyprpay\Payments\Domain\ValueObject\Customer;
 
@@ -94,6 +97,84 @@ final class AuthorizeNetPayload
             'transactionType' => 'voidTransaction',
             'refTransId' => $request->transactionId,
         ];
+    }
+
+    /**
+     * Build the `profile` block for createCustomerProfileRequest — vaults a payment profile from
+     * an Accept.js transient token (PAN-free) or, if none is given, the raw card.
+     *
+     * @return array<string, mixed>
+     */
+    public static function createProfile(TokenizeInstrumentRequest $request): array
+    {
+        $profile = [];
+
+        if ($request->customerReference !== null && $request->customerReference !== '') {
+            $profile['merchantCustomerId'] = mb_substr($request->customerReference, 0, 20);
+        }
+
+        $profile['paymentProfiles'] = array_filter([
+            'customerType' => 'individual',
+            'payment' => self::instrumentPayment($request),
+            'billTo' => self::billTo($request->billTo),
+        ], static fn (mixed $value): bool => $value !== null);
+
+        return $profile;
+    }
+
+    /**
+     * Build the `transactionRequest` block that charges a stored customer/payment profile.
+     *
+     * The `profile` element references the vaulted ids; `processingOptions` stamps the stored-credential
+     * intent — merchant-initiated (`isSubsequentAuth`) vs customer-initiated (`isStoredCredentials`).
+     *
+     * @return array<string, mixed>
+     */
+    public static function chargeProfile(StoredCredentialChargeRequest $request): array
+    {
+        return [
+            'transactionType' => 'authCaptureTransaction',
+            'amount' => $request->money->toDecimalString(),
+            'profile' => [
+                'customerProfileId' => $request->customerId,
+                'paymentProfile' => ['paymentProfileId' => $request->paymentInstrumentId],
+            ],
+            'processingOptions' => self::storedCredentialOptions($request->initiator),
+        ];
+    }
+
+    /**
+     * Build the payment block for a vaulted profile: opaque data when a transient token is present,
+     * otherwise the raw card (expiry as YYYY-MM).
+     *
+     * @return array<string, array<string, string>>
+     */
+    private static function instrumentPayment(TokenizeInstrumentRequest $request): array
+    {
+        if ($request->transientToken !== null && $request->transientToken !== '') {
+            return ['opaqueData' => [
+                'dataDescriptor' => self::OPAQUE_DATA_DESCRIPTOR,
+                'dataValue' => $request->transientToken,
+            ]];
+        }
+
+        return ['creditCard' => [
+            'cardNumber' => $request->cardNumber,
+            'expirationDate' => $request->expirationYear.'-'.$request->expirationMonth,
+        ]];
+    }
+
+    /**
+     * Map the SDK initiator to Authorize.Net's stored-credential processing option.
+     *
+     * @return array<string, string>
+     */
+    private static function storedCredentialOptions(CredentialInitiator $initiator): array
+    {
+        return match ($initiator) {
+            CredentialInitiator::Merchant => ['isSubsequentAuth' => 'true'],
+            CredentialInitiator::Customer => ['isStoredCredentials' => 'true'],
+        };
     }
 
     /**
