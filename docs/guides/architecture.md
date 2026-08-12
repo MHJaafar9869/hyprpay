@@ -33,3 +33,24 @@ Dependencies point inward: `Infrastructure` and `Application` depend on `Domain`
 `Domain` depends on nothing. Adding a gateway is a new `Infrastructure/Gateway/{X}/`
 folder, a `GatewayName` case, and one factory branch.
 
+## Composing multi-step flows
+
+Where a gateway operation is a sequence of steps whose ordering is load-bearing, the flow
+is expressed as a [Laravel pipeline](https://laravel.com/docs/helpers#pipeline) of small
+pipe classes over a mutable context object, rather than one long method. Each pipe does one
+step and hands the context to the next, so the ordering constraints live in the pipe list
+itself instead of in prose.
+
+Paymob's checkout is the first flow built this way. `PaymobGateway::createCheckoutSession()`
+runs a `PaymobCheckoutContext` through four pipes under `Gateway/Paymob/Checkout/Pipes/`:
+
+```
+Authenticate → RegisterOrder → RequestPaymentKey → BuildCheckoutSession
+```
+
+Each later step depends on what an earlier one wrote to the context (the auth token, the
+order id, the payment token), which is exactly why the order is fixed. The pipes are plain
+objects with a `handle($context, $next)` method, run through a directly-instantiated
+`Illuminate\Pipeline\Pipeline` (no facade, so the flow works without a booted app — e.g. in
+the package's tests). The behaviour is identical to the previous inline method.
+

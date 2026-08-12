@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "175ad5b207204d03842b9270945beff9",
+    "content-hash": "54c24c477037cb2e9e0cc31bff2bdb4b",
     "packages": [
         {
             "name": "carbonphp/carbon-doctrine-types",
@@ -1346,16 +1346,16 @@
         },
         {
             "name": "illuminate/pipeline",
-            "version": "v13.24.0",
+            "version": "v13.25.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/illuminate/pipeline.git",
-                "reference": "639ad005203d547af28bd6ed55bf7f7d81011f86"
+                "reference": "9ee04593b932a6d7dca255e3217584b896621b99"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/illuminate/pipeline/zipball/639ad005203d547af28bd6ed55bf7f7d81011f86",
-                "reference": "639ad005203d547af28bd6ed55bf7f7d81011f86",
+                "url": "https://api.github.com/repos/illuminate/pipeline/zipball/9ee04593b932a6d7dca255e3217584b896621b99",
+                "reference": "9ee04593b932a6d7dca255e3217584b896621b99",
                 "shasum": ""
             },
             "require": {
@@ -1395,7 +1395,7 @@
                 "issues": "https://github.com/laravel/framework/issues",
                 "source": "https://github.com/laravel/framework"
             },
-            "time": "2026-08-02T20:32:36+00:00"
+            "time": "2026-08-04T14:02:13+00:00"
         },
         {
             "name": "illuminate/reflection",

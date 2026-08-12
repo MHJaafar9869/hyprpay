@@ -19,11 +19,15 @@ use Hyprpay\Payments\Domain\Result\RefundResult;
 use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
 use Hyprpay\Payments\Domain\Result\WebhookEvent;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
+use Hyprpay\Payments\Infrastructure\Gateway\Paymob\Checkout\PaymobCheckoutContext;
+use Hyprpay\Payments\Infrastructure\Gateway\Paymob\Checkout\Pipes\Authenticate;
+use Hyprpay\Payments\Infrastructure\Gateway\Paymob\Checkout\Pipes\BuildCheckoutSession;
+use Hyprpay\Payments\Infrastructure\Gateway\Paymob\Checkout\Pipes\RegisterOrder;
+use Hyprpay\Payments\Infrastructure\Gateway\Paymob\Checkout\Pipes\RequestPaymentKey;
 use Hyprpay\Payments\Infrastructure\Gateway\Paymob\Enums\PaymobPaymentMethod;
 use Hyprpay\Payments\Infrastructure\Gateway\Paymob\Enums\PaymobTransactionStatus;
-use Hyprpay\Payments\Infrastructure\Gateway\Paymob\Payloads\PaymobOrderPayload;
-use Hyprpay\Payments\Infrastructure\Gateway\Paymob\Payloads\PaymobPaymentKeyPayload;
 use Hyprpay\Payments\Infrastructure\Support\Value;
+use Illuminate\Pipeline\Pipeline;
 
 /**
  * Paymob (Accept) payment gateway adapter.
@@ -41,10 +45,6 @@ use Hyprpay\Payments\Infrastructure\Support\Value;
  */
 final class PaymobGateway extends AbstractPaymentGateway
 {
-    private const IFRAME_URL = 'https://accept.paymob.com/api/acceptance/iframes/%s?payment_token=%s';
-
-    private const DEFAULT_EXPIRATION_SECONDS = 3600;
-
     private readonly PaymobClient $client;
 
     /**
@@ -66,46 +66,36 @@ final class PaymobGateway extends AbstractPaymentGateway
     }
 
     /**
-     * Start a Paymob payment: authenticate, register the order, request a payment key,
-     * and return the iframe redirect URL plus the Paymob order reference.
+     * Start a Paymob payment by running the checkout flow as an ordered pipeline.
+     *
+     * Each step is a pipe over a shared {@see PaymobCheckoutContext}: authenticate, register
+     * the order, request the payment key, then build the session. The ordering is load-bearing
+     * — later steps depend on the auth token, order id, and payment token the earlier ones set
+     * — and the pipe list below is where that order is recorded. The integration id is resolved
+     * before the pipeline so a misconfigured method fails before any network call.
      */
     public function createCheckoutSession(CheckoutSessionRequest $request): CheckoutSession
     {
         $method = PaymobPaymentMethod::fromRequest($request->paymentMethod);
-        $integrationId = $this->integrationId($request, $method);
 
-        $authToken = $this->client->authenticate();
+        $context = (new Pipeline)
+            ->send(new PaymobCheckoutContext(
+                request: $request,
+                client: $this->client,
+                integrationId: $this->integrationId($request, $method),
+                iframeId: $this->iframeId($request, $method),
+            ))
+            ->through([
+                new Authenticate,
+                new RegisterOrder,
+                new RequestPaymentKey,
+                new BuildCheckoutSession,
+            ])
+            ->thenReturn();
 
-        $order = $this->client->post(
-            '/ecommerce/orders',
-            PaymobOrderPayload::build($request),
-            $authToken,
-            'register order',
-        );
-        $orderId = $order['id'] ?? null;
+        assert($context instanceof PaymobCheckoutContext && $context->session instanceof CheckoutSession);
 
-        $paymentKey = $this->client->post(
-            '/acceptance/payment_keys',
-            PaymobPaymentKeyPayload::build(
-                $request,
-                Value::string($orderId),
-                $authToken,
-                $integrationId,
-                PaymobCheckoutOptions::fromRequest($request)->expiration ?? self::DEFAULT_EXPIRATION_SECONDS,
-            ),
-            $authToken,
-            'create payment key',
-        );
-        $token = Value::string($paymentKey['token'] ?? null);
-
-        $iframeId = $this->iframeId($request, $method);
-
-        return new CheckoutSession(
-            redirectUrl: filled($iframeId) ? sprintf(self::IFRAME_URL, $iframeId, $token) : null,
-            reference: filled($orderId) ? Value::string($orderId) : null,
-            merchantReference: $request->orderReference,
-            raw: ['order' => $order, 'payment_token' => $token],
-        );
+        return $context->session;
     }
 
     /**
