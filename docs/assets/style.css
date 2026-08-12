@@ -961,3 +961,26 @@ code:not(pre code) {
   .copy-done { right: 12px; }
 }
 
+/* ── Animated theme switch ─────────────────────────────────────
+   theme.js drives a circular reveal from the toggle via the View
+   Transitions API; here we mute the default cross-fade so only the
+   reveal plays, and provide a colour cross-fade for browsers without
+   View Transitions (html.theme-anim, added for the switch only). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html.theme-anim,
+html.theme-anim * {
+  transition: background-color 0.45s var(--ease), color 0.45s var(--ease),
+              border-color 0.45s var(--ease), fill 0.45s var(--ease) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(root),
+  ::view-transition-new(root) { animation: none !important; }
+}
+
