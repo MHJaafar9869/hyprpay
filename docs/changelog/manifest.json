@@ -1,6 +1,12 @@
 {
   "releases": [
     {
+      "version": "0.3.3",
+      "date": "2026-08-12",
+      "title": "Paymob checkout as a Laravel pipeline",
+      "file": "v0.3.3.md"
+    },
+    {
       "version": "0.3.2",
       "date": "2026-08-11",
       "title": "CyberSource Decision Manager device fingerprinting",
