@@ -107,8 +107,7 @@
   if (themeBtn) {
     themeBtn.addEventListener('click', function () {
       var next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', next);
-      try { localStorage.setItem('theme', next); } catch (e) {}
+      window.setTheme(next, this);
     });
   }
 
