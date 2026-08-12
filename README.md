@@ -9,6 +9,28 @@
 
 📖 **Documentation:** [HyprPay docs](https://mhjaafar9869.github.io/hyprpay/)
 
+## Requirements
+
+- PHP `^8.2`
+- `illuminate/support` and `illuminate/http` `^10 | ^11 | ^12 | ^13`
+- `firebase/php-jwt` `^6.10 | ^7.0` (CyberSource orchestrated-flow result-JWT verification)
+
+## Installation
+
+Install from the package repository (or add it as a Composer `path` repository when
+developing locally):
+
+```bash
+composer require hyprpay/payments
+```
+
+The `GatewayServiceProvider` is auto-discovered. Publish the config if you want to
+tweak the defaults:
+
+```bash
+php artisan vendor:publish --tag=gateway-config
+```
+
 A self-contained, multi-gateway payment SDK for PHP. One clean interface, a factory
 that resolves the right driver, and a swappable HTTP transport — with seven gateways
 built in: **CyberSource Unified Checkout**, **Fawry**, **Paymob**, **PayLink**,
@@ -35,28 +57,6 @@ built in: **CyberSource Unified Checkout**, **Fawry**, **Paymob**, **PayLink**,
 - **Exact money** — amounts are carried as minor units and never rounded.
 - **Statically strict** — PHPStan **level max, zero baseline**; formatted with Pint;
   refactor-checked with Rector; 250+ Pest tests.
-
-## Requirements
-
-- PHP `^8.2`
-- `illuminate/support` and `illuminate/http` `^10 | ^11 | ^12 | ^13`
-- `firebase/php-jwt` `^6.10 | ^7.0` (CyberSource orchestrated-flow result-JWT verification)
-
-## Installation
-
-Install from the package repository (or add it as a Composer `path` repository when
-developing locally):
-
-```bash
-composer require hyprpay/payments
-```
-
-The `GatewayServiceProvider` is auto-discovered. Publish the config if you want to
-tweak the defaults:
-
-```bash
-php artisan vendor:publish --tag=gateway-config
-```
 
 ## Quick start
 
