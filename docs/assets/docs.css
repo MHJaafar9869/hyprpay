@@ -250,36 +250,9 @@
   padding: 16px 14px 0; margin: 0;
 }
 
-/* ── back-to-top button (up arrow, appears once scrolled) ───── */
-.to-top {
-  position: fixed;
-  right: 22px; bottom: 22px;
-  z-index: 90;
-  width: 44px; height: 44px;
-  display: grid; place-items: center;
-  /* frosted-glass, tinted with the accent */
-  background: color-mix(in oklab, var(--accent) 14%, transparent);
-  -webkit-backdrop-filter: blur(12px) saturate(1.4);
-          backdrop-filter: blur(12px) saturate(1.4);
-  border: 1px solid color-mix(in oklab, var(--accent) 45%, transparent);
-  color: var(--accent);
-  font-size: 20px; line-height: 1;
-  cursor: pointer;
-  opacity: 0;
-  transform: translateY(10px);
-  pointer-events: none;
-  transition: opacity 0.22s var(--ease), transform 0.22s var(--ease), background 0.2s, box-shadow 0.22s;
-  box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(214, 255, 63, 0.22);
-}
-.to-top.show { opacity: 1; transform: none; pointer-events: auto; }
-.to-top:hover {
-  transform: translateY(-2px);
-  background: color-mix(in oklab, var(--accent) 24%, transparent);
-  box-shadow: 0 12px 30px -10px rgba(214, 255, 63, 0.4), inset 0 1px 0 rgba(214, 255, 63, 0.3);
-}
-@media (prefers-reduced-motion: reduce) {
-  .to-top { transition: opacity 0.2s; }
-}
+/* back-to-top button — shared styles live in style.css. On the docs page it is
+   lifted so the pulsing "what's new" button can sit under it in the corner. */
+.to-top { bottom: calc(80px + var(--vv-bottom, 0px)); }
 
 /* ── responsive ───────────────────────────────────────────── */
 @media (max-width: 1240px) {
