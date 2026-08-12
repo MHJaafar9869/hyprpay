@@ -93,6 +93,91 @@
 [data-theme="light"] .theme-toggle .icon-sun { display: none; }
 [data-theme="light"] .theme-toggle .icon-moon { display: block; }
 
+/* ── floating corner buttons (back-to-top + pulsing changelog) ───────── */
+/* back-to-top: up arrow, revealed once scrolled — shared by the docs and changelog pages */
+.to-top {
+  position: fixed;
+  right: 22px; bottom: calc(22px + var(--vv-bottom, 0px));
+  z-index: 90;
+  width: 44px; height: 44px;
+  display: grid; place-items: center;
+  /* frosted-glass, tinted with the accent */
+  background: color-mix(in oklab, var(--accent) 14%, transparent);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+          backdrop-filter: blur(12px) saturate(1.4);
+  border: 1px solid color-mix(in oklab, var(--accent) 45%, transparent);
+  color: var(--accent);
+  font-size: 20px; line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+  transition: opacity 0.22s var(--ease), transform 0.22s var(--ease), background 0.2s, box-shadow 0.22s;
+  box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(214, 255, 63, 0.22);
+}
+.to-top.show { opacity: 1; transform: none; pointer-events: auto; }
+.to-top:hover {
+  transform: translateY(-2px);
+  background: color-mix(in oklab, var(--accent) 24%, transparent);
+  box-shadow: 0 12px 30px -10px rgba(214, 255, 63, 0.4), inset 0 1px 0 rgba(214, 255, 63, 0.3);
+}
+
+/* pulsing "what's new" button — fixed bottom-right on every page and device */
+.fab-changelog {
+  position: fixed;
+  right: 22px; bottom: calc(22px + var(--vv-bottom, 0px));
+  z-index: 95;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 16px;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--on-accent);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  cursor: pointer;
+  box-shadow: 0 10px 30px -12px color-mix(in oklab, var(--accent) 55%, transparent);
+  animation: fab-pulse 2.4s var(--ease) infinite;
+  transition: transform 0.2s var(--ease), box-shadow 0.2s;
+}
+.fab-changelog:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 38px -12px color-mix(in oklab, var(--accent) 60%, transparent);
+}
+.fab-changelog .fab-ping {
+  position: relative;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--on-accent);
+  flex: none;
+}
+.fab-changelog .fab-ping::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1.5px solid var(--on-accent);
+  animation: fab-ping 2.4s var(--ease) infinite;
+}
+@keyframes fab-pulse {
+  0%   { box-shadow: 0 10px 30px -12px color-mix(in oklab, var(--accent) 55%, transparent), 0 0 0 0 color-mix(in oklab, var(--accent) 45%, transparent); }
+  70%  { box-shadow: 0 12px 32px -12px color-mix(in oklab, var(--accent) 60%, transparent), 0 0 0 12px transparent; }
+  100% { box-shadow: 0 10px 30px -12px color-mix(in oklab, var(--accent) 55%, transparent), 0 0 0 0 transparent; }
+}
+@keyframes fab-ping {
+  0%   { transform: scale(1);   opacity: 0.55; }
+  70%  { transform: scale(2.3); opacity: 0; }
+  100% { transform: scale(2.3); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .to-top { transition: opacity 0.2s; }
+  .fab-changelog { animation: none; }
+  .fab-changelog .fab-ping::before { animation: none; }
+}
+
 * { box-sizing: border-box; }
 
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
