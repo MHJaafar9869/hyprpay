@@ -211,5 +211,18 @@ return [
                 'api_version' => env('MPGS_API_VERSION', '100'),
             ],
         ],
+
+        'authorize_net' => [
+            'test_mode' => (bool) env('AUTHORIZENET_TEST_MODE', true),
+            'live_host' => env('AUTHORIZENET_HOST', 'api.authorize.net'),
+            'test_host' => env('AUTHORIZENET_TEST_HOST', 'apitest.authorize.net'),
+            'merchant_id' => env('AUTHORIZENET_LOGIN_ID'),
+            'shared_secret' => env('AUTHORIZENET_TRANSACTION_KEY'),
+            'webhook_secret' => env('AUTHORIZENET_SIGNATURE_KEY'),
+
+            'country' => env('AUTHORIZENET_COUNTRY', 'US'),
+            'locale' => env('AUTHORIZENET_LOCALE', 'en_US'),
+            'currency' => env('AUTHORIZENET_CURRENCY', 'USD'),
+        ],
     ],
 ];

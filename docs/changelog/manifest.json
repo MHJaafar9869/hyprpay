@@ -1,6 +1,12 @@
 {
   "releases": [
     {
+      "version": "0.4.0",
+      "date": "2026-08-12",
+      "title": "Authorize.Net gateway",
+      "file": "v0.4.0.md"
+    },
+    {
       "version": "0.3.3",
       "date": "2026-08-12",
       "title": "Paymob checkout as a Laravel pipeline",
