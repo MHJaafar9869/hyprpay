@@ -19,7 +19,7 @@ Domain/          the framework-agnostic core — no Laravel, no HTTP
   Exception/       GatewayException + subtypes (UnsupportedOperation, WebhookVerification, …)
 
 Infrastructure/  adapters for the ports — the only layer that touches Laravel & the network
-  Gateway/{X}/     CybersourceUnifiedCheckout · Fawry · Paymob · Paylink · Paytabs · PayPal · Mpgs (extend AbstractPaymentGateway)
+  Gateway/{X}/     CybersourceUnifiedCheckout · Fawry · Paymob · Paylink · Paytabs · PayPal · Mpgs · AuthorizeNet (extend AbstractPaymentGateway)
   Gateway/         EventDispatchingGateway (emits events) · LoggingGateway (logs each operation) — driver decorators
   Http/            HttpClient decorator stack: RetryingHttpClient → LoggingHttpClient → RateLimitingHttpClient → LaravelHttpClient · FakeHttpClient (tests)
   Events/          LaravelEventDispatcher · LoggingPaymentEventListener · RecordingEventDispatcher (tests)

@@ -159,6 +159,7 @@ Retries are safe. Every write is idempotent through two guarantees:
 | PayTabs | `cart_id` (= your order reference) |
 | PayPal | `PayPal-Request-Id` header |
 | Mastercard MPGS | order id + transaction id in the request URL (re-PUT is idempotent) |
+| Authorize.Net | `refId` (= your order reference) + the account's duplicate window |
 
 For `charge` and `chargeStoredCredential` the key defaults to `orderReference`, so a
 retried charge for the same order is deduplicated automatically. For `capture`,
@@ -209,6 +210,7 @@ php artisan gateway:reconcile:paymob 123456789
 php artisan gateway:reconcile:paylink INV-0001
 php artisan gateway:reconcile:paypal 7NK74838L4813105R   # a PayPal order id
 php artisan gateway:reconcile:mpgs ORDER-128             # an MPGS order id
+php artisan gateway:reconcile:authorize_net 40000000001  # an Authorize.Net transId
 ```
 
 Each command prints a table of the transaction id, normalized `PaymentStatus`, amount, and
