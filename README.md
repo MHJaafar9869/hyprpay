@@ -32,9 +32,9 @@ php artisan vendor:publish --tag=gateway-config
 ```
 
 A self-contained, multi-gateway payment SDK for PHP. One clean interface, a factory
-that resolves the right driver, and a swappable HTTP transport — with seven gateways
+that resolves the right driver, and a swappable HTTP transport — with eight gateways
 built in: **CyberSource Unified Checkout**, **Fawry**, **Paymob**, **PayLink**,
-**PayTabs**, **PayPal**, and **Mastercard Payment Gateway Services**.
+**PayTabs**, **PayPal**, **Mastercard Payment Gateway Services**, and **Authorize.Net**.
 
 - **Domain-driven layering** — a pure `Domain` (contracts, commands, results, value
   objects, enums), a thin `Application` layer (`PaymentGatewayFactory`), and an
@@ -51,12 +51,13 @@ built in: **CyberSource Unified Checkout**, **Fawry**, **Paymob**, **PayLink**,
   and signs requests itself (CyberSource HMAC HTTP-Signature, Fawry SHA-256, Paymob
   HMAC-SHA512, PayLink HMAC-SHA256, PayTabs server-key auth + HMAC-SHA256 callbacks,
   PayPal OAuth 2.0 client credentials + API webhook-signature verification, Mastercard
-  MPGS HTTP Basic auth), so there are no heavy third-party gateway dependencies.
+  MPGS HTTP Basic auth, Authorize.Net name/transaction-key auth + HMAC-SHA512 webhooks),
+  so there are no heavy third-party gateway dependencies.
 - **Deterministic & idempotent** — request bodies are built deterministically (no
   hidden `uniqid()`/`time()`), and write operations carry an idempotency key.
 - **Exact money** — amounts are carried as minor units and never rounded.
 - **Statically strict** — PHPStan **level max, zero baseline**; formatted with Pint;
-  refactor-checked with Rector; 250+ Pest tests.
+  refactor-checked with Rector; 290+ Pest tests.
 
 ## Quick start
 
@@ -114,9 +115,9 @@ so bind only the port you want to replace.
 
 ## Gateways
 
-Seven drivers behind one `PaymentGatewayInterface`: **CyberSource Unified Checkout**,
-**Fawry**, **Paymob**, **PayLink**, **PayTabs**, **PayPal**, and **Mastercard Payment
-Gateway Services**. Operations a gateway does not support throw
+Eight drivers behind one `PaymentGatewayInterface`: **CyberSource Unified Checkout**,
+**Fawry**, **Paymob**, **PayLink**, **PayTabs**, **PayPal**, **Mastercard Payment
+Gateway Services**, and **Authorize.Net**. Operations a gateway does not support throw
 `UnsupportedOperationException`, so the same surface holds everywhere. A runnable sample
 per gateway and the full operation-support matrix live in the docs below.
 

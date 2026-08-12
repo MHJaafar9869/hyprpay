@@ -298,6 +298,30 @@ $result = $mpgs->charge(new ChargeRequest(
 // $result->status is Captured (or Authorized when charge sets capture: false).
 ```
 
+**Authorize.Net** — charge an Accept.js opaque-data token (the card is tokenised in the
+browser, so no PAN reaches your server), then capture, refund, or void by transaction id:
+
+```php
+use Hyprpay\Payments\Domain\Command\ChargeRequest;
+use Hyprpay\Payments\Domain\ValueObject\Money;
+use Hyprpay\Payments\Domain\Enum\GatewayName;
+
+$authnet = $factory->make(GatewayName::AuthorizeNet);
+
+// Charge the Accept.js payment nonce (transientToken is the opaqueData dataValue).
+$result = $authnet->charge(new ChargeRequest(
+    transientToken: $opaqueDataValue,            // from Accept.js dispatchData()
+    money: Money::minor(5000, 'USD'),            // 50.00 USD
+    orderReference: 'ORDER-129',                 // Authorize.Net invoiceNumber / refId
+    capture: true,                               // false = authorize only
+));
+// $result->status is Captured (or Authorized when capture: false); $result->transactionId is the transId.
+```
+
+See the [Authorize.Net API reference](https://developer.authorize.net/api/reference/index.html)
+for the underlying transaction types (`authCaptureTransaction`, `priorAuthCaptureTransaction`,
+`refundTransaction`, `voidTransaction`).
+
 Passing credentials explicitly per call — this skips the resolver, so it works for
 any dynamic source (a one-off override, per-merchant, per-tenant, …):
 
@@ -319,20 +343,20 @@ Every driver implements the same `PaymentGatewayInterface`. Operations a gateway
 not support throw `UnsupportedOperationException`, so you can rely on the same surface
 everywhere.
 
-| Operation | CyberSource UC | Fawry | Paymob | PayLink | PayTabs | PayPal | Mastercard MPGS |
-| --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| `createCheckoutSession` | ✅ capture context / orchestrated (autoProcessing) | ✅ hosted / card / wallet / pay-at-Fawry / MyFawry / instalment | ✅ iframe flow | ✅ invoice link / iframe | ✅ hosted / invoice / paylink / managed | ✅ order → approval redirect | ✅ hosted checkout session |
-| `charge` (transient token) | ✅ | — | — | — | ✅ Own Form (payment token) | ✅ complete approved order² | ✅ session (PAY / AUTHORIZE)³ |
-| `confirmOrchestratedPayment` (verify result JWT) | ✅ RS256 (flx.jwk) | — | — | — | — | — | — |
-| `capture` | ✅ | ✅ (Auth/Capture) | ✅ | ✅ (settle) | ✅ | ✅ | ✅ |
-| `refund` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `void` | ✅ | ✅ (cancel auth) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `reverseAuthorization` | ✅ | — | — | ✅ | ✅ (release) | — | ✅ (void of auth) |
-| `enrollPayerAuth` / `validatePayerAuth` (3-DS) | ✅ | — | — | — | — | — | ✅ |
-| `vaultInstrument` / `chargeStoredCredential` | ✅ (TMS, MIT/CIT) | — | — | ✅ vault + charge + revoke⁴ | ✅ token (MIT/CIT)¹ | ✅ vault (MIT/CIT) | ✅ token (MIT/CIT) |
-| `requestDccRate` (Dynamic Currency Conversion) | ✅ | — | — | — | — | — | — |
-| `getTransaction` / `searchTransaction` | ✅ | ✅ | ✅ | ✅ | ✅ query | ✅ order lookup | ✅ order lookup |
-| `verifyWebhook` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ API | ✅ notification secret |
+| Operation | CyberSource UC | Fawry | Paymob | PayLink | PayTabs | PayPal | Mastercard MPGS | Authorize.Net |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| `createCheckoutSession` | ✅ capture context / orchestrated (autoProcessing) | ✅ hosted / card / wallet / pay-at-Fawry / MyFawry / instalment | ✅ iframe flow | ✅ invoice link / iframe | ✅ hosted / invoice / paylink / managed | ✅ order → approval redirect | ✅ hosted checkout session | — |
+| `charge` (transient token) | ✅ | — | — | — | ✅ Own Form (payment token) | ✅ complete approved order² | ✅ session (PAY / AUTHORIZE)³ | ✅ Accept.js opaque data |
+| `confirmOrchestratedPayment` (verify result JWT) | ✅ RS256 (flx.jwk) | — | — | — | — | — | — | — |
+| `capture` | ✅ | ✅ (Auth/Capture) | ✅ | ✅ (settle) | ✅ | ✅ | ✅ | ✅ |
+| `refund` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `void` | ✅ | ✅ (cancel auth) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `reverseAuthorization` | ✅ | — | — | ✅ | ✅ (release) | — | ✅ (void of auth) | — |
+| `enrollPayerAuth` / `validatePayerAuth` (3-DS) | ✅ | — | — | — | — | — | ✅ | — |
+| `vaultInstrument` / `chargeStoredCredential` | ✅ (TMS, MIT/CIT) | — | — | ✅ vault + charge + revoke⁴ | ✅ token (MIT/CIT)¹ | ✅ vault (MIT/CIT) | ✅ token (MIT/CIT) | — |
+| `requestDccRate` (Dynamic Currency Conversion) | ✅ | — | — | — | — | — | — | — |
+| `getTransaction` / `searchTransaction` | ✅ | ✅ | ✅ | ✅ | ✅ query | ✅ order lookup | ✅ order lookup | ✅ transaction details |
+| `verifyWebhook` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ API | ✅ notification secret | ✅ HMAC-SHA512 |
 
 Provider-specific inputs (e.g. Fawry payment method, Paymob integration/iframe ids,
 card or wallet details) are passed through `CheckoutSessionRequest::$options` and the
