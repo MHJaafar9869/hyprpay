@@ -24,7 +24,7 @@
     if (!document.startViewTransition) {
       root.classList.add('theme-anim');
       commit(next);
-      window.setTimeout(function () { root.classList.remove('theme-anim'); }, 480);
+      window.setTimeout(function () { root.classList.remove('theme-anim'); }, 850);
       return;
     }
 
@@ -46,7 +46,7 @@
           ],
         },
         {
-          duration: 480,
+          duration: 800,
           easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
           pseudoElement: '::view-transition-new(root)',
         }

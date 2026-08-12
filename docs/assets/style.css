@@ -974,8 +974,8 @@ code:not(pre code) {
 
 html.theme-anim,
 html.theme-anim * {
-  transition: background-color 0.45s var(--ease), color 0.45s var(--ease),
-              border-color 0.45s var(--ease), fill 0.45s var(--ease) !important;
+  transition: background-color 0.8s var(--ease), color 0.8s var(--ease),
+              border-color 0.8s var(--ease), fill 0.8s var(--ease) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
