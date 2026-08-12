@@ -8,6 +8,8 @@ use Hyprpay\Payments\Domain\AbstractPaymentGateway;
 use Hyprpay\Payments\Domain\Command\CaptureRequest;
 use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
+use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
+use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
 use Hyprpay\Payments\Domain\Contract\HttpClient;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
@@ -15,6 +17,7 @@ use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
 use Hyprpay\Payments\Domain\Result\RefundResult;
 use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
+use Hyprpay\Payments\Domain\Result\VaultedInstrument;
 use Hyprpay\Payments\Domain\Result\WebhookEvent;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
 use Hyprpay\Payments\Domain\ValueObject\Money;
@@ -171,6 +174,46 @@ final class AuthorizeNetGateway extends AbstractPaymentGateway
     }
 
     /**
+     * Vault a card into a reusable Customer Information Manager (CIM) profile.
+     *
+     * Creates a customer profile + payment profile from a transient token (Accept.js opaque data,
+     * so no PAN touches the server) or the raw card. The returned instrument's `customerId` is the
+     * Authorize.Net customerProfileId and `paymentInstrumentId` the customerPaymentProfileId — pass
+     * both back on {@see chargeStoredCredential()}.
+     */
+    public function vaultInstrument(TokenizeInstrumentRequest $request): VaultedInstrument
+    {
+        $response = $this->client->createCustomerProfile(AuthorizeNetPayload::createProfile($request), 'vault instrument');
+
+        $paymentProfileId = Value::nullableString(data_get($response, 'customerPaymentProfileIdList.0'));
+
+        return new VaultedInstrument(
+            success: $this->resultOk($response) && $paymentProfileId !== null,
+            customerId: Value::nullableString($response['customerProfileId'] ?? null),
+            paymentInstrumentId: $paymentProfileId,
+            raw: $response,
+        );
+    }
+
+    /**
+     * Charge a vaulted CIM profile as a stored credential (MIT or CIT).
+     *
+     * Requires both ids from the {@see VaultedInstrument}: the customerProfileId on the request's
+     * `customerId` and the customerPaymentProfileId on `paymentInstrumentId`. The `initiator` stamps
+     * the stored-credential intent (merchant- vs customer-initiated).
+     */
+    public function chargeStoredCredential(StoredCredentialChargeRequest $request): PaymentResult
+    {
+        $response = $this->client->createTransaction(
+            AuthorizeNetPayload::chargeProfile($request),
+            $request->orderReference,
+            'charge stored credential',
+        );
+
+        return $this->toPaymentResult($response, PaymentStatus::Captured);
+    }
+
+    /**
      * Map a createTransactionRequest response to a PaymentResult with the given success status.
      *
      * @param  array<string, mixed>  $response
@@ -190,6 +233,16 @@ final class AuthorizeNetGateway extends AbstractPaymentGateway
     }
 
     /**
+     * Whether the request itself was well-formed and accepted (`messages.resultCode` == Ok).
+     *
+     * @param  array<string, mixed>  $response
+     */
+    private function resultOk(array $response): bool
+    {
+        return strtolower(Value::string(data_get($response, 'messages.resultCode'))) === 'ok';
+    }
+
+    /**
      * A transaction is approved when the request was well-formed (resultCode Ok) and the
      * transaction itself was approved (responseCode 1).
      *
@@ -197,8 +250,7 @@ final class AuthorizeNetGateway extends AbstractPaymentGateway
      */
     private function approved(array $response): bool
     {
-        return strtolower(Value::string(data_get($response, 'messages.resultCode'))) === 'ok'
-            && $this->responseCode($response) === '1';
+        return $this->resultOk($response) && $this->responseCode($response) === '1';
     }
 
     /**

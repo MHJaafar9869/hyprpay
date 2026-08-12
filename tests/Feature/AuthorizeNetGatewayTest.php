@@ -6,7 +6,10 @@ use Hyprpay\Payments\Application\PaymentGatewayFactory;
 use Hyprpay\Payments\Domain\Command\CaptureRequest;
 use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
+use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
+use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
+use Hyprpay\Payments\Domain\Enum\CredentialInitiator;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
@@ -252,6 +255,87 @@ it('rejects a webhook with a tampered signature', function (): void {
 
     expect($event->verified)->toBeFalse()
         ->and($event->status)->toBe(PaymentStatus::Voided);
+});
+
+it('vaults an Accept.js token into a CIM profile without handling the card', function (): void {
+    $http = (new FakeHttpClient)->queueJson([
+        'customerProfileId' => '190179',
+        'customerPaymentProfileIdList' => ['157500'],
+        'messages' => ['resultCode' => 'Ok', 'message' => [['code' => 'I00001', 'text' => 'Successful.']]],
+    ]);
+
+    $vaulted = authorizeNetGateway($http)->vaultInstrument(new TokenizeInstrumentRequest(
+        customerReference: 'CUST-1',
+        transientToken: 'OPAQUE_NONCE',
+    ));
+
+    $profile = authorizeNetBody($http)['createCustomerProfileRequest']['profile'];
+
+    expect($vaulted->success)->toBeTrue()
+        ->and($vaulted->customerId)->toBe('190179')
+        ->and($vaulted->paymentInstrumentId)->toBe('157500')
+        ->and($profile['merchantCustomerId'])->toBe('CUST-1')
+        ->and($profile['paymentProfiles']['payment']['opaqueData'])->toBe([
+            'dataDescriptor' => 'COMMON.ACCEPT.INAPP.PAYMENT',
+            'dataValue' => 'OPAQUE_NONCE',
+        ])
+        ->and(authorizeNetBody($http)['createCustomerProfileRequest']['validationMode'])->toBe('testMode');
+});
+
+it('vaults a raw card into a CIM profile', function (): void {
+    $http = (new FakeHttpClient)->queueJson([
+        'customerProfileId' => '190180',
+        'customerPaymentProfileIdList' => ['157501'],
+        'messages' => ['resultCode' => 'Ok'],
+    ]);
+
+    authorizeNetGateway($http)->vaultInstrument(new TokenizeInstrumentRequest(
+        cardNumber: '4111111111111111',
+        expirationMonth: '12',
+        expirationYear: '2030',
+    ));
+
+    expect(authorizeNetBody($http)['createCustomerProfileRequest']['profile']['paymentProfiles']['payment']['creditCard'])
+        ->toBe(['cardNumber' => '4111111111111111', 'expirationDate' => '2030-12']);
+});
+
+it('charges a stored profile as a merchant-initiated transaction', function (): void {
+    $http = (new FakeHttpClient)->queueJson(authorizeNetApproved('40000000005'));
+
+    $result = authorizeNetGateway($http)->chargeStoredCredential(new StoredCredentialChargeRequest(
+        paymentInstrumentId: '157500',
+        money: Money::minor(9900, 'USD'),
+        initiator: CredentialInitiator::Merchant,
+        customerId: '190179',
+        orderReference: 'ORDER-130',
+    ));
+
+    $tr = authorizeNetBody($http)['createTransactionRequest']['transactionRequest'];
+
+    expect($result->success)->toBeTrue()
+        ->and($result->status)->toBe(PaymentStatus::Captured)
+        ->and($result->transactionId)->toBe('40000000005')
+        ->and($tr['transactionType'])->toBe('authCaptureTransaction')
+        ->and($tr['amount'])->toBe('99.00')
+        ->and($tr['profile'])->toBe([
+            'customerProfileId' => '190179',
+            'paymentProfile' => ['paymentProfileId' => '157500'],
+        ])
+        ->and($tr['processingOptions'])->toBe(['isSubsequentAuth' => 'true']);
+});
+
+it('charges a stored profile as a customer-initiated transaction', function (): void {
+    $http = (new FakeHttpClient)->queueJson(authorizeNetApproved('40000000006'));
+
+    authorizeNetGateway($http)->chargeStoredCredential(new StoredCredentialChargeRequest(
+        paymentInstrumentId: '157500',
+        money: Money::minor(2500, 'USD'),
+        initiator: CredentialInitiator::Customer,
+        customerId: '190179',
+    ));
+
+    expect(authorizeNetBody($http)['createTransactionRequest']['transactionRequest']['processingOptions'])
+        ->toBe(['isStoredCredentials' => 'true']);
 });
 
 it('is resolvable through the factory', function (): void {

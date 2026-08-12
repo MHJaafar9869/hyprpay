@@ -318,9 +318,31 @@ $result = $authnet->charge(new ChargeRequest(
 // $result->status is Captured (or Authorized when capture: false); $result->transactionId is the transId.
 ```
 
+Cards vault into a Customer Information Manager (CIM) profile — from the same Accept.js
+token, so no PAN reaches your server — and charge later as a stored credential (MIT/CIT):
+
+```php
+use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
+use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
+use Hyprpay\Payments\Domain\Enum\CredentialInitiator;
+
+// Vault the card (PAN-free) — returns the customer + payment profile ids.
+$vaulted = $authnet->vaultInstrument(new TokenizeInstrumentRequest(
+    transientToken: $opaqueDataValue,            // or pass cardNumber/expirationMonth/expirationYear
+));
+
+// Charge the stored profile later (pass BOTH ids back).
+$authnet->chargeStoredCredential(new StoredCredentialChargeRequest(
+    paymentInstrumentId: $vaulted->paymentInstrumentId, // customerPaymentProfileId
+    customerId: $vaulted->customerId,                   // customerProfileId
+    money: Money::minor(9900, 'USD'),
+    initiator: CredentialInitiator::Merchant,           // MIT (isSubsequentAuth); Customer → CIT (isStoredCredentials)
+));
+```
+
 See the [Authorize.Net API reference](https://developer.authorize.net/api/reference/index.html)
 for the underlying transaction types (`authCaptureTransaction`, `priorAuthCaptureTransaction`,
-`refundTransaction`, `voidTransaction`).
+`refundTransaction`, `voidTransaction`) and Customer Information Manager (CIM).
 
 Passing credentials explicitly per call — this skips the resolver, so it works for
 any dynamic source (a one-off override, per-merchant, per-tenant, …):
@@ -353,7 +375,7 @@ everywhere.
 | `void` | ✅ | ✅ (cancel auth) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `reverseAuthorization` | ✅ | — | — | ✅ | ✅ (release) | — | ✅ (void of auth) | — |
 | `enrollPayerAuth` / `validatePayerAuth` (3-DS) | ✅ | — | — | — | — | — | ✅ | — |
-| `vaultInstrument` / `chargeStoredCredential` | ✅ (TMS, MIT/CIT) | — | — | ✅ vault + charge + revoke⁴ | ✅ token (MIT/CIT)¹ | ✅ vault (MIT/CIT) | ✅ token (MIT/CIT) | — |
+| `vaultInstrument` / `chargeStoredCredential` | ✅ (TMS, MIT/CIT) | — | — | ✅ vault + charge + revoke⁴ | ✅ token (MIT/CIT)¹ | ✅ vault (MIT/CIT) | ✅ token (MIT/CIT) | ✅ CIM (opaque/card, MIT/CIT) |
 | `requestDccRate` (Dynamic Currency Conversion) | ✅ | — | — | — | — | — | — | — |
 | `getTransaction` / `searchTransaction` | ✅ | ✅ | ✅ | ✅ | ✅ query | ✅ order lookup | ✅ order lookup | ✅ transaction details |
 | `verifyWebhook` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ API | ✅ notification secret | ✅ HMAC-SHA512 |

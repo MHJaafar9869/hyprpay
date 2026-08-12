@@ -38,8 +38,8 @@ Legend: ● implemented · — inherited-as-unsupported (throws `UnsupportedOper
 | reverseAuthorization | ● | — | — | ● | ● | — | ● | — |
 | enrollPayerAuth | ● | — | — | — | — | — | ● | — |
 | validatePayerAuth | ● | — | — | — | — | — | ● | — |
-| vaultInstrument | ● | — | — | ● | — | ● | ● | — |
-| chargeStoredCredential | ● | — | — | ● | ● | ● | ● | — |
+| vaultInstrument | ● | — | — | ● | — | ● | ● | ● |
+| chargeStoredCredential | ● | — | — | ● | ● | ● | ● | ● |
 | getTransaction | ● | ● | ● | ● | ● | ● | ● | ● |
 | searchTransaction | ● | — | ● | — | — | — | ● | — |
 | verifyWebhook | ● | ● | ● | ● | ● | ● | ● | ● |
@@ -197,14 +197,14 @@ Non-interface extras: Paylink and Paytabs each expose `deleteToken(string): bool
 
 ## Authorize.Net
 
-- **Driver:** `AuthorizeNetGateway` extends `AbstractPaymentGateway`. Resolved by `GatewayName::AuthorizeNet` (`authorize_net`). Charges consume an Accept.js opaque-data nonce; no hosted checkout, 3DS, DCC, vaulting, stored-credential, reversal, or search.
+- **Driver:** `AuthorizeNetGateway` extends `AbstractPaymentGateway`. Resolved by `GatewayName::AuthorizeNet` (`authorize_net`). Charges consume an Accept.js opaque-data nonce; vaults into a Customer Information Manager (CIM) profile (opaque data or raw card) for MIT/CIT stored-credential charges. No hosted checkout, 3DS, DCC, reversal, or search.
 - **CheckoutOptions:** none (no hosted/embedded checkout).
-- **Client — `AuthorizeNetClient`:** single JSON endpoint `https://{GatewayCredentials::host}/xml/v1/request.api` (`api.authorize.net` / `apitest.authorize.net`). Auth = body-level `merchantAuthentication` (no header): `name` = API Login ID (`merchantId`), `transactionKey` = `sharedSecret`, injected into every envelope. Methods `createTransaction()` (createTransactionRequest) and `getTransactionDetails()`. Strips UTF-8 BOM and unwraps the `*Response` root; HTTP 200 = transport success (business declines/errors live in the body); non-2xx → `GatewayRequestException`.
+- **Client — `AuthorizeNetClient`:** single JSON endpoint `https://{GatewayCredentials::host}/xml/v1/request.api` (`api.authorize.net` / `apitest.authorize.net`). Auth = body-level `merchantAuthentication` (no header): `name` = API Login ID (`merchantId`), `transactionKey` = `sharedSecret`, injected into every envelope. Methods `createTransaction()` (createTransactionRequest), `getTransactionDetails()`, and `createCustomerProfile()` (createCustomerProfileRequest; `validationMode` follows `testMode`). Strips UTF-8 BOM and unwraps the `*Response` root; HTTP 200 = transport success (business declines/errors live in the body); non-2xx → `GatewayRequestException`.
 
-**Operations:** `charge` (auth-only or authCapture per `request->capture`), `capture` (priorAuthCapture), `refund` (referenced), `void`, `getTransaction` (reconciliation lookup), `verifyWebhook`.
+**Operations:** `charge` (auth-only or authCapture per `request->capture`), `capture` (priorAuthCapture), `refund` (referenced), `void`, `vaultInstrument` (CIM create-profile from `transientToken` opaque data or raw card → `VaultedInstrument{customerId=customerProfileId, paymentInstrumentId=paymentProfileId}`), `chargeStoredCredential` (profile charge; needs both ids; `initiator` → `processingOptions.isSubsequentAuth` (MIT) / `isStoredCredentials` (CIT)), `getTransaction` (reconciliation lookup), `verifyWebhook`.
 
 **Enums (`Enums/`):** `AuthorizeNetTransactionStatus` (maps `getTransactionDetails` `transactionStatus`) → `PaymentStatus`: `authorizedPendingCapture`/`FDSAuthorizedPendingReview` → Authorized; `capturedPendingSettlement`/`settledSuccessfully` → Captured; `voided` → Voided; `refundPendingSettlement`/`refundSettledSuccessfully` → Refunded; `declined` → Declined; `expired`/`generalError` → Failed; `FDSPendingReview` → Pending. `fromTransaction(array)` and unrecognized/null → **Pending** (treat as unresolved, not a guessed terminal outcome).
 
-**Payloads (`Payloads/`):** `AuthorizeNetPayload` — static `transactionRequest` builders (array order is load-bearing: JSON→XML against an order-sensitive schema; empty optional blocks dropped): `charge()` (`authCaptureTransaction`/`authOnlyTransaction`; `payment.opaqueData` dataDescriptor `COMMON.ACCEPT.INAPP.PAYMENT` + Accept.js nonce; `order.invoiceNumber` ≤20 chars; optional `customer.email`, `billTo`), `capture()` (`priorAuthCaptureTransaction` + `refTransId`), `refund()` (`refundTransaction` + `refTransId`), `void()` (`voidTransaction` + `refTransId`, no amount).
+**Payloads (`Payloads/`):** `AuthorizeNetPayload` — static `transactionRequest` builders (array order is load-bearing: JSON→XML against an order-sensitive schema; empty optional blocks dropped): `charge()` (`authCaptureTransaction`/`authOnlyTransaction`; `payment.opaqueData` dataDescriptor `COMMON.ACCEPT.INAPP.PAYMENT` + Accept.js nonce; `order.invoiceNumber` ≤20 chars; optional `customer.email`, `billTo`), `capture()` (`priorAuthCaptureTransaction` + `refTransId`), `refund()` (`refundTransaction` + `refTransId`), `void()` (`voidTransaction` + `refTransId`, no amount), `createProfile()` (CIM `profile` block: `paymentProfiles.payment` = `opaqueData` when a `transientToken` is present else `creditCard` `YYYY-MM`; optional `merchantCustomerId`, `billTo`), `chargeProfile()` (`authCaptureTransaction` + `profile.customerProfileId`/`paymentProfile.paymentProfileId` + `processingOptions`).
 
 **Webhook verification:** header `X-ANET-Signature: sha512={HEX}` (case-insensitive lookup, `sha512=` prefix stripped); compute `hash_hmac('sha512', $rawBody, $webhookSecret)` (uppercase hex), constant-time `hash_equals`; empty secret fails verification. Parses `eventType` + `payload.id`/`payload.responseCode` into a `WebhookEvent` (status by event type: `*refund*`→Refunded, `*void*`→Voided, `*authorization*` non-capture + responseCode 1→Authorized, else responseCode 1→Captured, responseCode≠1→Declined). Payload is inspectable even when unverified.

@@ -864,7 +864,7 @@
       </div>
     </section>
 
-    <section id="vault-instrument" class="doc-section" data-gws="cyber paypal mpgs paylink">
+    <section id="vault-instrument" class="doc-section" data-gws="cyber paypal mpgs paylink authorizenet">
       <p class="doc-eyebrow">Stored credentials</p>
       <h2>Vault instrument</h2>
       <p class="doc-sig"><span class="fn">vaultInstrument</span>(TokenizeInstrumentRequest): <span class="rt">VaultedInstrument</span></p>
@@ -915,9 +915,18 @@
 <span class="c">// revoke it later with $gateway->deleteToken($token)</span></code></pre>
         </div>
       </div>
+      <div class="gw-variant" data-gw="authorizenet">
+        <div class="code">
+<pre><code><span class="v">$vaulted</span> = <span class="v">$gateway</span>-&gt;<span class="fn">vaultInstrument</span>(<span class="k">new</span> <span class="t">TokenizeInstrumentRequest</span>(
+    <span class="a">transientToken:</span> <span class="v">$opaqueDataValue</span>, <span class="c">// Accept.js nonce — PAN-free (or pass cardNumber/expirationMonth/expirationYear)</span>
+));
+
+<span class="c">// CIM profile ids: $vaulted->customerId (customerProfileId) + $vaulted->paymentInstrumentId (paymentProfileId)</span></code></pre>
+        </div>
+      </div>
     </section>
 
-    <section id="charge-stored-credential" class="doc-section" data-gws="cyber paytabs paypal mpgs paylink">
+    <section id="charge-stored-credential" class="doc-section" data-gws="cyber paytabs paypal mpgs paylink authorizenet">
       <p class="doc-eyebrow">Stored credentials</p>
       <h2>Charge stored credential</h2>
       <p class="doc-sig"><span class="fn">chargeStoredCredential</span>(StoredCredentialChargeRequest): <span class="rt">PaymentResult</span></p>
@@ -977,6 +986,16 @@
 <span class="c">// billing is reused from tokenize time — no cardholder/address is resent</span></code></pre>
         </div>
       </div>
+      <div class="gw-variant" data-gw="authorizenet">
+        <div class="code">
+<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">chargeStoredCredential</span>(<span class="k">new</span> <span class="t">StoredCredentialChargeRequest</span>(
+    <span class="a">paymentInstrumentId:</span> <span class="v">$vaulted</span>-&gt;paymentInstrumentId, <span class="c">// CIM customerPaymentProfileId</span>
+    <span class="a">customerId:</span> <span class="v">$vaulted</span>-&gt;customerId,                 <span class="c">// CIM customerProfileId — required</span>
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">9900</span>, <span class="s">'USD'</span>),
+    <span class="a">initiator:</span> <span class="t">CredentialInitiator</span>::<span class="cn">Merchant</span>, <span class="c">// MIT → isSubsequentAuth; Customer → isStoredCredentials (CIT)</span>
+));</code></pre>
+        </div>
+      </div>
     </section>
 
   </main>
@@ -1007,8 +1026,8 @@
       <li data-gws="misc"><a href="#ai-docs" data-spy="ai-docs">AI docs</a></li>
       <li data-gws="cyber mpgs"><a href="#enroll-payer-auth" data-spy="enroll-payer-auth">Enroll payer auth</a></li>
       <li data-gws="cyber mpgs"><a href="#validate-payer-auth" data-spy="validate-payer-auth">Validate payer auth</a></li>
-      <li data-gws="cyber paypal mpgs paylink"><a href="#vault-instrument" data-spy="vault-instrument">Vault instrument</a></li>
-      <li data-gws="cyber paytabs paypal mpgs paylink"><a href="#charge-stored-credential" data-spy="charge-stored-credential">Charge stored credential</a></li>
+      <li data-gws="cyber paypal mpgs paylink authorizenet"><a href="#vault-instrument" data-spy="vault-instrument">Vault instrument</a></li>
+      <li data-gws="cyber paytabs paypal mpgs paylink authorizenet"><a href="#charge-stored-credential" data-spy="charge-stored-credential">Charge stored credential</a></li>
     </ul>
   </aside>
 
@@ -1023,7 +1042,7 @@
     <a href="https://packagist.org/packages/hyprpay/payments">Packagist</a>
     <a href="https://github.com/MHJaafar9869/hyprpay/blob/main/README.md">README</a>
   </nav>
-  <p class="foot-note">Domain-driven · ports &amp; adapters · deterministic · exact money · <a href="https://packagist.org/packages/hyprpay/payments">v0.4.0</a></p>
+  <p class="foot-note">Domain-driven · ports &amp; adapters · deterministic · exact money · <a href="https://packagist.org/packages/hyprpay/payments">v0.4.1</a></p>
 </footer>
 
 <button class="to-top" type="button" aria-label="Back to top" title="Back to top">↑</button>
