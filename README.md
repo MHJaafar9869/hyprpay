@@ -5,7 +5,9 @@
 [![PHP Version](https://img.shields.io/badge/php-%E2%89%A5%208.2-777bb4)](composer.json)
 [![License: MIT](https://img.shields.io/github/license/MHJaafar9869/hyprpay)](LICENSE)
 
-📖 **Documentation:** <https://mhjaafar9869.github.io/hyprpay/>
+📦 **Package:** [hyprpay/payments on Packagist](https://packagist.org/packages/hyprpay/payments)
+
+📖 **Documentation:** [HyprPay docs](https://mhjaafar9869.github.io/hyprpay/)
 
 A self-contained, multi-gateway payment SDK for PHP. One clean interface, a factory
 that resolves the right driver, and a swappable HTTP transport — with seven gateways
@@ -120,7 +122,7 @@ per gateway and the full operation-support matrix live in the docs below.
 
 ## Documentation
 
-The hosted docs at <https://mhjaafar9869.github.io/hyprpay/> are browsable by gateway.
+The [hosted docs](https://mhjaafar9869.github.io/hyprpay/) are browsable by gateway.
 The reference is split into focused guides:
 
 - **[Gateways & operations](docs/guides/gateways.md)** — a runnable sample per gateway and the operation-support matrix.
