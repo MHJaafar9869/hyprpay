@@ -224,5 +224,23 @@ return [
             'locale' => env('AUTHORIZENET_LOCALE', 'en_US'),
             'currency' => env('AUTHORIZENET_CURRENCY', 'USD'),
         ],
+
+        'airwallex' => [
+            'test_mode' => (bool) env('AIRWALLEX_TEST_MODE', true),
+            'live_host' => env('AIRWALLEX_HOST', 'api.airwallex.com'),
+            'test_host' => env('AIRWALLEX_TEST_HOST', 'api-demo.airwallex.com'),
+            'merchant_id' => env('AIRWALLEX_CLIENT_ID'),
+            'shared_secret' => env('AIRWALLEX_API_KEY'),
+            'webhook_secret' => env('AIRWALLEX_WEBHOOK_SECRET'),
+
+            'country' => env('AIRWALLEX_COUNTRY', 'US'),
+            'locale' => env('AIRWALLEX_LOCALE', 'en'),
+            'currency' => env('AIRWALLEX_CURRENCY', 'USD'),
+
+            'extra' => [
+                'api_version' => env('AIRWALLEX_API_VERSION', '2025-11-11'),
+                'account_id' => env('AIRWALLEX_ACCOUNT_ID'),
+            ],
+        ],
     ],
 ];

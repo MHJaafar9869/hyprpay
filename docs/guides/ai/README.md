@@ -46,10 +46,10 @@ $result  = $gateway->charge(new ChargeRequest(
 | **[exceptions.md](exceptions.md)** | The exception hierarchy and when each is thrown. |
 | **[events.md](events.md)** | `PaymentEvent` and every domain event, its fields, and when it fires. |
 | **[contracts-and-http.md](contracts-and-http.md)** | The ports (`HttpClient`, `CredentialResolver`, `EventDispatcher`), the HTTP DTOs and decorator stack, and support helpers. |
-| **[gateways.md](gateways.md)** | All eight gateways in depth — signing, endpoints, supported operations, and each gateway's typed `CheckoutOptions` and enums. |
+| **[gateways.md](gateways.md)** | All nine gateways in depth — signing, endpoints, supported operations, and each gateway's typed `CheckoutOptions` and enums. |
 | **[application-console-config.md](application-console-config.md)** | `PaymentGatewayFactory`, `TransactionReconciler`, driver decorators, the reconcile Artisan commands, and a complete config-key reference. |
 | **[mcp-server.md](mcp-server.md)** | Exposing the SDK's operations as MCP tools for an AI agent — tool schemas, a PHP handler, and the safety guardrails money-moving tools require. |
-| **[class-index.md](class-index.md)** | The exhaustive index — all 186 classes/interfaces/enums/traits with a one-line purpose each. Start here to confirm nothing is missing. |
+| **[class-index.md](class-index.md)** | The exhaustive index — all 192 classes/interfaces/enums/traits with a one-line purpose each. Start here to confirm nothing is missing. |
 
 ## For humans
 

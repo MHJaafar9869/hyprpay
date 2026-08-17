@@ -93,6 +93,7 @@ Package logger (`packageLogger()`): the channel named by `gateway.logging.channe
 | `gateway:reconcile:paypal` | `ReconcilePayPalCommand` | `PayPal` |
 | `gateway:reconcile:mpgs` | `ReconcileMpgsCommand` | `Mpgs` |
 | `gateway:reconcile:authorize_net` | `ReconcileAuthorizeNetCommand` | `AuthorizeNet` |
+| `gateway:reconcile:airwallex` | `ReconcileAirwallexCommand` | `Airwallex` |
 
 Example: `php artisan gateway:reconcile:mpgs TX-1 TX-2`.
 
@@ -235,6 +236,21 @@ Read by `ConfigCredentialResolver` when no explicit `GatewayCredentials` are pas
 | `country` | `AUTHORIZENET_COUNTRY` | `US` |
 | `locale` | `AUTHORIZENET_LOCALE` | `en_US` |
 | `currency` | `AUTHORIZENET_CURRENCY` | `USD` |
+
+#### `gateways.airwallex`
+| Key | Env var | Default |
+|---|---|---|
+| `test_mode` | `AIRWALLEX_TEST_MODE` | `true` |
+| `live_host` | `AIRWALLEX_HOST` | `api.airwallex.com` |
+| `test_host` | `AIRWALLEX_TEST_HOST` | `api-demo.airwallex.com` |
+| `merchant_id` | `AIRWALLEX_CLIENT_ID` | `null` |
+| `shared_secret` | `AIRWALLEX_API_KEY` | `null` |
+| `webhook_secret` | `AIRWALLEX_WEBHOOK_SECRET` | `null` |
+| `country` | `AIRWALLEX_COUNTRY` | `US` |
+| `locale` | `AIRWALLEX_LOCALE` | `en` |
+| `currency` | `AIRWALLEX_CURRENCY` | `USD` |
+| `extra.api_version` | `AIRWALLEX_API_VERSION` | `2025-11-11` |
+| `extra.account_id` | `AIRWALLEX_ACCOUNT_ID` | `null` |
 
 ## Onward
 - [overview.md](./overview.md) · [architecture.md](../architecture.md) · [observability.md](../observability.md) · [operations.md](../operations.md)

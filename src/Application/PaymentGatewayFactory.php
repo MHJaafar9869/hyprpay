@@ -11,6 +11,7 @@ use Hyprpay\Payments\Domain\Contract\PaymentGatewayInterface;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Exception\GatewayNotSupportedException;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
+use Hyprpay\Payments\Infrastructure\Gateway\Airwallex\AirwallexGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\AuthorizeNet\AuthorizeNetGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\CybersourceUnifiedCheckoutGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\EventDispatchingGateway;
@@ -70,6 +71,7 @@ final readonly class PaymentGatewayFactory
             GatewayName::PayPal => new PayPalGateway($resolved, $this->http),
             GatewayName::Mpgs => new MpgsGateway($resolved, $this->http),
             GatewayName::AuthorizeNet => new AuthorizeNetGateway($resolved, $this->http),
+            GatewayName::Airwallex => new AirwallexGateway($resolved, $this->http),
         };
 
         if ($this->events instanceof EventDispatcher) {

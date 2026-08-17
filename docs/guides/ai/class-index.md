@@ -1,6 +1,6 @@
 # Complete class index
 
-Every one of the 186 classes, interfaces, enums, and traits in `hyprpay/payments`, grouped by namespace (prefix `Hyprpay\Payments\` omitted). Each line is the type and its one-line purpose taken from the source. This index is exhaustive — nothing in `src/` is omitted.
+Every one of the 192 classes, interfaces, enums, and traits in `hyprpay/payments`, grouped by namespace (prefix `Hyprpay\Payments\` omitted). Each line is the type and its one-line purpose taken from the source. This index is exhaustive — nothing in `src/` is omitted.
 
 ## `Application`
 
@@ -96,6 +96,7 @@ Every one of the 186 classes, interfaces, enums, and traits in `hyprpay/payments
 
 ## `Infrastructure\Console`
 
+- **`ReconcileAirwallexCommand`** _class_ — Artisan command that reconciles Airwallex transactions.
 - **`ReconcileAuthorizeNetCommand`** _class_ — Artisan command that reconciles Authorize.Net transactions.
 - **`ReconcileCommand`** _class_ — Base Artisan command that reconciles a gateway's transactions by id.
 - **`ReconcileCybersourceCommand`** _class_ — Artisan command that reconciles CyberSource Unified Checkout transactions.
@@ -120,6 +121,20 @@ Every one of the 186 classes, interfaces, enums, and traits in `hyprpay/payments
 
 - **`EventDispatchingGateway`** _class_ — Decorator that dispatches a payment domain event after each lifecycle operation.
 - **`LoggingGateway`** _class_ — Decorator that logs every gateway operation with its duration through the LogsAction trait.
+
+## `Infrastructure\Gateway\Airwallex`
+
+- **`AirwallexClient`** _class_ — Sends requests to the Airwallex "Online Payments" REST API (API-access login + bearer token).
+- **`AirwallexGateway`** _class_ — Airwallex "Online Payments" (card) payment gateway adapter.
+
+## `Infrastructure\Gateway\Airwallex\Enums`
+
+- **`AirwallexEndpoint`** _enum_ — The Airwallex "Online Payments" REST API paths the driver calls.
+- **`AirwallexIntentStatus`** _enum_ — Maps Airwallex PaymentIntent `status` values to the SDK's PaymentStatus.
+
+## `Infrastructure\Gateway\Airwallex\Payloads`
+
+- **`AirwallexPayload`** _class_ — Builds the Airwallex "Online Payments" request bodies (create intent, capture, refund, confirm consent).
 
 ## `Infrastructure\Gateway\AuthorizeNet`
 

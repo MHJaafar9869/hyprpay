@@ -21,6 +21,7 @@ enum GatewayName: string
     case PayPal = 'paypal';
     case Mpgs = 'mpgs';
     case AuthorizeNet = 'authorize_net';
+    case Airwallex = 'airwallex';
 
     /**
      * Human-readable display name for the gateway.
@@ -38,6 +39,7 @@ enum GatewayName: string
             self::PayPal => 'PayPal',
             self::Mpgs => 'Mastercard Payment Gateway Services',
             self::AuthorizeNet => 'Authorize.Net',
+            self::Airwallex => 'Airwallex',
         };
     }
 }

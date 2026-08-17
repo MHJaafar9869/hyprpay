@@ -344,6 +344,57 @@ See the [Authorize.Net API reference](https://developer.authorize.net/api/refere
 for the underlying transaction types (`authCaptureTransaction`, `priorAuthCaptureTransaction`,
 `refundTransaction`, `voidTransaction`) and Customer Information Manager (CIM).
 
+**Airwallex** — create a PaymentIntent and hand the id + client secret to the Airwallex
+client-side element (Elements / drop-in), which collects the card and confirms the
+payment in the browser; the server then reconciles by intent id or via webhooks:
+
+```php
+use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
+use Hyprpay\Payments\Domain\ValueObject\Money;
+use Hyprpay\Payments\Domain\Enum\GatewayName;
+
+$airwallex = $factory->make(GatewayName::Airwallex);
+
+$session = $airwallex->createCheckoutSession(new CheckoutSessionRequest(
+    money: Money::minor(10000, 'USD'),           // 100.00 USD (sent to Airwallex as major units)
+    orderReference: 'ORDER-130',                 // merchant_order_id + request_id (idempotent)
+    returnUrl: 'https://shop.test/return',
+    // paymentMethod: 'authorize',               // manual-capture hold; capture() settles it later
+));
+// Hand $session->reference (intent id) + $session->jwt (client_secret) to the Airwallex front end.
+```
+
+Once the intent is captured (`SUCCEEDED`), reconcile it, refund it, or charge a saved
+card fully server-side against a stored PaymentConsent:
+
+```php
+use Hyprpay\Payments\Domain\Command\RefundRequest;
+use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
+use Hyprpay\Payments\Domain\Enum\CredentialInitiator;
+
+// Reconcile the intent by id.
+$snapshot = $airwallex->getTransaction($session->reference);   // status Captured when SUCCEEDED
+
+// Refund all or part of it.
+$airwallex->refund(new RefundRequest(
+    transactionId: $session->reference,          // the payment_intent_id
+    money: Money::minor(2500, 'USD'),
+    reason: 'Partial refund',
+));
+
+// Charge a saved card (creates an intent, then confirms it against the consent).
+$airwallex->chargeStoredCredential(new StoredCredentialChargeRequest(
+    paymentInstrumentId: $paymentConsentId,      // Airwallex PaymentConsent id
+    money: Money::minor(9900, 'USD'),
+    initiator: CredentialInitiator::Merchant,
+    orderReference: 'ORDER-131',
+));
+```
+
+See the [Airwallex Online Payments API](https://www.airwallex.com/docs/api) for the
+PaymentIntent lifecycle and the [webhook signing scheme](https://www.airwallex.com/docs/developer-tools/webhooks/listen-for-webhook-events)
+(`x-timestamp` + `x-signature`, HMAC-SHA256) that `verifyWebhook()` validates.
+
 Passing credentials explicitly per call — this skips the resolver, so it works for
 any dynamic source (a one-off override, per-merchant, per-tenant, …):
 
@@ -365,20 +416,20 @@ Every driver implements the same `PaymentGatewayInterface`. Operations a gateway
 not support throw `UnsupportedOperationException`, so you can rely on the same surface
 everywhere.
 
-| Operation | CyberSource UC | Fawry | Paymob | PayLink | PayTabs | PayPal | Mastercard MPGS | Authorize.Net |
-| --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| `createCheckoutSession` | ✅ capture context / orchestrated (autoProcessing) | ✅ hosted / card / wallet / pay-at-Fawry / MyFawry / instalment | ✅ iframe flow | ✅ invoice link / iframe | ✅ hosted / invoice / paylink / managed | ✅ order → approval redirect | ✅ hosted checkout session | — |
-| `charge` (transient token) | ✅ | — | — | — | ✅ Own Form (payment token) | ✅ complete approved order² | ✅ session (PAY / AUTHORIZE)³ | ✅ Accept.js opaque data |
-| `confirmOrchestratedPayment` (verify result JWT) | ✅ RS256 (flx.jwk) | — | — | — | — | — | — | — |
-| `capture` | ✅ | ✅ (Auth/Capture) | ✅ | ✅ (settle) | ✅ | ✅ | ✅ | ✅ |
-| `refund` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `void` | ✅ | ✅ (cancel auth) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `reverseAuthorization` | ✅ | — | — | ✅ | ✅ (release) | — | ✅ (void of auth) | — |
-| `enrollPayerAuth` / `validatePayerAuth` (3-DS) | ✅ | — | — | — | — | — | ✅ | — |
-| `vaultInstrument` / `chargeStoredCredential` | ✅ (TMS, MIT/CIT) | — | — | ✅ vault + charge + revoke⁴ | ✅ token (MIT/CIT)¹ | ✅ vault (MIT/CIT) | ✅ token (MIT/CIT) | ✅ CIM (opaque/card, MIT/CIT) |
-| `requestDccRate` (Dynamic Currency Conversion) | ✅ | — | — | — | — | — | — | — |
-| `getTransaction` / `searchTransaction` | ✅ | ✅ | ✅ | ✅ | ✅ query | ✅ order lookup | ✅ order lookup | ✅ transaction details |
-| `verifyWebhook` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ API | ✅ notification secret | ✅ HMAC-SHA512 |
+| Operation | CyberSource UC | Fawry | Paymob | PayLink | PayTabs | PayPal | Mastercard MPGS | Authorize.Net | Airwallex |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| `createCheckoutSession` | ✅ capture context / orchestrated (autoProcessing) | ✅ hosted / card / wallet / pay-at-Fawry / MyFawry / instalment | ✅ iframe flow | ✅ invoice link / iframe | ✅ hosted / invoice / paylink / managed | ✅ order → approval redirect | ✅ hosted checkout session | — | ✅ PaymentIntent (client-side confirm) |
+| `charge` (transient token) | ✅ | — | — | — | ✅ Own Form (payment token) | ✅ complete approved order² | ✅ session (PAY / AUTHORIZE)³ | ✅ Accept.js opaque data | — (card confirmed client-side) |
+| `confirmOrchestratedPayment` (verify result JWT) | ✅ RS256 (flx.jwk) | — | — | — | — | — | — | — | — |
+| `capture` | ✅ | ✅ (Auth/Capture) | ✅ | ✅ (settle) | ✅ | ✅ | ✅ | ✅ | ✅ (manual-capture intent) |
+| `refund` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `void` | ✅ | ✅ (cancel auth) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| `reverseAuthorization` | ✅ | — | — | ✅ | ✅ (release) | — | ✅ (void of auth) | — | — |
+| `enrollPayerAuth` / `validatePayerAuth` (3-DS) | ✅ | — | — | — | — | — | ✅ | — | — |
+| `vaultInstrument` / `chargeStoredCredential` | ✅ (TMS, MIT/CIT) | — | — | ✅ vault + charge + revoke⁴ | ✅ token (MIT/CIT)¹ | ✅ vault (MIT/CIT) | ✅ token (MIT/CIT) | ✅ CIM (opaque/card, MIT/CIT) | ✅ charge via PaymentConsent |
+| `requestDccRate` (Dynamic Currency Conversion) | ✅ | — | — | — | — | — | — | — | — |
+| `getTransaction` / `searchTransaction` | ✅ | ✅ | ✅ | ✅ | ✅ query | ✅ order lookup | ✅ order lookup | ✅ transaction details | ✅ intent lookup |
+| `verifyWebhook` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ API | ✅ notification secret | ✅ HMAC-SHA512 | ✅ HMAC-SHA256 |
 
 Provider-specific inputs (e.g. Fawry payment method, Paymob integration/iframe ids,
 card or wallet details) are passed through `CheckoutSessionRequest::$options` and the
