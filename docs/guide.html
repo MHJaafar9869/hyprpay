@@ -1030,7 +1030,9 @@
     <span class="a">orderReference:</span> <span class="s">'ORDER-131'</span>,
 ));
 
-<span class="c">// creates a PaymentIntent, then confirms it against the stored consent — one server call each</span></code></pre>
+<span class="c">// creates a PaymentIntent, then confirms it against the stored consent — one server call each</span>
+<span class="c">// no vaultInstrument: the PaymentConsent is created client-side by Airwallex Elements</span>
+<span class="c">// (the card never reaches your server), so you already hold the payment_consent_id here</span></code></pre>
         </div>
       </div>
     </section>

@@ -391,6 +391,11 @@ $airwallex->chargeStoredCredential(new StoredCredentialChargeRequest(
 ));
 ```
 
+There is no `vaultInstrument` for Airwallex: a saved card is a **PaymentConsent**, which
+Airwallex Elements creates client-side (the PAN never reaches your server), so you already
+hold the `payment_consent_id` — `chargeStoredCredential` simply charges against it. (PayTabs
+is the same: it tokenizes during a checkout, not through a server-side vault call.)
+
 See the [Airwallex Online Payments API](https://www.airwallex.com/docs/api) for the
 PaymentIntent lifecycle and the [webhook signing scheme](https://www.airwallex.com/docs/developer-tools/webhooks/listen-for-webhook-events)
 (`x-timestamp` + `x-signature`, HMAC-SHA256) that `verifyWebhook()` validates.
