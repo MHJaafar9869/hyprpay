@@ -59,7 +59,7 @@ and **Airwallex**.
   hidden `uniqid()`/`time()`), and write operations carry an idempotency key.
 - **Exact money** — amounts are carried as minor units and never rounded.
 - **Statically strict** — PHPStan **level max, zero baseline**; formatted with Pint;
-  refactor-checked with Rector; 290+ Pest tests.
+  refactor-checked with Rector; 310+ Pest tests.
 
 ## Quick start
 
