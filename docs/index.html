@@ -4,14 +4,14 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>HyprPay — one interface, every payment gateway</title>
-<meta name="description" content="A self-contained, multi-gateway payment SDK for PHP. One clean interface over CyberSource Unified Checkout, Fawry, Paymob, PayLink, PayTabs, PayPal, Mastercard MPGS and Authorize.Net — deterministic, idempotent, exact-money, PHPStan level max." />
+<meta name="description" content="A self-contained, multi-gateway payment SDK for PHP. One clean interface over CyberSource Unified Checkout, Fawry, Paymob, PayLink, PayTabs, PayPal, Mastercard MPGS, Authorize.Net and Airwallex — deterministic, idempotent, exact-money, PHPStan level max." />
 <meta name="color-scheme" content="dark light" />
 
 <!-- Open Graph / Twitter -->
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="HyprPay" />
 <meta property="og:title" content="HyprPay — one interface, every payment gateway" />
-<meta property="og:description" content="A self-contained, multi-gateway payment SDK for PHP. CyberSource, Fawry, Paymob, PayLink, PayTabs, PayPal, Mastercard MPGS & Authorize.Net behind a single contract." />
+<meta property="og:description" content="A self-contained, multi-gateway payment SDK for PHP. CyberSource, Fawry, Paymob, PayLink, PayTabs, PayPal, Mastercard MPGS, Authorize.Net & Airwallex behind a single contract." />
 <meta property="og:url" content="https://mhjaafar9869.github.io/hyprpay/" />
 <meta property="og:image" content="https://mhjaafar9869.github.io/hyprpay/assets/og.png" />
 <meta property="og:image:type" content="image/png" />
@@ -20,7 +20,7 @@
 <meta property="og:image:alt" content="HyprPay — one clean interface, every payment gateway" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="HyprPay — one interface, every payment gateway" />
-<meta name="twitter:description" content="A self-contained, multi-gateway payment SDK for PHP. CyberSource, Fawry, Paymob, PayLink, PayTabs, PayPal, Mastercard MPGS & Authorize.Net behind a single contract." />
+<meta name="twitter:description" content="A self-contained, multi-gateway payment SDK for PHP. CyberSource, Fawry, Paymob, PayLink, PayTabs, PayPal, Mastercard MPGS, Authorize.Net & Airwallex behind a single contract." />
 <meta name="twitter:image" content="https://mhjaafar9869.github.io/hyprpay/assets/og.png" />
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -65,7 +65,7 @@
     <p class="hero-sub reveal" data-d="3">
       A self-contained, multi-gateway payment SDK for PHP. A factory resolves the right
       driver, a swappable HTTP transport does the talking, and one contract covers
-      <b>CyberSource&nbsp;Unified&nbsp;Checkout</b>, <b>Fawry</b>, <b>Paymob</b>, <b>PayLink</b>, <b>PayTabs</b>, <b>PayPal</b>, <b>Mastercard&nbsp;MPGS</b> and <b>Authorize.Net</b>.
+      <b>CyberSource&nbsp;Unified&nbsp;Checkout</b>, <b>Fawry</b>, <b>Paymob</b>, <b>PayLink</b>, <b>PayTabs</b>, <b>PayPal</b>, <b>Mastercard&nbsp;MPGS</b>, <b>Authorize.Net</b> and <b>Airwallex</b>.
     </p>
 
     <div class="hero-cta reveal" data-d="4">
@@ -132,7 +132,7 @@
       <article class="card reveal">
         <span class="card-no">/04</span>
         <h3>Raw REST, no vendor SDKs</h3>
-        <p>Every driver speaks the gateway's REST API directly and signs its own requests — CyberSource HMAC HTTP-Signature, Fawry SHA-256, Paymob HMAC-SHA512, PayLink HMAC-SHA256, PayTabs server-key auth with HMAC-SHA256 callbacks, PayPal OAuth 2.0 client credentials, Mastercard MPGS HTTP Basic auth, Authorize.Net name/transaction-key auth. No heavy third-party gateway dependencies.</p>
+        <p>Every driver speaks the gateway's REST API directly and signs its own requests — CyberSource HMAC HTTP-Signature, Fawry SHA-256, Paymob HMAC-SHA512, PayLink HMAC-SHA256, PayTabs server-key auth with HMAC-SHA256 callbacks, PayPal OAuth 2.0 client credentials, Mastercard MPGS HTTP Basic auth, Authorize.Net name/transaction-key auth, Airwallex API-access login token. No heavy third-party gateway dependencies.</p>
       </article>
       <article class="card reveal">
         <span class="card-no">/05</span>
@@ -156,7 +156,7 @@
   <section id="gateways" class="section">
     <div class="section-head reveal">
       <span class="section-no">02</span>
-      <h2>Eight gateways.<br />One <em>PaymentGatewayInterface</em>.</h2>
+      <h2>Nine gateways.<br />One <em>PaymentGatewayInterface</em>.</h2>
       <p>Each driver extends <code>AbstractPaymentGateway</code> and implements the same fat contract.</p>
     </div>
 
@@ -209,6 +209,12 @@
         <p>Charge an Accept.js opaque-data token — the card is tokenised in the browser, so no PAN reaches your server — then capture, refund or void by transaction id. Vault the same token into a CIM profile for MIT/CIT stored-credential charges, look up a transaction for reconciliation, and verify the HMAC-SHA512 webhook signature.</p>
         <footer>Accept.js charge · capture · refund · void · CIM vault · getTransaction · webhook</footer>
       </article>
+      <article class="gw reveal" style="--gw:var(--airwallex)">
+        <header><span class="gw-tag">Airwallex</span><span class="gw-sig">API-access login</span></header>
+        <h3>PaymentIntents</h3>
+        <p>Create a PaymentIntent and hand its id + client secret to the Airwallex element, which collects the card and confirms in the browser. Capture a manual-capture hold, refund a captured intent, charge a saved card against a stored PaymentConsent, reconcile by intent id, and verify the HMAC-SHA256 webhook signature.</p>
+        <footer>PaymentIntent · client secret · capture · refund · consent charge · getTransaction · webhook</footer>
+      </article>
     </div>
   </section>
 
@@ -235,27 +241,28 @@
             <th scope="col">PayPal</th>
             <th scope="col">Mastercard&nbsp;MPGS</th>
             <th scope="col">Authorize.Net</th>
+            <th scope="col">Airwallex</th>
           </tr>
         </thead>
         <tbody>
-          <tr><th scope="row"><code>createCheckoutSession</code></th><td class="y">capture context / orchestrated</td><td class="y">hosted / card / wallet</td><td class="y">iframe flow</td><td class="y">invoice / iframe</td><td class="y">hosted / invoice / paylink / managed</td><td class="y">order → approval</td><td class="y">hosted checkout</td><td class="n">—</td></tr>
-          <tr><th scope="row"><code>charge</code> <small>(transient token)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">Own Form</td><td class="y">approved order</td><td class="y">session</td><td class="y">Accept.js</td></tr>
-          <tr><th scope="row"><code>confirmOrchestratedPayment</code> <small>(verify result JWT)</small></th><td class="y">RS256 · flx.jwk</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
-          <tr><th scope="row"><code>capture</code></th><td class="y">✓</td><td class="y">Auth/Capture</td><td class="y">✓</td><td class="y">settle</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
-          <tr><th scope="row"><code>refund</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
-          <tr><th scope="row"><code>void</code></th><td class="y">✓</td><td class="y">cancel auth</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
-          <tr><th scope="row"><code>reverseAuthorization</code></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="y">release</td><td class="n">—</td><td class="y">✓</td><td class="n">—</td></tr>
-          <tr><th scope="row"><code>enroll</code> / <code>validatePayerAuth</code> <small>(3-DS)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="n">—</td></tr>
-          <tr><th scope="row"><code>vault</code> / <code>chargeStoredCredential</code></th><td class="y">TMS · MIT/CIT</td><td class="n">—</td><td class="n">—</td><td class="y">vault · charge · revoke</td><td class="y">token · MIT/CIT</td><td class="y">vault · MIT/CIT</td><td class="y">token · MIT/CIT</td><td class="y">CIM · MIT/CIT</td></tr>
-          <tr><th scope="row"><code>getTransaction</code> / <code>searchTransaction</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">query</td><td class="y">order lookup</td><td class="y">order lookup</td><td class="y">transaction details</td></tr>
-          <tr><th scope="row"><code>verifyWebhook</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">API</td><td class="y">secret</td><td class="y">HMAC-SHA512</td></tr>
+          <tr><th scope="row"><code>createCheckoutSession</code></th><td class="y">capture context / orchestrated</td><td class="y">hosted / card / wallet</td><td class="y">iframe flow</td><td class="y">invoice / iframe</td><td class="y">hosted / invoice / paylink / managed</td><td class="y">order → approval</td><td class="y">hosted checkout</td><td class="n">—</td><td class="y">PaymentIntent</td></tr>
+          <tr><th scope="row"><code>charge</code> <small>(transient token)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">Own Form</td><td class="y">approved order</td><td class="y">session</td><td class="y">Accept.js</td><td class="n">—</td></tr>
+          <tr><th scope="row"><code>confirmOrchestratedPayment</code> <small>(verify result JWT)</small></th><td class="y">RS256 · flx.jwk</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
+          <tr><th scope="row"><code>capture</code></th><td class="y">✓</td><td class="y">Auth/Capture</td><td class="y">✓</td><td class="y">settle</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+          <tr><th scope="row"><code>refund</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+          <tr><th scope="row"><code>void</code></th><td class="y">✓</td><td class="y">cancel auth</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="n">—</td></tr>
+          <tr><th scope="row"><code>reverseAuthorization</code></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="y">release</td><td class="n">—</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td></tr>
+          <tr><th scope="row"><code>enroll</code> / <code>validatePayerAuth</code> <small>(3-DS)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td></tr>
+          <tr><th scope="row"><code>vault</code> / <code>chargeStoredCredential</code></th><td class="y">TMS · MIT/CIT</td><td class="n">—</td><td class="n">—</td><td class="y">vault · charge · revoke</td><td class="y">token · MIT/CIT</td><td class="y">vault · MIT/CIT</td><td class="y">token · MIT/CIT</td><td class="y">CIM · MIT/CIT</td><td class="y">consent charge</td></tr>
+          <tr><th scope="row"><code>getTransaction</code> / <code>searchTransaction</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">query</td><td class="y">order lookup</td><td class="y">order lookup</td><td class="y">transaction details</td><td class="y">intent lookup</td></tr>
+          <tr><th scope="row"><code>verifyWebhook</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">API</td><td class="y">secret</td><td class="y">HMAC-SHA512</td><td class="y">HMAC-SHA256</td></tr>
         </tbody>
       </table>
     </div>
 
     <div class="deck reveal" data-deck>
       <div class="deck-bar">
-        <span class="deck-count"><b data-deck-cur>1</b> / 8</span>
+        <span class="deck-count"><b data-deck-cur>1</b> / 9</span>
         <span class="deck-hint">tap a card to cycle</span>
       </div>
       <div class="deck-stack">
@@ -378,6 +385,21 @@
             <div class="op"><dt>vault / chargeStoredCredential</dt><dd>CIM &middot; MIT/CIT</dd></div>
             <div class="op"><dt>getTransaction / searchTransaction</dt><dd>transaction details</dd></div>
             <div class="op"><dt>verifyWebhook</dt><dd>HMAC-SHA512</dd></div>
+          </dl>
+        </article>
+        <article class="deck-card" data-pos="8" style="--gw:var(--airwallex)">
+          <header class="deck-card-head"><span class="gw-tag">Airwallex</span><span class="gw-sig">API-access login</span></header>
+          <dl class="deck-ops">
+            <div class="op"><dt>createCheckoutSession</dt><dd>PaymentIntent</dd></div>
+            <div class="op off"><dt>charge</dt><dd>&mdash;</dd></div>
+            <div class="op"><dt>capture</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>refund</dt><dd>&#10003;</dd></div>
+            <div class="op off"><dt>void</dt><dd>&mdash;</dd></div>
+            <div class="op off"><dt>reverseAuthorization</dt><dd>&mdash;</dd></div>
+            <div class="op off"><dt>enroll / validatePayerAuth</dt><dd>&mdash;</dd></div>
+            <div class="op"><dt>vault / chargeStoredCredential</dt><dd>PaymentConsent</dd></div>
+            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>intent lookup</dd></div>
+            <div class="op"><dt>verifyWebhook</dt><dd>HMAC-SHA256</dd></div>
           </dl>
         </article>
       </div>
