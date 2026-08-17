@@ -33,6 +33,7 @@ Methods:
 | `PayPal` | `paypal` | PayPal |
 | `Mpgs` | `mpgs` | Mastercard Payment Gateway Services |
 | `AuthorizeNet` | `authorize_net` | Authorize.Net |
+| `Airwallex` | `airwallex` | Airwallex |
 
 Methods:
 - `label(): string` — human-readable display name for UIs and logs (see table).

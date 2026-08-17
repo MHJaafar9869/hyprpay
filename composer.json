@@ -1,8 +1,8 @@
 {
     "name": "hyprpay/payments",
-    "description": "Self-contained multi-gateway payment SDK. Drivers: CyberSource Unified Checkout, Fawry, Paymob, PayLink, PayTabs, PayPal, Mastercard MPGS.",
+    "description": "Self-contained multi-gateway payment SDK. Drivers: CyberSource Unified Checkout, Fawry, Paymob, PayLink, PayTabs, PayPal, Mastercard MPGS, Authorize.Net, Airwallex.",
     "type": "library",
-    "version": "0.4.1",
+    "version": "0.5.0",
     "license": "MIT",
     "homepage": "https://mhjaafar9869.github.io/hyprpay/",
     "support": {
@@ -18,7 +18,8 @@
         "paymob",
         "paylink",
         "paytabs",
-        "paypal"
+        "paypal",
+        "airwallex"
     ],
     "require": {
         "php": "^8.2",

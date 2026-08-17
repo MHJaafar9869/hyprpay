@@ -1,6 +1,6 @@
 # hyprpay/payments — Gateway Reference (AI/LLM)
 
-Terse, code-forward reference to all eight payment gateway drivers in `hyprpay/payments`. Audience: AI coding assistants. Every class under `src/Infrastructure/Gateway/` is documented against the real source — no invented behavior.
+Terse, code-forward reference to all nine payment gateway drivers in `hyprpay/payments`. Audience: AI coding assistants. Every class under `src/Infrastructure/Gateway/` is documented against the real source — no invented behavior.
 
 ## Architecture in one screen
 
@@ -22,27 +22,28 @@ Terse, code-forward reference to all eight payment gateway drivers in `hyprpay/p
 | `PayPal` | `paypal` | PayPal |
 | `Mpgs` | `mpgs` | Mastercard Payment Gateway Services |
 | `AuthorizeNet` | `authorize_net` | Authorize.Net |
+| `Airwallex` | `airwallex` | Airwallex |
 
 ### Operation-support matrix
 
 Legend: ● implemented · — inherited-as-unsupported (throws `UnsupportedOperationException`).
 
-| Operation | Cybersource | Fawry | Paymob | Paylink | Paytabs | PayPal | Mpgs | AuthorizeNet |
-| --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
-| createCheckoutSession | ● | ● | ● | ● | ● | ● | ● | — |
-| requestDccRate | ● | — | — | — | — | — | — | — |
-| charge | ● | — | — | — | ● | ● | ● | ● |
-| capture | ● | ● | ● | ● | ● | ● | ● | ● |
-| refund | ● | ● | ● | ● | ● | ● | ● | ● |
-| void | ● | ● | ● | ● | ● | ● | ● | ● |
-| reverseAuthorization | ● | — | — | ● | ● | — | ● | — |
-| enrollPayerAuth | ● | — | — | — | — | — | ● | — |
-| validatePayerAuth | ● | — | — | — | — | — | ● | — |
-| vaultInstrument | ● | — | — | ● | — | ● | ● | ● |
-| chargeStoredCredential | ● | — | — | ● | ● | ● | ● | ● |
-| getTransaction | ● | ● | ● | ● | ● | ● | ● | ● |
-| searchTransaction | ● | — | ● | — | — | — | ● | — |
-| verifyWebhook | ● | ● | ● | ● | ● | ● | ● | ● |
+| Operation | Cybersource | Fawry | Paymob | Paylink | Paytabs | PayPal | Mpgs | AuthorizeNet | Airwallex |
+| --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+| createCheckoutSession | ● | ● | ● | ● | ● | ● | ● | — | ● |
+| requestDccRate | ● | — | — | — | — | — | — | — | — |
+| charge | ● | — | — | — | ● | ● | ● | ● | — |
+| capture | ● | ● | ● | ● | ● | ● | ● | ● | ● |
+| refund | ● | ● | ● | ● | ● | ● | ● | ● | ● |
+| void | ● | ● | ● | ● | ● | ● | ● | ● | — |
+| reverseAuthorization | ● | — | — | ● | ● | — | ● | — | — |
+| enrollPayerAuth | ● | — | — | — | — | — | ● | — | — |
+| validatePayerAuth | ● | — | — | — | — | — | ● | — | — |
+| vaultInstrument | ● | — | — | ● | — | ● | ● | ● | — |
+| chargeStoredCredential | ● | — | — | ● | ● | ● | ● | ● | ● |
+| getTransaction | ● | ● | ● | ● | ● | ● | ● | ● | ● |
+| searchTransaction | ● | — | ● | — | — | — | ● | — | — |
+| verifyWebhook | ● | ● | ● | ● | ● | ● | ● | ● | ● |
 
 Non-interface extras: Paylink and Paytabs each expose `deleteToken(string): bool`; Cybersource exposes `confirmOrchestratedPayment(ConfirmOrchestratedPaymentRequest): OrchestratedPaymentResult`.
 
@@ -208,3 +209,22 @@ Non-interface extras: Paylink and Paytabs each expose `deleteToken(string): bool
 **Payloads (`Payloads/`):** `AuthorizeNetPayload` — static `transactionRequest` builders (array order is load-bearing: JSON→XML against an order-sensitive schema; empty optional blocks dropped): `charge()` (`authCaptureTransaction`/`authOnlyTransaction`; `payment.opaqueData` dataDescriptor `COMMON.ACCEPT.INAPP.PAYMENT` + Accept.js nonce; `order.invoiceNumber` ≤20 chars; optional `customer.email`, `billTo`), `capture()` (`priorAuthCaptureTransaction` + `refTransId`), `refund()` (`refundTransaction` + `refTransId`), `void()` (`voidTransaction` + `refTransId`, no amount), `createProfile()` (CIM `profile` block: `paymentProfiles.payment` = `opaqueData` when a `transientToken` is present else `creditCard` `YYYY-MM`; optional `merchantCustomerId`, `billTo`), `chargeProfile()` (`authCaptureTransaction` + `profile.customerProfileId`/`paymentProfile.paymentProfileId` + `processingOptions`).
 
 **Webhook verification:** header `X-ANET-Signature: sha512={HEX}` (case-insensitive lookup, `sha512=` prefix stripped); compute `hash_hmac('sha512', $rawBody, $webhookSecret)` (uppercase hex), constant-time `hash_equals`; empty secret fails verification. Parses `eventType` + `payload.id`/`payload.responseCode` into a `WebhookEvent` (status by event type: `*refund*`→Refunded, `*void*`→Voided, `*authorization*` non-capture + responseCode 1→Authorized, else responseCode 1→Captured, responseCode≠1→Declined). Payload is inspectable even when unverified.
+
+---
+
+## Airwallex
+
+- **Driver:** `AirwallexGateway` extends `AbstractPaymentGateway`. Resolved by `GatewayName::Airwallex` (`airwallex`). Airwallex "Online Payments" card flow built on PaymentIntents: `createCheckoutSession` creates a PaymentIntent and returns its id + `client_secret` for the client-side (Elements/drop-in) checkout, which collects the card and confirms the intent — so the interactive `charge` completes in the browser and is **not** a server operation. Server-side follow-ons act on the intent. No hosted-redirect-only flow, void, DCC, payer-auth, or raw-card vaulting.
+- **CheckoutOptions:** none. Configured from `CheckoutSessionRequest` (a `metadata` key in the options bag is forwarded to the intent as a JSON object when non-empty).
+- **Credentials:** `merchantId` = client id (`x-client-id`), `sharedSecret` = API key (`x-api-key`), `webhookSecret` = webhook HMAC secret; `extra.api_version` (`x-api-version`, default `2025-11-11`) and `extra.account_id` (`x-login-as`, connected-account scope) are optional. Host resolves by `testMode`: `api-demo.airwallex.com` (test) / `api.airwallex.com` (live).
+- **Client — `AirwallexClient`:** URL `https://{host}{path}`. Auth = **API-access login**: `POST /api/v1/authentication/login` with `x-client-id`/`x-api-key` (+ optional `x-api-version`/`x-login-as`) returns a bearer `token`, cached per client instance (one login per gateway per request); every call also carries `x-client-id` and the optional scope headers. Non-2xx → `GatewayRequestException`. Amounts are exact **major-unit** decimals (Airwallex uses major units, not minor).
+
+**Operations:** `createCheckoutSession` (create PaymentIntent; `paymentMethod === 'authorize'` → `capture_method: manual` hold, else `automatic`; `CheckoutSession{reference=intent id, jwt=client_secret, redirectUrl=next_action.url}`), `capture` (`/payment_intents/{id}/capture`, partial by amount), `refund` (`/refunds/create`; `payment_intent_id` + amount + optional `reason`), `chargeStoredCredential` (create intent then confirm against `payment_consent_id` = `paymentInstrumentId`), `getTransaction` (`GET /payment_intents/{id}`), `verifyWebhook`.
+
+**No `vaultInstrument`:** a stored credential is an Airwallex **PaymentConsent**, created client-side by Airwallex Elements (the PAN never reaches the server) or via a separate multi-step server consent-create + verify flow that needs customer action — neither fits hyprpay's single-call raw-PAN `vaultInstrument`. `chargeStoredCredential` takes the `payment_consent_id` obtained from that flow. (Same pattern as PayTabs/Fawry/Paymob, which mint tokens during a checkout rather than a server vault call.)
+
+**Enums (`Enums/`):** `AirwallexEndpoint` (string paths, `path(string $id='')` substitutes `:id`): `Login` `/api/v1/authentication/login`, `PaymentIntents` `/api/v1/pa/payment_intents/create`, `PaymentIntent` `/api/v1/pa/payment_intents/:id`, `PaymentIntentConfirm` `…/:id/confirm`, `PaymentIntentCapture` `…/:id/capture`, `Refunds` `/api/v1/pa/refunds/create`, `Refund` `/api/v1/pa/refunds/:id`. `AirwallexIntentStatus` → `PaymentStatus`: `REQUIRES_PAYMENT_METHOD`/`REQUIRES_CUSTOMER_ACTION` → Pending; `REQUIRES_CAPTURE` → Authorized; `SUCCEEDED` → Captured; `CANCELLED` → Voided; `toPaymentStatusOrFailed(?string)` defaults to Failed.
+
+**Payloads (`Payloads/`):** `AirwallexPayload` — static body builders (nulls dropped; amount = `(float) Money::toDecimalString()`): `createIntent()` (`request_id`/`merchant_order_id` = order reference, `amount`, `currency`, optional `return_url`/`descriptor`/`customer_id`/`metadata`, `payment_method_options.card.capture_method`), `storedCredentialIntent()` (create-intent for a saved-card charge; `automatic` capture, optional `customer_id`), `confirmConsent()` (`payment_consent_id` + `{request_id}-confirm`), `capture()` (`request_id` + `amount`), `refund()` (`request_id` + `payment_intent_id` + `amount` + optional `reason`). `request_id` prefers the idempotency key, then order reference, then transaction id.
+
+**Webhook verification:** headers `x-timestamp` + `x-signature` (hex); compute `hash_hmac('sha256', $timestamp.$rawBody, $webhookSecret)`, constant-time `hash_equals`; empty secret/timestamp/signature fails verification. Parses event `name` + `data.object` into a `WebhookEvent` (transaction id = `object.id`; status from `object.status` via `AirwallexIntentStatus`, `refund.*` events by refund status, else derived from the event name). Payload is inspectable even when unverified.
