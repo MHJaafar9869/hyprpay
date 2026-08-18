@@ -4,13 +4,18 @@ declare(strict_types=1);
 
 use Hyprpay\Payments\Application\PaymentGatewayFactory;
 use Hyprpay\Payments\Domain\Command\CaptureRequest;
+use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
+use Hyprpay\Payments\Domain\Command\ReversalRequest;
 use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
+use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
+use Hyprpay\Payments\Domain\Command\VoidRequest;
 use Hyprpay\Payments\Domain\Enum\CredentialInitiator;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\Http\HttpRequest;
+use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 use Hyprpay\Payments\Infrastructure\Gateway\Airwallex\AirwallexGateway;
@@ -100,6 +105,135 @@ it('creates a manual-capture intent when the payment method is authorize', funct
     ));
 
     expect(airwallexBody($http)['payment_method_options']['card']['capture_method'])->toBe('manual');
+});
+
+it('charges a tokenized payment method by creating then confirming an intent', function (): void {
+    $http = airwallexHttp()
+        ->queueJson(['id' => 'int_c', 'status' => 'REQUIRES_PAYMENT_METHOD'])
+        ->queueJson(['id' => 'int_c', 'status' => 'SUCCEEDED']);
+
+    $result = (new AirwallexGateway(airwallexCredentials(), $http))->charge(new ChargeRequest(
+        transientToken: 'mtd_123',
+        money: Money::minor(10000, 'USD'),
+        orderReference: 'ORD-C',
+    ));
+
+    $requests = $http->recorded();
+    $createBody = json_decode((string) $requests[1]->body, true);
+    $confirmBody = json_decode((string) $requests[2]->body, true);
+
+    expect($result->success)->toBeTrue()
+        ->and($result->status)->toBe(PaymentStatus::Captured)
+        ->and($result->transactionId)->toBe('int_c')
+        ->and($requests[1]->url)->toBe('https://api-demo.airwallex.com/api/v1/pa/payment_intents/create')
+        ->and($requests[2]->url)->toBe('https://api-demo.airwallex.com/api/v1/pa/payment_intents/int_c/confirm')
+        ->and($createBody['request_id'])->toBe('ORD-C')
+        ->and($createBody['amount'])->toEqual(100.0)
+        ->and($createBody['payment_method_options']['card']['capture_method'])->toBe('automatic')
+        ->and($confirmBody['request_id'])->toBe('ORD-C-confirm')
+        ->and($confirmBody['payment_method']['id'])->toBe('mtd_123');
+});
+
+it('authorizes without capturing when charge capture is false', function (): void {
+    $http = airwallexHttp()
+        ->queueJson(['id' => 'int_a', 'status' => 'REQUIRES_PAYMENT_METHOD'])
+        ->queueJson(['id' => 'int_a', 'status' => 'REQUIRES_CAPTURE']);
+
+    $result = (new AirwallexGateway(airwallexCredentials(), $http))->charge(new ChargeRequest(
+        transientToken: 'mtd_9',
+        money: Money::minor(5000, 'USD'),
+        capture: false,
+        orderReference: 'ORD-A',
+    ));
+
+    $createBody = json_decode((string) $http->recorded()[1]->body, true);
+
+    expect($result->status)->toBe(PaymentStatus::Authorized)
+        ->and($createBody['payment_method_options']['card']['capture_method'])->toBe('manual');
+});
+
+it('voids an uncaptured intent by cancelling it', function (): void {
+    $http = airwallexHttp()->queueJson(['id' => 'int_v', 'status' => 'CANCELLED']);
+
+    $result = (new AirwallexGateway(airwallexCredentials(), $http))->void(new VoidRequest(
+        transactionId: 'int_v',
+        orderReference: 'ORD-V',
+    ));
+
+    expect($result->success)->toBeTrue()
+        ->and($result->status)->toBe(PaymentStatus::Voided)
+        ->and($result->transactionId)->toBe('int_v')
+        ->and($http->lastRequest()?->url)->toBe('https://api-demo.airwallex.com/api/v1/pa/payment_intents/int_v/cancel')
+        ->and(airwallexBody($http)['request_id'])->toBe('ORD-V');
+});
+
+it('reverses an authorization hold by cancelling the intent', function (): void {
+    $http = airwallexHttp()->queueJson(['id' => 'int_r', 'status' => 'CANCELLED']);
+
+    $result = (new AirwallexGateway(airwallexCredentials(), $http))->reverseAuthorization(new ReversalRequest(
+        transactionId: 'int_r',
+        money: Money::minor(5000, 'USD'),
+        reason: 'released',
+        orderReference: 'ORD-R',
+    ));
+
+    expect($result->success)->toBeTrue()
+        ->and($result->status)->toBe(PaymentStatus::Reversed)
+        ->and($http->lastRequest()?->url)->toBe('https://api-demo.airwallex.com/api/v1/pa/payment_intents/int_r/cancel')
+        ->and(airwallexBody($http)['cancellation_reason'])->toBe('released');
+});
+
+it('vaults a card into a payment consent then verifies it', function (): void {
+    $http = airwallexHttp()
+        ->queueJson(['id' => 'cst_v', 'status' => 'PENDING_VERIFICATION'])
+        ->queueJson(['id' => 'cst_v', 'status' => 'VERIFIED', 'customer_id' => 'cus_1']);
+
+    $vaulted = (new AirwallexGateway(airwallexCredentials(), $http))->vaultInstrument(new TokenizeInstrumentRequest(
+        cardNumber: '4111111111111111',
+        expirationMonth: '12',
+        expirationYear: '2030',
+        billTo: new BillingAddress(firstName: 'John', lastName: 'Doe', address1: '1 Main St', locality: 'NYC', administrativeArea: 'NY', postalCode: '10001', country: 'US'),
+        customerReference: 'cus_1',
+    ));
+
+    $requests = $http->recorded();
+    $createBody = json_decode((string) $requests[1]->body, true);
+    $verifyBody = json_decode((string) $requests[2]->body, true);
+
+    expect($vaulted->success)->toBeTrue()
+        ->and($vaulted->paymentInstrumentId)->toBe('cst_v')
+        ->and($vaulted->customerId)->toBe('cus_1')
+        ->and($requests[1]->url)->toBe('https://api-demo.airwallex.com/api/v1/pa/payment_consents/create')
+        ->and($requests[2]->url)->toBe('https://api-demo.airwallex.com/api/v1/pa/payment_consents/cst_v/verify')
+        ->and($createBody['customer_id'])->toBe('cus_1')
+        ->and($createBody['next_triggered_by'])->toBe('merchant')
+        ->and($createBody['merchant_trigger_reason'])->toBe('unscheduled')
+        ->and($verifyBody['request_id'])->toBe('cus_1-verify')
+        ->and($verifyBody['payment_method']['type'])->toBe('card')
+        ->and($verifyBody['payment_method']['card']['number'])->toBe('4111111111111111')
+        ->and($verifyBody['payment_method']['card']['billing']['address']['country_code'])->toBe('US')
+        ->and($verifyBody['verification_options']['card']['currency'])->toBe('USD');
+});
+
+it('searches for an intent by merchant order id', function (): void {
+    $http = airwallexHttp()->queueJson(['items' => [
+        ['id' => 'int_s', 'status' => 'SUCCEEDED', 'amount' => 100, 'currency' => 'USD', 'merchant_order_id' => 'ORD-S'],
+    ]]);
+
+    $snapshot = (new AirwallexGateway(airwallexCredentials(), $http))->searchTransaction('ORD-S');
+
+    expect($snapshot?->transactionId)->toBe('int_s')
+        ->and($snapshot?->status)->toBe(PaymentStatus::Captured)
+        ->and($snapshot?->orderReference)->toBe('ORD-S')
+        ->and($http->lastRequest()?->url)->toBe('https://api-demo.airwallex.com/api/v1/pa/payment_intents?merchant_order_id=ORD-S');
+});
+
+it('returns null when the search matches no intent', function (): void {
+    $http = airwallexHttp()->queueJson(['items' => []]);
+
+    $snapshot = (new AirwallexGateway(airwallexCredentials(), $http))->searchTransaction('NOPE');
+
+    expect($snapshot)->toBeNull();
 });
 
 it('captures an authorized payment intent', function (): void {

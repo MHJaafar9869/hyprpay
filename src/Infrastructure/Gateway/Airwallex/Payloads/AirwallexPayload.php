@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Hyprpay\Payments\Infrastructure\Gateway\Airwallex\Payloads;
 
 use Hyprpay\Payments\Domain\Command\CaptureRequest;
+use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
 use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
+use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
+use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 use Hyprpay\Payments\Infrastructure\Support\Value;
 
@@ -55,6 +58,104 @@ final class AirwallexPayload
     }
 
     /**
+     * Build the create-PaymentIntent body for a server-side charge of a tokenized card.
+     *
+     * `request_id`/`merchant_order_id` carry the caller's reference so a retried create is
+     * deduplicated. `capture` selects immediate capture (`automatic`) or an authorization hold
+     * (`manual`); the return URL and customer id are attached only when supplied.
+     *
+     * @return array<string, mixed>
+     */
+    public static function chargeIntent(ChargeRequest $request): array
+    {
+        $reference = self::requestId($request->idempotencyKey, $request->orderReference, $request->transientToken);
+
+        return self::withoutNulls([
+            'request_id' => $reference,
+            'merchant_order_id' => Value::nullableString($request->orderReference) ?? $reference,
+            'amount' => self::amount($request->money),
+            'currency' => $request->money->currency,
+            'customer_id' => $request->customer?->reference,
+            'payment_method_options' => [
+                'card' => ['capture_method' => $request->capture ? 'automatic' : 'manual'],
+            ],
+        ]);
+    }
+
+    /**
+     * Build the confirm body that charges a PaymentIntent with a tokenized PaymentMethod.
+     *
+     * The charge's transient token is an Airwallex PaymentMethod id (created client-side by
+     * Airwallex.js), referenced here as `payment_method.id`. The `-confirm` suffix keeps the
+     * confirm idempotency key distinct from the create call's.
+     *
+     * @return array<string, mixed>
+     */
+    public static function confirmMethod(ChargeRequest $request): array
+    {
+        $reference = self::requestId($request->idempotencyKey, $request->orderReference, $request->transientToken);
+
+        return [
+            'request_id' => $reference.'-confirm',
+            'payment_method' => ['id' => $request->transientToken],
+        ];
+    }
+
+    /**
+     * Build the cancel body for a void or authorization reversal.
+     *
+     * @return array<string, mixed>
+     */
+    public static function cancel(string $requestId, ?string $reason): array
+    {
+        return self::withoutNulls([
+            'request_id' => $requestId,
+            'cancellation_reason' => $reason,
+        ]);
+    }
+
+    /**
+     * Build the create-PaymentConsent body that begins vaulting a card for reuse.
+     *
+     * A consent is a card-on-file mandate tied to a customer; {@see verifyConsent()} then attaches
+     * and validates the card. The consent is merchant-triggerable and unscheduled so it can back a
+     * later {@see StoredCredentialChargeRequest}.
+     *
+     * @return array<string, mixed>
+     */
+    public static function createConsent(TokenizeInstrumentRequest $request): array
+    {
+        return [
+            'request_id' => Value::string($request->customerReference),
+            'customer_id' => Value::string($request->customerReference),
+            'next_triggered_by' => 'merchant',
+            'merchant_trigger_reason' => 'unscheduled',
+        ];
+    }
+
+    /**
+     * Build the verify-PaymentConsent body that attaches and validates the card on a consent.
+     *
+     * The card is referenced by its Airwallex PaymentMethod id (the request's transient token) when
+     * present, otherwise built from the raw card fields. `verification_options.card.currency` scopes
+     * the verification.
+     *
+     * @return array<string, mixed>
+     */
+    public static function verifyConsent(TokenizeInstrumentRequest $request, string $currency): array
+    {
+        $paymentMethod = Value::nullableString($request->transientToken) !== null
+            ? ['id' => $request->transientToken]
+            : ['type' => 'card', 'card' => self::card($request)];
+
+        return [
+            'request_id' => Value::string($request->customerReference).'-verify',
+            'payment_method' => $paymentMethod,
+            'verification_options' => ['card' => ['currency' => $currency]],
+        ];
+    }
+
+    /**
      * Build the create-PaymentIntent body that begins a stored-credential (saved-card) charge.
      *
      * The intent captures automatically on confirmation; {@see confirmConsent()} then confirms it
@@ -89,7 +190,7 @@ final class AirwallexPayload
         $reference = Value::string($request->idempotencyKey ?? $request->orderReference);
 
         return self::withoutNulls([
-            'request_id' => $reference === '' ? null : $reference.'-confirm',
+            'request_id' => filled($reference) ? $reference.'-confirm' : null,
             'payment_consent_id' => $request->paymentInstrumentId,
         ]);
     }
@@ -136,6 +237,49 @@ final class AirwallexPayload
         return Value::nullableString($idempotencyKey)
             ?? Value::nullableString($orderReference)
             ?? $transactionId;
+    }
+
+    /**
+     * Build the Airwallex `card` object from the tokenize request's raw card fields.
+     *
+     * @return array<string, mixed>
+     */
+    private static function card(TokenizeInstrumentRequest $request): array
+    {
+        return self::withoutNulls([
+            'number' => $request->cardNumber,
+            'expiry_month' => $request->expirationMonth,
+            'expiry_year' => $request->expirationYear,
+            'billing' => self::billing($request->billTo),
+        ]);
+    }
+
+    /**
+     * Map the SDK billing address onto Airwallex's card `billing` shape, or null when absent.
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function billing(?BillingAddress $billTo): ?array
+    {
+        if (! $billTo instanceof BillingAddress) {
+            return null;
+        }
+
+        $address = array_filter([
+            'street' => $billTo->address1,
+            'city' => $billTo->locality,
+            'state' => $billTo->administrativeArea,
+            'postcode' => $billTo->postalCode,
+            'country_code' => $billTo->country,
+        ], static fn (?string $value): bool => $value !== null);
+
+        $billing = array_filter([
+            'first_name' => $billTo->firstName,
+            'last_name' => $billTo->lastName,
+            'address' => $address === [] ? null : $address,
+        ], static fn ($value): bool => $value !== null);
+
+        return $billing === [] ? null : $billing;
     }
 
     /**

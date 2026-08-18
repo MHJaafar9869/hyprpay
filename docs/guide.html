@@ -285,7 +285,7 @@
       </div>
     </section>
 
-    <section id="charge" class="doc-section" data-gws="cyber paytabs paypal mpgs authorizenet">
+    <section id="charge" class="doc-section" data-gws="cyber paytabs paypal mpgs authorizenet airwallex">
       <p class="doc-eyebrow">Payment flow</p>
       <h2>Charge</h2>
       <p class="doc-sig"><span class="fn">charge</span>(ChargeRequest): <span class="rt">PaymentResult</span></p>
@@ -349,6 +349,19 @@
 <span class="c">// status Captured (Authorized when capture: false); $result->transactionId is the transId</span></code></pre>
         </div>
       </div>
+      <div class="gw-variant" data-gw="airwallex">
+        <div class="code">
+<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="k">new</span> <span class="t">ChargeRequest</span>(
+    <span class="a">transientToken:</span> <span class="v">$paymentMethodId</span>, <span class="c">// Airwallex.js createPaymentMethod id (mtd_...)</span>
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'USD'</span>),
+    <span class="a">orderReference:</span> <span class="s">'ORDER-130'</span>,
+    <span class="a">capture:</span> <span class="k">true</span>,                 <span class="c">// false authorises only (capture_method: manual)</span>
+));
+
+<span class="c">// creates a PaymentIntent then confirms it with the payment_method id — one server call each;</span>
+<span class="c">// a 3-D Secure challenge resolves to a pending status with the next_action in $result->raw</span></code></pre>
+        </div>
+      </div>
     </section>
 
     <section id="device-fingerprint" class="doc-section" data-gws="cyber">
@@ -405,7 +418,7 @@
       </div>
     </section>
 
-    <section id="void" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet">
+    <section id="void" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex">
       <p class="doc-eyebrow">Payment flow</p>
       <h2>Void</h2>
       <p class="doc-sig"><span class="fn">void</span>(VoidRequest): <span class="rt">PaymentResult</span></p>
@@ -433,7 +446,7 @@
       </div>
     </section>
 
-    <section id="reverse-authorization" class="doc-section" data-gws="cyber paylink paytabs mpgs">
+    <section id="reverse-authorization" class="doc-section" data-gws="cyber paylink paytabs mpgs airwallex">
       <p class="doc-eyebrow">Payment flow</p>
       <h2>Reverse authorization</h2>
       <p class="doc-sig"><span class="fn">reverseAuthorization</span>(ReversalRequest): <span class="rt">PaymentResult</span></p>
@@ -462,7 +475,7 @@
       </div>
     </section>
 
-    <section id="search-transaction" class="doc-section" data-gws="cyber fawry paymob paylink mpgs">
+    <section id="search-transaction" class="doc-section" data-gws="cyber fawry paymob paylink mpgs airwallex">
       <p class="doc-eyebrow">After the payment</p>
       <h2>Search transaction</h2>
       <p class="doc-sig"><span class="fn">searchTransaction</span>(ref): <span class="rt">TransactionSnapshot</span></p>
@@ -889,7 +902,7 @@
       </div>
     </section>
 
-    <section id="vault-instrument" class="doc-section" data-gws="cyber paypal mpgs paylink authorizenet">
+    <section id="vault-instrument" class="doc-section" data-gws="cyber paypal mpgs paylink authorizenet airwallex">
       <p class="doc-eyebrow">Stored credentials</p>
       <h2>Vault instrument</h2>
       <p class="doc-sig"><span class="fn">vaultInstrument</span>(TokenizeInstrumentRequest): <span class="rt">VaultedInstrument</span></p>
@@ -947,6 +960,19 @@
 ));
 
 <span class="c">// CIM profile ids: $vaulted->customerId (customerProfileId) + $vaulted->paymentInstrumentId (paymentProfileId)</span></code></pre>
+        </div>
+      </div>
+      <div class="gw-variant" data-gw="airwallex">
+        <div class="code">
+<pre><code><span class="v">$vaulted</span> = <span class="v">$gateway</span>-&gt;<span class="fn">vaultInstrument</span>(<span class="k">new</span> <span class="t">TokenizeInstrumentRequest</span>(
+    <span class="a">cardNumber:</span> <span class="s">'4111111111111111'</span>,
+    <span class="a">expirationMonth:</span> <span class="s">'12'</span>,
+    <span class="a">expirationYear:</span> <span class="s">'2030'</span>,
+    <span class="a">customerReference:</span> <span class="v">$airwallexCustomerId</span>, <span class="c">// required — the Airwallex customer id</span>
+));
+
+<span class="c">// creates a PaymentConsent then verifies it with the card; $vaulted->paymentInstrumentId is the</span>
+<span class="c">// payment_consent_id. Verification may require a 3-D Secure step before the consent is usable.</span></code></pre>
         </div>
       </div>
     </section>
@@ -1031,8 +1057,7 @@
 ));
 
 <span class="c">// creates a PaymentIntent, then confirms it against the stored consent — one server call each</span>
-<span class="c">// no vaultInstrument: the PaymentConsent is created client-side by Airwallex Elements</span>
-<span class="c">// (the card never reaches your server), so you already hold the payment_consent_id here</span></code></pre>
+<span class="c">// the payment_consent_id comes from vaultInstrument() or a consent created client-side by Elements</span></code></pre>
         </div>
       </div>
     </section>
@@ -1047,14 +1072,14 @@
       <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs airwallex"><a href="#create-checkout" data-spy="create-checkout">Create checkout</a></li>
       <li data-gws="cyber"><a href="#confirm-orchestrated" data-spy="confirm-orchestrated">Confirm orchestrated</a></li>
       <li data-gws="cyber"><a href="#dcc-rate" data-spy="dcc-rate">DCC rate</a></li>
-      <li data-gws="cyber paytabs paypal mpgs authorizenet"><a href="#charge" data-spy="charge">Charge</a></li>
+      <li data-gws="cyber paytabs paypal mpgs authorizenet airwallex"><a href="#charge" data-spy="charge">Charge</a></li>
       <li data-gws="cyber"><a href="#device-fingerprint" data-spy="device-fingerprint">Device fingerprinting</a></li>
       <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex"><a href="#capture" data-spy="capture">Capture</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet"><a href="#void" data-spy="void">Void</a></li>
+      <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex"><a href="#void" data-spy="void">Void</a></li>
       <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex"><a href="#refund" data-spy="refund">Refund</a></li>
-      <li data-gws="cyber paylink paytabs mpgs"><a href="#reverse-authorization" data-spy="reverse-authorization">Reverse authorization</a></li>
+      <li data-gws="cyber paylink paytabs mpgs airwallex"><a href="#reverse-authorization" data-spy="reverse-authorization">Reverse authorization</a></li>
       <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex"><a href="#get-transaction" data-spy="get-transaction">Get transaction</a></li>
-      <li data-gws="cyber fawry paymob paylink mpgs"><a href="#search-transaction" data-spy="search-transaction">Search transaction</a></li>
+      <li data-gws="cyber fawry paymob paylink mpgs airwallex"><a href="#search-transaction" data-spy="search-transaction">Search transaction</a></li>
       <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex"><a href="#reconcile" data-spy="reconcile">Reconcile</a></li>
       <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex"><a href="#verify-webhook" data-spy="verify-webhook">Verify webhook</a></li>
       <li data-gws="misc"><a href="#events" data-spy="events">Events</a></li>
@@ -1065,7 +1090,7 @@
       <li data-gws="misc"><a href="#ai-docs" data-spy="ai-docs">AI docs</a></li>
       <li data-gws="cyber mpgs"><a href="#enroll-payer-auth" data-spy="enroll-payer-auth">Enroll payer auth</a></li>
       <li data-gws="cyber mpgs"><a href="#validate-payer-auth" data-spy="validate-payer-auth">Validate payer auth</a></li>
-      <li data-gws="cyber paypal mpgs paylink authorizenet"><a href="#vault-instrument" data-spy="vault-instrument">Vault instrument</a></li>
+      <li data-gws="cyber paypal mpgs paylink authorizenet airwallex"><a href="#vault-instrument" data-spy="vault-instrument">Vault instrument</a></li>
       <li data-gws="cyber paytabs paypal mpgs paylink authorizenet airwallex"><a href="#charge-stored-credential" data-spy="charge-stored-credential">Charge stored credential</a></li>
     </ul>
   </aside>
