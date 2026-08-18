@@ -39,6 +39,8 @@ final readonly class CheckoutSessionRequest
      * @param  CheckoutOptions|null  $options  Gateway-specific extras as a typed per-gateway options DTO (e.g. PayPalCheckoutOptions, PaytabsCheckoutOptions). Each driver narrows this to its own CheckoutOptions type; build one from a raw config array with the DTO's own fromArray() when needed.
      * @param  MandateCompletionType|null  $completeMandate  UC v1: when set, the widget orchestrates the whole payment (Decision Manager, 3DS, authorization, TMS) client-side and returns a signed result JWT — Capture for a sale, Auth for an authorization hold. Leave null for the manual transient-token flow.
      * @param  bool  $decisionManager  UC v1 orchestrated flow only: whether the widget runs Decision Manager (and its device fingerprinting) as part of the mandate. Emitted as completeMandate.decisionManager; ignored unless completeMandate is set. Defaults to true so orchestrated payments are fraud-screened.
+     * @param  bool  $createToken  UC v1 orchestrated flow only: whether the widget vaults the payment credential in TMS as part of the mandate, so the signed result JWT carries reusable customer/payment-instrument/instrument-identifier token ids for later stored-credential charges. Emitted as completeMandate.tms.tokenCreate; ignored unless completeMandate is set. Defaults to false.
+     * @param  array<int, string>  $tokenTypes  UC v1 orchestrated flow only: which TMS token types to create when $createToken is set (e.g. customer, paymentInstrument, instrumentIdentifier). Emitted as completeMandate.tms.tokenTypes; when empty CyberSource uses the merchant vault default.
      */
     public function __construct(
         public Money $money,
@@ -58,6 +60,8 @@ final readonly class CheckoutSessionRequest
         public ?CheckoutOptions $options = null,
         public ?MandateCompletionType $completeMandate = null,
         public bool $decisionManager = true,
+        public bool $createToken = false,
+        public array $tokenTypes = ['customer', 'paymentInstrument', 'instrumentIdentifier'],
     ) {}
 
     /**

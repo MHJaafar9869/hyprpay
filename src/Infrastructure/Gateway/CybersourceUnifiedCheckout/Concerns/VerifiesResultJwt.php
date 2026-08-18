@@ -141,10 +141,7 @@ trait VerifiesResultJwt
             isWallet: $isWallet,
             instrumentIdentifierId: $isWallet ? null : $this->orchestratedClaim($claims, 'tokenInformation.instrumentIdentifier.id'),
             paymentInstrumentId: $isWallet ? null : $this->orchestratedClaim($claims, 'tokenInformation.paymentInstrument.id'),
-            customerId: $isWallet ? null : $this->firstOrchestratedClaim($claims, [
-                'tokenInformation.customer.id',
-                'tokenInformation.customer.customerId',
-            ]),
+            customerId: $isWallet ? null : $this->orchestratedClaim($claims, 'tokenInformation.customer.id'),
             cardBrand: $this->orchestratedCardBrand($claims),
             cardLast4: $this->firstOrchestratedClaim($claims, [
                 'paymentInformation.tokenizedCard.suffix',
