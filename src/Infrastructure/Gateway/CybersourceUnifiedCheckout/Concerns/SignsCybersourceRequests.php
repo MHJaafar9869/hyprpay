@@ -11,6 +11,12 @@ namespace Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Con
  * [digest], v-c-date, v-c-merchant-id. The digest is only present for
  * requests that carry a body. The shared secret is base64-encoded and is
  * decoded before being used as the HMAC key.
+ *
+ * The Accept header is always `application/hal+json`: CyberSource's edge returns
+ * 404 "Resource not found" for `/pts/v2/payments` and `/risk/v1/*` when Accept is
+ * `application/json` (only the Unified Checkout session endpoints tolerate the plain
+ * type), which masquerades as an unprovisioned-account error. `hal+json` is accepted
+ * by every endpoint, so it is used uniformly.
  */
 trait SignsCybersourceRequests
 {
@@ -31,14 +37,13 @@ trait SignsCybersourceRequests
         $sharedSecret = $credentials['shared_secret'];
 
         $requestTarget = strtolower($method).' '.$resourcePath;
-        $isGet = strtoupper($method) === 'GET';
 
         $headers = [
             'v-c-merchant-id' => $merchantId,
             'v-c-date' => $date,
             'Host' => $host,
             'Content-Type' => 'application/json',
-            'Accept' => $isGet ? 'application/hal+json;charset=utf-8' : 'application/json',
+            'Accept' => 'application/hal+json;charset=utf-8',
         ];
 
         $signedHeaderNames = ['(request-target)', 'host'];

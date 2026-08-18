@@ -69,6 +69,19 @@ it('omits the digest and its signed header for GET requests', function (): void 
         ->and($headers['Accept'])->toBe('application/hal+json;charset=utf-8');
 });
 
+it('sends the Accept: application/hal+json header on POST requests', function (): void {
+    $headers = signatureProbe()->headers(
+        'POST',
+        '/pts/v2/payments',
+        signingCredentials(),
+        '{"amount":"100.00"}',
+        'Mon, 05 Aug 2026 12:00:00 GMT',
+    );
+
+    // CyberSource 404s /pts/v2/payments when Accept is application/json.
+    expect($headers['Accept'])->toBe('application/hal+json;charset=utf-8');
+});
+
 it('changes the signature when the payload changes', function (): void {
     $first = signatureProbe()->headers('POST', '/pts/v2/payments', signingCredentials(), '{"a":1}', 'Mon, 05 Aug 2026 12:00:00 GMT');
     $second = signatureProbe()->headers('POST', '/pts/v2/payments', signingCredentials(), '{"a":2}', 'Mon, 05 Aug 2026 12:00:00 GMT');
