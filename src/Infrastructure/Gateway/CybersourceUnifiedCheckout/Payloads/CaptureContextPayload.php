@@ -26,9 +26,11 @@ final class CaptureContextPayload
      * completeMandate, a completeMandate block is added so the widget orchestrates the
      * whole payment client-side (UC v1 autoProcessing) instead of returning a transient
      * token for server-side authorization — including running Decision Manager (device
-     * fingerprinting) when decisionManager is enabled.
+     * fingerprinting) when decisionManager is enabled, and vaulting the payment credential
+     * in TMS (completeMandate.tms.tokenCreate) when createToken is enabled so the result
+     * JWT carries reusable token ids for later stored-credential charges.
      *
-     * @param  CheckoutSessionRequest  $request  Checkout session inputs (amount, allowed networks/types, origins, locale/country, optional billTo, optional completeMandate).
+     * @param  CheckoutSessionRequest  $request  Checkout session inputs (amount, allowed networks/types, origins, locale/country, optional billTo, optional completeMandate, optional TMS token creation).
      * @param  GatewayCredentials  $credentials  Merchant credentials providing default country and locale fallbacks.
      * @return array<string, mixed>
      */
@@ -65,10 +67,22 @@ final class CaptureContextPayload
         ];
 
         if ($request->completeMandate instanceof MandateCompletionType) {
-            $payload['completeMandate'] = [
+            $completeMandate = [
                 'type' => $request->completeMandate->value,
                 'decisionManager' => $request->decisionManager,
             ];
+
+            if ($request->createToken) {
+                $tms = ['tokenCreate' => true];
+
+                if (filled($request->tokenTypes)) {
+                    $tms['tokenTypes'] = $request->tokenTypes;
+                }
+
+                $completeMandate['tms'] = $tms;
+            }
+
+            $payload['completeMandate'] = $completeMandate;
         }
 
         return $payload;

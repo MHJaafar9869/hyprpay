@@ -1,0 +1,23 @@
+{
+    "name": "hyprpay/payments-mcp",
+    "description": "Developer MCP server that exposes the hyprpay/payments SDK surface (gateways, operations, DTOs, enums) to AI agents as tools.",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "php-mcp/server": "^3.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "Hyprpay\\Payments\\Mcp\\": "src/"
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

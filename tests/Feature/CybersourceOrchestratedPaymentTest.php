@@ -184,6 +184,29 @@ it('adds a completeMandate block to the capture context when orchestration is re
     expect($body['completeMandate'])->toBe(['type' => 'CAPTURE', 'decisionManager' => true]);
 });
 
+it('adds a tms token-creation block to the mandate when token creation is requested', function (): void {
+    $http = new FakeHttpClient;
+    $http->queueBody(fakeJwt(['ctx' => [['data' => ['clientLibrary' => 'https://lib.test/accept.js', 'clientLibraryIntegrity' => 'sha256-x']]]]));
+
+    orchestratedGateway($http)->createCheckoutSession(new CheckoutSessionRequest(
+        money: Money::minor(10000, 'USD'),
+        targetOrigins: ['https://shop.test'],
+        completeMandate: MandateCompletionType::Capture,
+        createToken: true,
+    ));
+
+    $body = json_decode((string) $http->lastRequest()?->body, true);
+
+    expect($body['completeMandate'])->toBe([
+        'type' => 'CAPTURE',
+        'decisionManager' => true,
+        'tms' => [
+            'tokenCreate' => true,
+            'tokenTypes' => ['customer', 'paymentInstrument', 'instrumentIdentifier'],
+        ],
+    ]);
+});
+
 it('omits the completeMandate block for the manual transient-token flow', function (): void {
     $http = new FakeHttpClient;
     $http->queueBody(fakeJwt(['ctx' => [['data' => ['clientLibrary' => 'https://lib.test/accept.js', 'clientLibraryIntegrity' => 'sha256-x']]]]));

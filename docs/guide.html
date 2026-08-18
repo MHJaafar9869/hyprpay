@@ -850,15 +850,23 @@
 
     <section id="ai-docs" class="doc-section" data-gws="misc">
       <p class="doc-eyebrow">Cross-cutting</p>
-      <h2>AI docs</h2>
-      <p class="doc-sig"><span class="fn">docs/guides/ai/</span> — machine-consumable SDK reference</p>
+      <h2>AI docs &amp; MCP</h2>
+      <p class="doc-sig"><span class="fn">docs/guides/ai/</span> — machine-consumable SDK reference, plus a developer MCP in <span class="fn">mcp/</span></p>
       <p>A 100%-coverage, machine-consumable reference for AI assistants lives under
          <code>docs/guides/ai/</code>: every one of the package's 192 classes, plus the full operation
          contract, request/result DTOs, value objects, enums, exceptions, events, ports, all nine
          gateways, and the config surface. Load it as context when an AI is helping you use the SDK —
          <code>class-index.md</code> lists every class so nothing is left undocumented.</p>
-      <p>Start at the <a href="https://github.com/MHJaafar9869/hyprpay/blob/main/docs/guides/ai/README.md">AI docs index</a>
-         or the <a href="https://github.com/MHJaafar9869/hyprpay/blob/main/docs/guides/ai/class-index.md">complete class index</a>.</p>
+      <p>The package also ships a <b>developer MCP server</b> in <code>mcp/</code> — read-only
+         <a href="https://modelcontextprotocol.io">Model Context Protocol</a> tools that reflect the
+         live classes so a coding agent can explore the SDK and generate correct integrations:
+         <code>get_sdk_overview</code>, <code>list_gateways</code>, <code>get_operation_details</code>,
+         <code>get_class_details</code>, <code>get_code_template</code>, and <code>search</code>. A
+         project-scoped <code>.mcp.json</code> registers it as <code>php mcp/server.php</code>, so it
+         is always exact — the support matrix and code templates come straight from the source.</p>
+      <p>Start at the <a href="https://github.com/MHJaafar9869/hyprpay/blob/main/docs/guides/ai/README.md">AI docs index</a>,
+         the <a href="https://github.com/MHJaafar9869/hyprpay/blob/main/docs/guides/ai/class-index.md">complete class index</a>,
+         or the <a href="https://github.com/MHJaafar9869/hyprpay/blob/main/mcp/README.md">developer MCP guide</a>.</p>
     </section>
 
     <section id="enroll-payer-auth" class="doc-section" data-gws="cyber mpgs">
@@ -1087,7 +1095,7 @@
       <li data-gws="misc"><a href="#credential-resolver" data-spy="credential-resolver">Credential resolver</a></li>
       <li data-gws="misc"><a href="#http-client" data-spy="http-client">HTTP client</a></li>
       <li data-gws="misc"><a href="#configuration" data-spy="configuration">Configuration</a></li>
-      <li data-gws="misc"><a href="#ai-docs" data-spy="ai-docs">AI docs</a></li>
+      <li data-gws="misc"><a href="#ai-docs" data-spy="ai-docs">AI docs &amp; MCP</a></li>
       <li data-gws="cyber mpgs"><a href="#enroll-payer-auth" data-spy="enroll-payer-auth">Enroll payer auth</a></li>
       <li data-gws="cyber mpgs"><a href="#validate-payer-auth" data-spy="validate-payer-auth">Validate payer auth</a></li>
       <li data-gws="cyber paypal mpgs paylink authorizenet airwallex"><a href="#vault-instrument" data-spy="vault-instrument">Vault instrument</a></li>
