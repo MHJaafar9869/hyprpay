@@ -115,16 +115,17 @@ trait VerifiesResultJwt
      * Map verified result JWT claims into an OrchestratedPaymentResult.
      *
      * Reads the transaction id and status from the top level, and the amount, order
-     * reference, TMS token identifiers, network transaction id, and card metadata from the
-     * `details` envelope (falling back to the top level). Wallet payments carry no reusable
-     * credential, so their token identifiers are dropped and isWallet is set.
+     * reference, TMS token identifiers, network transaction id, and card metadata from
+     * whichever envelope the response is nested under ({@see orchestratedClaim}). Wallet
+     * payments carry no reusable credential, so their token identifiers are dropped and
+     * isWallet is set.
      *
      * @param  array<string, mixed>  $claims  Verified result JWT claims.
      */
     protected function orchestratedPaymentResult(array $claims): OrchestratedPaymentResult
     {
         $status = CybersourceTransactionStatus::toPaymentStatusOrFailed(
-            Value::nullableString($claims['status'] ?? data_get($claims, 'details.status')),
+            $this->orchestratedClaim($claims, 'status'),
         );
 
         $isWallet = $this->orchestratedResultIsWallet($claims);
@@ -132,7 +133,7 @@ trait VerifiesResultJwt
         return new OrchestratedPaymentResult(
             success: $status->isSuccessful(),
             status: $status,
-            transactionId: Value::nullableString($claims['id'] ?? data_get($claims, 'details.id')),
+            transactionId: $this->orchestratedClaim($claims, 'id'),
             orderReference: $this->orchestratedClaim($claims, 'clientReferenceInformation.code'),
             networkTransactionId: $this->firstOrchestratedClaim($claims, [
                 'processorInformation.networkTransactionId',
@@ -276,7 +277,7 @@ trait VerifiesResultJwt
     }
 
     /**
-     * The first non-blank value among the given claim paths (each tried details-first).
+     * The first non-blank value among the given claim paths (each resolved across envelopes).
      *
      * @param  array<string, mixed>  $claims  Verified result JWT claims.
      * @param  list<string>  $paths  Relative claim paths to try in order.
@@ -295,23 +296,29 @@ trait VerifiesResultJwt
     }
 
     /**
-     * Read a claim as a string, preferring the `details` envelope then the top level.
+     * Read a claim as a string, searching each envelope the payment response may be nested
+     * under and returning the first non-blank match.
      *
-     * The orchestrated result JWT nests the payment response under a `details` claim; the
-     * same relative paths also appear at the top level in some shapes, so both are tried.
+     * CyberSource has shipped the orchestrated result flat (top level) and wrapped in a
+     * `details`, `data`, or `content` envelope across Unified Checkout client versions. The
+     * relative path is resolved against each in turn — nested envelopes first (they hold the
+     * authoritative response when a shape also echoes some fields at the top level), then the
+     * bare top level as a fallback.
      *
      * @param  array<string, mixed>  $claims  Verified result JWT claims.
      * @param  string  $path  Relative claim path (e.g. tokenInformation.instrumentIdentifier.id).
      */
     private function orchestratedClaim(array $claims, string $path): ?string
     {
-        $value = data_get($claims, 'details.'.$path);
+        foreach (['details', 'data', 'content', ''] as $envelope) {
+            $value = data_get($claims, $envelope === '' ? $path : $envelope.'.'.$path);
 
-        if (blank($value)) {
-            $value = data_get($claims, $path);
+            if (! blank($value)) {
+                return Value::nullableString($value);
+            }
         }
 
-        return Value::nullableString($value);
+        return null;
     }
 
     /**
