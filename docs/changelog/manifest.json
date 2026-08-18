@@ -1,6 +1,12 @@
 {
   "releases": [
     {
+      "version": "0.6.1",
+      "date": "2026-08-19",
+      "title": "CyberSource orchestrated result-JWT envelope fix",
+      "file": "v0.6.1.md"
+    },
+    {
       "version": "0.6.0",
       "date": "2026-08-18",
       "title": "Developer MCP + orchestrated token vaulting",

@@ -53,6 +53,30 @@ function orchestratedClaims(string $status = 'CAPTURED', array $overrides = []):
     return array_replace_recursive($base, $overrides);
 }
 
+/**
+ * Re-nest the orchestrated payment response (including id and status) under a given
+ * envelope key — or flat at the top level when $envelope is '' — while keeping the
+ * JWT-standard iss/iat/exp claims at the top level. Models the envelopes CyberSource has
+ * wrapped the completed-payment result in across Unified Checkout client versions.
+ *
+ * @return array<string, mixed>
+ */
+function orchestratedClaimsUnder(string $envelope, string $status = 'CAPTURED'): array
+{
+    $base = orchestratedClaims($status);
+
+    /** @var array<string, mixed> $response */
+    $response = $base['details'];
+    $response['id'] = $base['id'];
+    $response['status'] = $base['status'];
+
+    $standard = ['iss' => $base['iss'], 'iat' => $base['iat'], 'exp' => $base['exp']];
+
+    return $envelope === ''
+        ? array_merge($standard, $response)
+        : array_merge($standard, [$envelope => $response]);
+}
+
 it('verifies a captured card result and extracts the reusable TMS token', function (): void {
     $http = new FakeHttpClient;
 
@@ -78,6 +102,46 @@ it('verifies a captured card result and extracts the reusable TMS token', functi
         ->and($result->cardExpiryMonth)->toBe('12')
         ->and($result->cardExpiryYear)->toBe('2030')
         ->and($http->requestCount())->toBe(0);
+});
+
+it('verifies an orchestrated result nested under a data envelope', function (): void {
+    $result = orchestratedGateway()->confirmOrchestratedPayment(new ConfirmOrchestratedPaymentRequest(
+        resultJwt: signedResultJwt(orchestratedClaimsUnder('data')),
+        captureContextJwt: captureContextWithJwk(),
+        expectedMoney: Money::minor(10000, 'USD'),
+        orderReference: 'ORD-1',
+    ));
+
+    expect($result->success)->toBeTrue()
+        ->and($result->status)->toBe(PaymentStatus::Captured)
+        ->and($result->transactionId)->toBe('txn_123')
+        ->and($result->orderReference)->toBe('ORD-1')
+        ->and($result->instrumentIdentifierId)->toBe('ii_abc')
+        ->and($result->cardLast4)->toBe('1111');
+});
+
+it('verifies an orchestrated result nested under a content envelope', function (): void {
+    $result = orchestratedGateway()->confirmOrchestratedPayment(new ConfirmOrchestratedPaymentRequest(
+        resultJwt: signedResultJwt(orchestratedClaimsUnder('content')),
+        captureContextJwt: captureContextWithJwk(),
+        expectedMoney: Money::minor(10000, 'USD'),
+    ));
+
+    expect($result->success)->toBeTrue()
+        ->and($result->status)->toBe(PaymentStatus::Captured)
+        ->and($result->transactionId)->toBe('txn_123');
+});
+
+it('verifies an orchestrated result carried flat at the top level', function (): void {
+    $result = orchestratedGateway()->confirmOrchestratedPayment(new ConfirmOrchestratedPaymentRequest(
+        resultJwt: signedResultJwt(orchestratedClaimsUnder('')),
+        captureContextJwt: captureContextWithJwk(),
+        expectedMoney: Money::minor(10000, 'USD'),
+    ));
+
+    expect($result->success)->toBeTrue()
+        ->and($result->status)->toBe(PaymentStatus::Captured)
+        ->and($result->transactionId)->toBe('txn_123');
 });
 
 it('returns an unsuccessful result for an authentic declined payment without throwing', function (): void {
