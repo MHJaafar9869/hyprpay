@@ -246,12 +246,12 @@
         </thead>
         <tbody>
           <tr><th scope="row"><code>createCheckoutSession</code></th><td class="y">capture context / orchestrated</td><td class="y">hosted / card / wallet</td><td class="y">iframe flow</td><td class="y">invoice / iframe</td><td class="y">hosted / invoice / paylink / managed</td><td class="y">order → approval</td><td class="y">hosted checkout</td><td class="n">—</td><td class="y">PaymentIntent</td></tr>
-          <tr><th scope="row"><code>charge</code> <small>(transient token)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">Own Form</td><td class="y">approved order</td><td class="y">session</td><td class="y">Accept.js</td><td class="n">—</td></tr>
+          <tr><th scope="row"><code>charge</code> <small>(transient token)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">Own Form</td><td class="y">approved order</td><td class="y">session</td><td class="y">Accept.js</td><td class="y">confirm</td></tr>
           <tr><th scope="row"><code>confirmOrchestratedPayment</code> <small>(verify result JWT)</small></th><td class="y">RS256 · flx.jwk</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
           <tr><th scope="row"><code>capture</code></th><td class="y">✓</td><td class="y">Auth/Capture</td><td class="y">✓</td><td class="y">settle</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
           <tr><th scope="row"><code>refund</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
-          <tr><th scope="row"><code>void</code></th><td class="y">✓</td><td class="y">cancel auth</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="n">—</td></tr>
-          <tr><th scope="row"><code>reverseAuthorization</code></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="y">release</td><td class="n">—</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td></tr>
+          <tr><th scope="row"><code>void</code></th><td class="y">✓</td><td class="y">cancel auth</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">cancel</td></tr>
+          <tr><th scope="row"><code>reverseAuthorization</code></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="y">release</td><td class="n">—</td><td class="y">✓</td><td class="n">—</td><td class="y">cancel</td></tr>
           <tr><th scope="row"><code>enroll</code> / <code>validatePayerAuth</code> <small>(3-DS)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td></tr>
           <tr><th scope="row"><code>vault</code> / <code>chargeStoredCredential</code></th><td class="y">TMS · MIT/CIT</td><td class="n">—</td><td class="n">—</td><td class="y">vault · charge · revoke</td><td class="y">token · MIT/CIT</td><td class="y">vault · MIT/CIT</td><td class="y">token · MIT/CIT</td><td class="y">CIM · MIT/CIT</td><td class="y">consent charge</td></tr>
           <tr><th scope="row"><code>getTransaction</code> / <code>searchTransaction</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">query</td><td class="y">order lookup</td><td class="y">order lookup</td><td class="y">transaction details</td><td class="y">intent lookup</td></tr>
@@ -391,11 +391,11 @@
           <header class="deck-card-head"><span class="gw-tag">Airwallex</span><span class="gw-sig">API-access login</span></header>
           <dl class="deck-ops">
             <div class="op"><dt>createCheckoutSession</dt><dd>PaymentIntent</dd></div>
-            <div class="op off"><dt>charge</dt><dd>&mdash;</dd></div>
+            <div class="op"><dt>charge</dt><dd>confirm</dd></div>
             <div class="op"><dt>capture</dt><dd>&#10003;</dd></div>
             <div class="op"><dt>refund</dt><dd>&#10003;</dd></div>
-            <div class="op off"><dt>void</dt><dd>&mdash;</dd></div>
-            <div class="op off"><dt>reverseAuthorization</dt><dd>&mdash;</dd></div>
+            <div class="op"><dt>void</dt><dd>cancel</dd></div>
+            <div class="op"><dt>reverseAuthorization</dt><dd>cancel</dd></div>
             <div class="op off"><dt>enroll / validatePayerAuth</dt><dd>&mdash;</dd></div>
             <div class="op"><dt>vault / chargeStoredCredential</dt><dd>PaymentConsent</dd></div>
             <div class="op"><dt>getTransaction / searchTransaction</dt><dd>intent lookup</dd></div>

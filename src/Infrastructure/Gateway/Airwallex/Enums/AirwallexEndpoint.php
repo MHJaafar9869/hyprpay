@@ -16,11 +16,15 @@ enum AirwallexEndpoint: string
 {
     case Login = '/api/v1/authentication/login';
     case PaymentIntents = '/api/v1/pa/payment_intents/create';
+    case PaymentIntentList = '/api/v1/pa/payment_intents';
     case PaymentIntent = '/api/v1/pa/payment_intents/:id';
     case PaymentIntentConfirm = '/api/v1/pa/payment_intents/:id/confirm';
     case PaymentIntentCapture = '/api/v1/pa/payment_intents/:id/capture';
+    case PaymentIntentCancel = '/api/v1/pa/payment_intents/:id/cancel';
     case Refunds = '/api/v1/pa/refunds/create';
     case Refund = '/api/v1/pa/refunds/:id';
+    case PaymentConsents = '/api/v1/pa/payment_consents/create';
+    case PaymentConsentVerify = '/api/v1/pa/payment_consents/:id/verify';
 
     /**
      * Render the endpoint path, substituting the `:id` placeholder when present.

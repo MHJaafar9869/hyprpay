@@ -391,10 +391,13 @@ $airwallex->chargeStoredCredential(new StoredCredentialChargeRequest(
 ));
 ```
 
-There is no `vaultInstrument` for Airwallex: a saved card is a **PaymentConsent**, which
-Airwallex Elements creates client-side (the PAN never reaches your server), so you already
-hold the `payment_consent_id` — `chargeStoredCredential` simply charges against it. (PayTabs
-is the same: it tokenizes during a checkout, not through a server-side vault call.)
+A saved card is a **PaymentConsent**. `vaultInstrument` creates one server-side (a
+consent-create then card-verify against the customer — pass the Airwallex customer id as
+`customerReference`), and `chargeStoredCredential` charges the resulting `payment_consent_id`.
+More commonly the consent is created **client-side** by Airwallex Elements (the PAN never
+reaches your server), in which case you already hold the `payment_consent_id` and can skip
+straight to `chargeStoredCredential`. Note the server-side vault's card verification may
+require a 3-D Secure step before the consent is usable.
 
 See the [Airwallex Online Payments API](https://www.airwallex.com/docs/api) for the
 PaymentIntent lifecycle and the [webhook signing scheme](https://www.airwallex.com/docs/developer-tools/webhooks/listen-for-webhook-events)
@@ -424,14 +427,14 @@ everywhere.
 | Operation | CyberSource UC | Fawry | Paymob | PayLink | PayTabs | PayPal | Mastercard MPGS | Authorize.Net | Airwallex |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | `createCheckoutSession` | ✅ capture context / orchestrated (autoProcessing) | ✅ hosted / card / wallet / pay-at-Fawry / MyFawry / instalment | ✅ iframe flow | ✅ invoice link / iframe | ✅ hosted / invoice / paylink / managed | ✅ order → approval redirect | ✅ hosted checkout session | — | ✅ PaymentIntent (client-side confirm) |
-| `charge` (transient token) | ✅ | — | — | — | ✅ Own Form (payment token) | ✅ complete approved order² | ✅ session (PAY / AUTHORIZE)³ | ✅ Accept.js opaque data | — (card confirmed client-side) |
+| `charge` (transient token) | ✅ | — | — | — | ✅ Own Form (payment token) | ✅ complete approved order² | ✅ session (PAY / AUTHORIZE)³ | ✅ Accept.js opaque data | ✅ create + confirm (PaymentMethod id) |
 | `confirmOrchestratedPayment` (verify result JWT) | ✅ RS256 (flx.jwk) | — | — | — | — | — | — | — | — |
 | `capture` | ✅ | ✅ (Auth/Capture) | ✅ | ✅ (settle) | ✅ | ✅ | ✅ | ✅ | ✅ (manual-capture intent) |
 | `refund` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `void` | ✅ | ✅ (cancel auth) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
-| `reverseAuthorization` | ✅ | — | — | ✅ | ✅ (release) | — | ✅ (void of auth) | — | — |
+| `void` | ✅ | ✅ (cancel auth) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (cancel intent) |
+| `reverseAuthorization` | ✅ | — | — | ✅ | ✅ (release) | — | ✅ (void of auth) | — | ✅ (cancel intent) |
 | `enrollPayerAuth` / `validatePayerAuth` (3-DS) | ✅ | — | — | — | — | — | ✅ | — | — |
-| `vaultInstrument` / `chargeStoredCredential` | ✅ (TMS, MIT/CIT) | — | — | ✅ vault + charge + revoke⁴ | ✅ token (MIT/CIT)¹ | ✅ vault (MIT/CIT) | ✅ token (MIT/CIT) | ✅ CIM (opaque/card, MIT/CIT) | ✅ charge via PaymentConsent |
+| `vaultInstrument` / `chargeStoredCredential` | ✅ (TMS, MIT/CIT) | — | — | ✅ vault + charge + revoke⁴ | ✅ token (MIT/CIT)¹ | ✅ vault (MIT/CIT) | ✅ token (MIT/CIT) | ✅ CIM (opaque/card, MIT/CIT) | ✅ PaymentConsent (vault + charge) |
 | `requestDccRate` (Dynamic Currency Conversion) | ✅ | — | — | — | — | — | — | — | — |
 | `getTransaction` / `searchTransaction` | ✅ | ✅ | ✅ | ✅ | ✅ query | ✅ order lookup | ✅ order lookup | ✅ transaction details | ✅ intent lookup |
 | `verifyWebhook` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ API | ✅ notification secret | ✅ HMAC-SHA512 | ✅ HMAC-SHA256 |
