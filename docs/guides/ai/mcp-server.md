@@ -1,13 +1,85 @@
-# MCP integration — exposing the SDK as agent tools
+# MCP servers for hyprpay/payments
 
-How to expose `hyprpay/payments` operations to an AI agent through a [Model Context
-Protocol](https://modelcontextprotocol.io) (MCP) server: the tool schemas to declare, a PHP
-handler that maps each tool call onto the SDK, and — because these tools move money — the
-guardrails that are **not optional**.
+Two distinct [Model Context Protocol](https://modelcontextprotocol.io) (MCP) servers relate to
+this SDK — keep them apart:
 
-> The SDK ships no MCP server. This guide shows how to wire its operations into an MCP server
-> of your choice (e.g. `php-mcp/server`, `logiscape/mcp-sdk-php`, or a thin HTTP shim). The SDK
-> side is just `PaymentGatewayFactory::make()` + a request DTO, exactly as in normal use.
+- **Developer MCP — _ships in [`mcp/`](../../../mcp/)_.** Read-only tools that let an AI coding
+  assistant *explore the SDK* (gateways, operations, DTOs, enums) and generate correct
+  integration code. It reflects the live classes and never calls a gateway or moves money.
+  Covered in **Part 1**.
+- **Runtime payment MCP — _you build it_.** Tools that actually *move money* by calling the SDK
+  at runtime (charge, refund, …). The SDK deliberately ships none of these. **Part 2** shows how
+  to wire your operations into an MCP server, with the guardrails money-moving tools require.
+
+## Part 1 — the developer MCP (`mcp/`)
+
+`hyprpay/payments` ships a developer MCP server under [`mcp/`](../../../mcp/). It is the hyprpay
+analogue of the CyberSource developer MCP: a coding aid that reflects the live
+`Hyprpay\Payments\*` classes at call time, so what it reports always matches the code. Every tool
+is **read-only** — it helps you *write* an integration; it never calls a gateway.
+
+### Tools
+
+| Tool | Purpose |
+|---|---|
+| `get_sdk_overview` | Orientation: install/config, the gateway roster, and the tool index. |
+| `list_gateways` | Every gateway with its `GatewayName` key, driver class, and exact supported-operation set. |
+| `get_operation_details` | An operation's request DTO, return shape, and which gateways support it. |
+| `get_class_details` | Full reflection of any class, interface, enum, or trait (short name or FQCN). |
+| `get_code_template` | A ready-to-adapt PHP snippet for a gateway + operation — imports included; unsupported pairs are rejected. |
+| `search` | Find types by name or one-line purpose across the package. |
+
+The support matrix is derived from `PaymentGatewayFactory` and `AbstractPaymentGateway`, so it is
+always exact (CyberSource implements all 14 operations; Fawry implements 6). `get_code_template`
+refuses an unsupported gateway/operation pair and names the gateways that do support it.
+
+### Setup
+
+The server is its own Composer project, so its dependency (`php-mcp/server`) never touches the
+SDK's:
+
+```bash
+composer install                      # SDK + its dependencies (repo root)
+composer install --working-dir=mcp    # the MCP server's own dependency
+```
+
+### Register it
+
+A project-scoped `.mcp.json` at the repository root already registers the server for anyone who
+clones the package:
+
+```json
+{ "mcpServers": { "hyprpay-payments": { "type": "stdio", "command": "php", "args": ["mcp/server.php"] } } }
+```
+
+To make it available in every project on your machine (the way a globally-installed tool would
+be), register it at user scope with an absolute path:
+
+```bash
+claude mcp add -s user hyprpay-payments -- php /absolute/path/to/mcp/server.php
+```
+
+Any MCP client works — it is a standard stdio server (`php mcp/server.php`). See
+[`mcp/README.md`](../../../mcp/README.md) for the full reference.
+
+### A typical flow
+
+An agent adding a charge orients with `get_sdk_overview`, picks a driver with `list_gateways`,
+then asks for a runnable starting point:
+
+```jsonc
+get_code_template({ "gateway": "cybersource_uc", "operation": "charge" })
+// → a PHP snippet: $factory->make(GatewayName::CybersourceUnifiedCheckout)->charge(new ChargeRequest(...))
+//   with every `use` it needs and each optional argument shown inline.
+```
+
+## Part 2 — a runtime payment MCP (build your own)
+
+The rest of this guide is a **different** server: one that exposes `hyprpay/payments` *operations*
+(charge, refund, …) to an AI agent so it can move money at runtime. The SDK ships none — you wire
+its operations into an MCP server of your choice (e.g. `php-mcp/server`, `logiscape/mcp-sdk-php`,
+or a thin HTTP shim). The SDK side is just `PaymentGatewayFactory::make()` + a request DTO, exactly
+as in normal use. Because these tools move money, the guardrails below are **not optional**.
 
 ## Read this first — payment tools are high-risk
 
@@ -37,7 +109,7 @@ model. Treat money-moving tools as privileged actions:
 
 Declare one MCP tool per operation you want to expose. Each `inputSchema` is JSON Schema. The
 `gateway` enum uses the `GatewayName` backing values:
-`cybersource_uc`, `fawry`, `paymob`, `paylink`, `paytabs`, `paypal`, `mpgs`, `authorize_net`.
+`cybersource_uc`, `fawry`, `paymob`, `paylink`, `paytabs`, `paypal`, `mpgs`, `authorize_net`, `airwallex`.
 
 ### `payments_charge` — charge a transient token _(money-moving → confirm)_
 
@@ -48,7 +120,7 @@ Declare one MCP tool per operation you want to expose. Each `inputSchema` is JSO
   "inputSchema": {
     "type": "object",
     "properties": {
-      "gateway": { "type": "string", "enum": ["cybersource_uc","paytabs","paypal","mpgs","authorize_net"] },
+      "gateway": { "type": "string", "enum": ["cybersource_uc","paytabs","paypal","mpgs","authorize_net","airwallex"] },
       "transient_token": { "type": "string", "description": "Token/opaque-data value from the checkout widget. Never a raw PAN." },
       "amount_minor": { "type": "integer", "minimum": 1, "description": "Amount in minor units (e.g. 10000 = 100.00)." },
       "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },

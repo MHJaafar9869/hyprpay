@@ -2,16 +2,17 @@
 
 A machine-consumable, **100%-coverage** reference for `hyprpay/payments`, written for AI coding
 assistants and agents — every class, operation, request/result DTO, value object, enum, exception,
-event, and config key in the package, plus a guide for exposing the SDK through MCP.
+event, and config key in the package, plus the developer MCP that ships with the SDK (in
+[`mcp/`](../../../mcp/)) and a guide for exposing the SDK's operations through MCP.
 
 If you are an AI assistant helping someone use this SDK, load these files as context. They are
 terse and structured on purpose; nothing in `src/` is left undocumented (see `class-index.md`).
 
 ## The SDK in one paragraph
 
-`hyprpay/payments` is a self-contained, multi-gateway payment SDK for PHP. Eight drivers —
-**CyberSource Unified Checkout, Fawry, Paymob, PayLink, PayTabs, PayPal, Mastercard MPGS, and
-Authorize.Net** — sit behind one `PaymentGatewayInterface`. You resolve a driver from
+`hyprpay/payments` is a self-contained, multi-gateway payment SDK for PHP. Nine drivers —
+**CyberSource Unified Checkout, Fawry, Paymob, PayLink, PayTabs, PayPal, Mastercard MPGS,
+Authorize.Net, and Airwallex** — sit behind one `PaymentGatewayInterface`. You resolve a driver from
 `PaymentGatewayFactory::make(GatewayName::X)` and call operations that each take a request DTO and
 return a result DTO. Money is carried as integer minor units (`Money::minor(10000, 'USD')`).
 Operations a gateway does not support throw `UnsupportedOperationException`. The core is
@@ -48,7 +49,7 @@ $result  = $gateway->charge(new ChargeRequest(
 | **[contracts-and-http.md](contracts-and-http.md)** | The ports (`HttpClient`, `CredentialResolver`, `EventDispatcher`), the HTTP DTOs and decorator stack, and support helpers. |
 | **[gateways.md](gateways.md)** | All nine gateways in depth — signing, endpoints, supported operations, and each gateway's typed `CheckoutOptions` and enums. |
 | **[application-console-config.md](application-console-config.md)** | `PaymentGatewayFactory`, `TransactionReconciler`, driver decorators, the reconcile Artisan commands, and a complete config-key reference. |
-| **[mcp-server.md](mcp-server.md)** | Exposing the SDK's operations as MCP tools for an AI agent — tool schemas, a PHP handler, and the safety guardrails money-moving tools require. |
+| **[mcp-server.md](mcp-server.md)** | The developer MCP that ships in `mcp/` (read-only tools that reflect the SDK for coding agents), then how to expose the SDK's operations as runtime MCP tools — tool schemas, a PHP handler, and the guardrails money-moving tools require. |
 | **[class-index.md](class-index.md)** | The exhaustive index — all 192 classes/interfaces/enums/traits with a one-line purpose each. Start here to confirm nothing is missing. |
 
 ## For humans

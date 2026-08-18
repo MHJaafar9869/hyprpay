@@ -132,7 +132,7 @@ The reference is split into focused guides:
 - **[Payment operations](docs/guides/operations.md)** — Dynamic Currency Conversion, idempotency, webhooks, and reconciliation.
 - **[Events & operation logging](docs/guides/observability.md)** — the domain events every driver emits and per-operation logging.
 - **[Architecture](docs/guides/architecture.md)** — the DDD layering and how to add a gateway.
-- **[AI & MCP reference](docs/guides/ai/README.md)** — a machine-consumable, 100%-coverage reference for AI assistants, plus a guide to exposing the SDK as MCP tools.
+- **[AI & MCP reference](docs/guides/ai/README.md)** — a machine-consumable, 100%-coverage reference for AI assistants, the **developer MCP server** that ships in [`mcp/`](mcp/) (read-only tools that reflect the SDK so coding agents can explore it and generate correct integrations), and a guide to exposing the SDK's operations as MCP tools.
 
 ## Testing & quality
 

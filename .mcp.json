@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "hyprpay-payments": {
+      "type": "stdio",
+      "command": "php",
+      "args": [
+        "mcp/server.php"
+      ],
+      "env": {}
+    }
+  }
+}
