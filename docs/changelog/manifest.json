@@ -1,6 +1,12 @@
 {
   "releases": [
     {
+      "version": "0.6.3",
+      "date": "2026-08-19",
+      "title": "Developer MCP: per-gateway integration gotchas",
+      "file": "v0.6.3.md"
+    },
+    {
       "version": "0.6.2",
       "date": "2026-08-19",
       "title": "CyberSource payments Accept-header 404 fix",

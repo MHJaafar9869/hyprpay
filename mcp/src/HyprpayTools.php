@@ -27,6 +27,99 @@ final class HyprpayTools
         'charge', 'capture', 'refund', 'void', 'reverseAuthorization', 'chargeStoredCredential',
     ];
 
+    /**
+     * Real-world integration gotchas surfaced by {@see getGatewayGotchas()}.
+     *
+     * Behaviours proven against the live gateway APIs that reflection cannot reveal —
+     * required fields, header quirks, account entitlements, idempotency rules,
+     * embedded-vs-redirect return shapes, and browser-SDK timing. Keyed by gateway value,
+     * plus a `general` bucket that applies across gateways.
+     *
+     * @var array<string, list<array{title: string, detail: string}>>
+     */
+    private const GATEWAY_GOTCHAS = [
+        'general' => [
+            [
+                'title' => 'createCheckoutSession returns different fields per gateway',
+                'detail' => 'Hosted-redirect gateways (Paymob, Fawry, PayPal, PayTabs, PayLink) populate CheckoutSession::redirectUrl — send the guest there. CyberSource UC returns jwt (the capture context) + clientLibrary for its embedded widget. Airwallex returns jwt (the PaymentIntent client_secret) + reference (the intent id) for its embedded Drop-in and leaves redirectUrl null. Read the field your gateway populates, not redirectUrl unconditionally.',
+            ],
+            [
+                'title' => 'Webhooks may arrive as GET or POST',
+                'detail' => 'Some gateways deliver their server callback as a GET redirect rather than a POST (e.g. PayTabs/Fawry return callbacks). Route both methods to verifyWebhook; a GET carries no body, so signature verification simply fails closed.',
+            ],
+        ],
+        'cybersource_uc' => [
+            [
+                'title' => 'Accept header must be application/hal+json',
+                'detail' => 'CyberSource\'s edge returns 404 "Resource not found" for /pts/v2/payments and /risk/v1/* when Accept is application/json — only the Unified Checkout session endpoints tolerate it, so the 404 masquerades as an unprovisioned-merchant error. The SDK sends application/hal+json on every request (SignsCybersourceRequests), but anyone porting the flow elsewhere must too.',
+            ],
+            [
+                'title' => 'Two flows — manual transient token vs orchestrated',
+                'detail' => 'Manual: the widget returns a transient token; charge() it server-side via /pts/v2/payments (needs the Payments API product on the account). Orchestrated: set CheckoutSessionRequest::completeMandate so the widget runs the whole payment and returns a signed result JWT verified offline by confirmOrchestratedPayment() (needs the autoProcessing entitlement). A 404 on /pts/v2/payments while the capture-context call succeeds usually means the account lacks the Payments API product.',
+            ],
+            [
+                'title' => 'Orchestrated result JWT envelope varies',
+                'detail' => 'The completed-payment result JWT nests its claims under a details, data, or content envelope (or flat at the top level) across Unified Checkout client versions. VerifiesResultJwt resolves each claim across all of them — do not assume a single envelope.',
+            ],
+        ],
+        'paymob' => [
+            [
+                'title' => 'A card iframe id is required for a redirect URL',
+                'detail' => 'createCheckoutSession runs the older auth -> register order -> payment key -> iframe flow and needs BOTH extra.integrations.card (the payment integration id) AND extra.iframes.card (the iframe id). With no iframe id, CheckoutSession::redirectUrl is null and the caller must drive the payment token itself. Iframe ids are separate from integration/payment-method ids and are not part of the newer Intention API, so an Intention-API-only setup will not have one.',
+            ],
+        ],
+        'airwallex' => [
+            [
+                'title' => 'The account must be activated for card acceptance',
+                'detail' => 'An account not provisioned for Online Payments returns HTTP 400 {"code":"configuration_error","message":"Invalid request against merchant configuration. Please contact your account manager."} for every payment-intent create, in every currency, on an otherwise-valid request. Login still succeeds — only intent creation fails. This is an account-setup step, not a code or payload issue.',
+            ],
+            [
+                'title' => 'descriptor is capped at 32 characters',
+                'detail' => 'CheckoutSessionRequest::description maps to the intent descriptor, which Airwallex rejects (HTTP 400 "descriptor should be no longer than 32 characters") beyond 32 chars. Pass a short statement descriptor, not a long human-readable order description.',
+            ],
+            [
+                'title' => 'request_id must be unique per attempt',
+                'detail' => 'The SDK derives the intent request_id (an idempotency key) from orderReference. Reusing the same orderReference across retries fails with HTTP 400 "The request ID ... has been used previously." Make orderReference unique per attempt (e.g. append the local payment/attempt id); the base reference can live on merchant_order_id for reconciliation.',
+            ],
+            [
+                'title' => 'Scoped org-level keys need the account id (x-login-as)',
+                'detail' => 'A key scoped at the organisation with access to a specific account needs extra.account_id, which the SDK sends as x-login-as to target it. A key issued directly at the account level does not — leave account_id blank, since sending x-login-as with the wrong/own account can 401.',
+            ],
+            [
+                'title' => 'Embedded flow returns a client_secret, not a redirect',
+                'detail' => 'createCheckoutSession creates a PaymentIntent and returns the client_secret (in CheckoutSession::jwt) + intent id (in ::reference) for the Airwallex JS Drop-in; redirectUrl (next_action.url) is null for cards. Confirm client-side, then verify the outcome server-side with getTransaction(intentId) — never trust the browser success claim. Host/env: api-demo.airwallex.com (env "demo") for test, api.airwallex.com (env "prod") for live.',
+            ],
+        ],
+        'authorize_net' => [
+            [
+                'title' => 'No createCheckoutSession — Accept.js opaque-data flow',
+                'detail' => 'Authorize.Net has no hosted-redirect session. Tokenise the card client-side with Accept.js into a one-time opaque-data nonce, then charge() it with the nonce as ChargeRequest::transientToken (the SDK wraps it as opaqueData COMMON.ACCEPT.INAPP.PAYMENT). The browser form needs the public client key + API login id; Accept.js loads from jstest.authorize.net in sandbox, js.authorize.net in live.',
+            ],
+            [
+                'title' => 'Accept.js loads AcceptCore.js asynchronously',
+                'detail' => 'The Accept.js script is a bootstrap that async-loads AcceptCore.js, which defines dispatchData. Calling Accept.dispatchData immediately after the script onload throws "dispatchData is not a function". Load Accept.js statically in the page <head> so it is ready before submit, or poll for typeof Accept.dispatchData === "function".',
+            ],
+        ],
+        'fawry' => [
+            [
+                'title' => 'Hosted checkout returns the URL as the raw body',
+                'detail' => 'The hosted-checkout init responds with the redirect URL as the raw response body (plain text), not a JSON field. CheckoutSession::redirectUrl carries it.',
+            ],
+        ],
+        'paytabs' => [
+            [
+                'title' => 'Callback signature scheme',
+                'detail' => 'IPN/return callbacks verify as hmac_sha256(http_build_query(ksort(array_filter(fields without signature))), server_key) in lowercase hex, over the flat posted fields (respStatus, tranRef, cartId, ...). Callbacks may arrive via GET or POST.',
+            ],
+        ],
+        'paypal' => [
+            [
+                'title' => 'OAuth then create-order; the approval link is the redirect',
+                'detail' => 'createCheckoutSession first exchanges client id/secret for a bearer token (POST /v1/oauth2/token) then creates an order (POST /v2/checkout/orders). The redirect URL is the order link with rel "payer-action"/"approve". Test host api-m.sandbox.paypal.com, live api-m.paypal.com.',
+            ],
+        ],
+    ];
+
     private PackageReflector $reflector;
 
     public function __construct()
@@ -58,6 +151,7 @@ final class HyprpayTools
             '- `get_class_details` — full reflection of any class, interface, enum, or trait in the SDK.',
             '- `get_code_template` — a ready-to-adapt PHP snippet for a gateway + operation.',
             '- `search` — find types by name or purpose across the package.',
+            '- `get_gateway_gotchas` — real-world integration pitfalls per gateway (header quirks, account entitlements, required fields, idempotency, embedded-vs-redirect, browser-SDK timing) that reflection cannot show.',
         ];
 
         $header = sprintf(
@@ -277,6 +371,48 @@ final class HyprpayTools
             'query' => $query,
             'count' => count($results),
             'results' => $results,
+        ];
+    }
+
+    /**
+     * Real-world integration gotchas for the gateways: behaviours proven against the live
+     * gateway APIs that reflection and DTOs never reveal — required fields, header quirks,
+     * account entitlements, idempotency rules, embedded-vs-redirect return shapes, and
+     * browser-SDK timing. Pass a gateway key for its notes, or omit for every gateway plus
+     * the general notes. Consult this before wiring a gateway end to end, and when a live
+     * call returns a 400/404/401 that the DTOs do not explain.
+     *
+     * @param  string  $gateway  Gateway key or enum case (e.g. "airwallex", "cybersource_uc"), or "" for all.
+     * @return array<string, mixed>
+     */
+    #[McpTool(name: 'get_gateway_gotchas')]
+    public function getGatewayGotchas(string $gateway = ''): array
+    {
+        $gateway = trim($gateway);
+
+        if ($gateway === '') {
+            return [
+                'general' => self::GATEWAY_GOTCHAS['general'],
+                'gateways' => array_diff_key(self::GATEWAY_GOTCHAS, ['general' => null]),
+                'note' => 'Operational pitfalls from real integrations, not reflected from code. Pass a gateway key to focus.',
+            ];
+        }
+
+        $case = $this->resolveGateway($gateway);
+        $key = $case?->value ?? strtolower($gateway);
+
+        if ($key === 'general' || ! isset(self::GATEWAY_GOTCHAS[$key])) {
+            return [
+                'error' => 'no_gotchas_for_gateway',
+                'gateway' => $gateway,
+                'available' => array_values(array_diff(array_keys(self::GATEWAY_GOTCHAS), ['general'])),
+            ];
+        }
+
+        return [
+            'gateway' => $key,
+            'gotchas' => self::GATEWAY_GOTCHAS[$key],
+            'general' => self::GATEWAY_GOTCHAS['general'],
         ];
     }
 
