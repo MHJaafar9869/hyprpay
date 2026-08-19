@@ -18,6 +18,7 @@ it never drifts from the code.
 | `get_class_details` | Full reflection of any class, interface, enum, or trait (short name or FQCN). |
 | `get_code_template` | A ready-to-adapt PHP snippet for a gateway + operation, imports included. |
 | `search` | Find types by name or one-line purpose across the package. |
+| `get_gateway_gotchas` | Real-world integration pitfalls per gateway (header quirks, account entitlements, required fields, idempotency, embedded-vs-redirect, browser-SDK timing) that reflection cannot show. |
 
 ## Setup
 
