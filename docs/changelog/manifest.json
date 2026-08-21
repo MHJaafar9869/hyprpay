@@ -1,6 +1,12 @@
 {
   "releases": [
     {
+      "version": "0.8.0",
+      "date": "2026-08-22",
+      "title": "Payment-history listing + typed allowedPaymentTypes",
+      "file": "v0.8.0.md"
+    },
+    {
       "version": "0.7.0",
       "date": "2026-08-21",
       "title": "Digital-wallet charges (Apple Pay / Google Pay)",
