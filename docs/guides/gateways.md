@@ -428,6 +428,7 @@ everywhere.
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | `createCheckoutSession` | ✅ capture context / orchestrated (autoProcessing) | ✅ hosted / card / wallet / pay-at-Fawry / MyFawry / instalment | ✅ iframe flow | ✅ invoice link / iframe | ✅ hosted / invoice / paylink / managed | ✅ order → approval redirect | ✅ hosted checkout session | — | ✅ PaymentIntent (client-side confirm) |
 | `charge` (transient token) | ✅ | — | — | — | ✅ Own Form (payment token) | ✅ complete approved order² | ✅ session (PAY / AUTHORIZE)³ | ✅ Accept.js opaque data | ✅ create + confirm (PaymentMethod id) |
+| `chargeWallet` (Apple Pay / Google Pay) | ✅ tokenizedCard / fluidData | — | — | — | — | — | — | — | — |
 | `confirmOrchestratedPayment` (verify result JWT) | ✅ RS256 (flx.jwk) | — | — | — | — | — | — | — | — |
 | `capture` | ✅ | ✅ (Auth/Capture) | ✅ | ✅ (settle) | ✅ | ✅ | ✅ | ✅ | ✅ (manual-capture intent) |
 | `refund` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -460,6 +461,46 @@ context (`flx.jwk`), validates its issuer, order reference, and amount, and retu
 outcome plus the reusable TMS token — making no `/pts/v2/payments` call and no
 transaction-search lookup. A wallet result (Apple Pay / Google Pay) yields no reusable
 credential, flagged via `OrchestratedPaymentResult::$isWallet`.
+
+Beyond the widget, the driver also charges a **native wallet token** directly. When you host
+your own Apple Pay / Google Pay button — running the wallet's own `ApplePaySession`, merchant
+validation, and (for Apple Pay) domain registration in your app — `chargeWallet` charges the
+token via `processingInformation.paymentSolution` (`001` Apple Pay, `012` Google Pay). It takes a
+`WalletToken` in either of CyberSource's two wallet shapes, and the SDK never decrypts the token
+or handles the cleartext PAN itself:
+
+- **`DecryptedWalletToken`** (canonical) — you decrypt the wallet payload in your app and pass the
+  network-token fields (DPAN, cryptogram, expiry, optional ECI and card type); the driver sends
+  them as `paymentInformation.tokenizedCard` with `transactionType` `1`.
+- **`EncryptedWalletToken`** — you pass the raw device-encrypted token and the driver forwards it
+  as `paymentInformation.fluidData` for CyberSource to decrypt (requires the wallet's
+  payment-processing certificate registered with CyberSource's decryption service).
+
+```php
+use Hyprpay\Payments\Domain\Command\WalletChargeRequest;
+use Hyprpay\Payments\Domain\Enum\WalletType;
+use Hyprpay\Payments\Domain\ValueObject\DecryptedWalletToken;
+use Hyprpay\Payments\Domain\ValueObject\Money;
+
+// Decrypt the Apple Pay PKPaymentToken in your app, then pass the network-token fields.
+$result = $cybersource->chargeWallet(new WalletChargeRequest(
+    token: new DecryptedWalletToken(
+        number: $dpan,           // decrypted device PAN
+        cryptogram: $cryptogram, // online payment cryptogram
+        expiryMonth: '12',
+        expiryYear: '2031',
+        eci: '05',               // optional
+        cardType: '001',         // optional CyberSource network code (001 Visa, 002 Mastercard, …)
+    ),
+    wallet: WalletType::ApplePay,
+    money: Money::minor(2599, 'USD'),
+    orderReference: 'ORDER-123',
+));
+// $result->status is Captured (or Authorized when capture: false).
+
+// Or forward the raw encrypted token for CyberSource to decrypt:
+// token: new EncryptedWalletToken($applePayPaymentDataJson)
+```
 
 For **PayTabs**, `paymentMethod` selects the integration type: `invoice` (an emailable
 Invoice link), `managed` (an iframe-embeddable Managed Form), `paylink` (a reusable

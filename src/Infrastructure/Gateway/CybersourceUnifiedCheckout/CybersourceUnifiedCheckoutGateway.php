@@ -17,6 +17,7 @@ use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
 use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\ValidatePayerAuthRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
+use Hyprpay\Payments\Domain\Command\WalletChargeRequest;
 use Hyprpay\Payments\Domain\Contract\HttpClient;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
@@ -48,6 +49,7 @@ use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\StoredCredentialPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\TokenizePayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\VoidPayload;
+use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\WalletPaymentPayload;
 use Hyprpay\Payments\Infrastructure\Support\Value;
 
 /**
@@ -320,6 +322,20 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
             CybersourceEndpoint::Payments->path(),
             StoredCredentialPayload::build($request),
             'charge stored credential',
+            $request->idempotencyKey ?? $request->orderReference,
+        ));
+    }
+
+    /**
+     * Charges a digital-wallet token (Apple Pay / Google Pay) by forwarding the encrypted
+     * token as fluidData for CyberSource to decrypt, returning the mapped PaymentResult.
+     */
+    public function chargeWallet(WalletChargeRequest $request): PaymentResult
+    {
+        return $this->toPaymentResult($this->client->post(
+            CybersourceEndpoint::Payments->path(),
+            WalletPaymentPayload::build($request),
+            'charge wallet',
             $request->idempotencyKey ?? $request->orderReference,
         ));
     }

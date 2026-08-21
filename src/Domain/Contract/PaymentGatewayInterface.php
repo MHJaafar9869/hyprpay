@@ -15,6 +15,7 @@ use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
 use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\ValidatePayerAuthRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
+use Hyprpay\Payments\Domain\Command\WalletChargeRequest;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Result\CheckoutSession;
 use Hyprpay\Payments\Domain\Result\DccQuote;
@@ -142,6 +143,18 @@ interface PaymentGatewayInterface
      * @return PaymentResult The normalized outcome of the charge.
      */
     public function chargeStoredCredential(StoredCredentialChargeRequest $request): PaymentResult;
+
+    /**
+     * Charge a digital-wallet payment token (Apple Pay / Google Pay).
+     *
+     * The wallet's device-encrypted token is forwarded to the gateway, which decrypts
+     * it and authorizes (and optionally captures) the payment; the SDK does not decrypt
+     * the token or handle the cleartext PAN itself.
+     *
+     * @param  WalletChargeRequest  $request  The wallet charge details (encrypted token, wallet type, amount, context).
+     * @return PaymentResult The normalized outcome of the charge.
+     */
+    public function chargeWallet(WalletChargeRequest $request): PaymentResult;
 
     /**
      * Retrieve the current state of a transaction by its gateway identifier.

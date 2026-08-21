@@ -385,8 +385,8 @@
       </div>
       <p>On the request, send <code>only</code> the <code>&lt;session id&gt;</code> part as
          <code>deviceFingerprintId</code> — it maps to <code>deviceInformation.fingerprintSessionId</code>.
-         It is accepted on <code>charge</code>, <code>chargeStoredCredential</code>, and
-         <code>enrollPayerAuth</code>:</p>
+         It is accepted on <code>charge</code>, <code>chargeStoredCredential</code>,
+         <code>chargeWallet</code>, and <code>enrollPayerAuth</code>:</p>
       <div class="code">
 <pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="k">new</span> <span class="t">ChargeRequest</span>(
     <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>,
@@ -1070,6 +1070,37 @@
       </div>
     </section>
 
+    <section id="charge-wallet" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Digital wallets</p>
+      <h2>Charge wallet</h2>
+      <p class="doc-sig"><span class="fn">chargeWallet</span>(WalletChargeRequest): <span class="rt">PaymentResult</span></p>
+      <p>Charges a native Apple Pay / Google Pay token from your own wallet button. Pass a
+         <code>WalletToken</code> in either shape — the SDK never decrypts it or handles the cleartext
+         PAN. CyberSource tags the charge with <code>paymentSolution</code> <code>001</code> (Apple Pay)
+         or <code>012</code> (Google Pay).</p>
+
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="c">// Canonical: decrypt the wallet payload in your app, send the network-token fields</span>
+<span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">chargeWallet</span>(<span class="k">new</span> <span class="t">WalletChargeRequest</span>(
+    <span class="a">token:</span> <span class="k">new</span> <span class="t">DecryptedWalletToken</span>(
+        <span class="a">number:</span> <span class="v">$dpan</span>,           <span class="c">// decrypted device PAN</span>
+        <span class="a">cryptogram:</span> <span class="v">$cryptogram</span>,
+        <span class="a">expiryMonth:</span> <span class="s">'12'</span>,
+        <span class="a">expiryYear:</span> <span class="s">'2031'</span>,
+        <span class="a">eci:</span> <span class="s">'05'</span>,             <span class="c">// optional</span>
+        <span class="a">cardType:</span> <span class="s">'001'</span>,        <span class="c">// optional network code (001 Visa, 002 Mastercard, …)</span>
+    ),
+    <span class="a">wallet:</span> <span class="t">WalletType</span>::<span class="cn">ApplePay</span>,
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">2599</span>, <span class="s">'USD'</span>),
+));
+
+<span class="c">// Or forward the raw encrypted token for CyberSource to decrypt (fluidData):</span>
+<span class="c">// token: new EncryptedWalletToken($applePayPaymentDataJson)</span></code></pre>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- ═══════════  RIGHT: one entry per action  ═══════════ -->
@@ -1100,6 +1131,7 @@
       <li data-gws="cyber mpgs"><a href="#validate-payer-auth" data-spy="validate-payer-auth">Validate payer auth</a></li>
       <li data-gws="cyber paypal mpgs paylink authorizenet airwallex"><a href="#vault-instrument" data-spy="vault-instrument">Vault instrument</a></li>
       <li data-gws="cyber paytabs paypal mpgs paylink authorizenet airwallex"><a href="#charge-stored-credential" data-spy="charge-stored-credential">Charge stored credential</a></li>
+      <li data-gws="cyber"><a href="#charge-wallet" data-spy="charge-wallet">Charge wallet</a></li>
     </ul>
   </aside>
 

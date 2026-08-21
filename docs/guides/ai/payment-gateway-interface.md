@@ -24,6 +24,7 @@ The one contract every gateway driver implements, its abstract base class, and t
 | `validatePayerAuth` | `validatePayerAuth(ValidatePayerAuthRequest $request): PayerAuthResult` | Complete 3-D Secure payer auth after challenge/validation; result carries authentication values for the subsequent charge. |
 | `vaultInstrument` | `vaultInstrument(TokenizeInstrumentRequest $request): VaultedInstrument` | Tokenize a payment instrument into the gateway vault for reuse. |
 | `chargeStoredCredential` | `chargeStoredCredential(StoredCredentialChargeRequest $request): PaymentResult` | Charge a stored (card-on-file) credential, honoring CIT/MIT rules. |
+| `chargeWallet` | `chargeWallet(WalletChargeRequest $request): PaymentResult` | Charge a native digital-wallet token (Apple Pay / Google Pay); the gateway decrypts the forwarded token. |
 | `getTransaction` | `getTransaction(string $transactionId): TransactionSnapshot` | Retrieve the current state of a transaction by its gateway identifier. |
 | `searchTransaction` | `searchTransaction(string $query): ?TransactionSnapshot` | Search for a transaction via a gateway-specific query; returns `null` when nothing matches. |
 | `verifyWebhook` | `verifyWebhook(string $rawBody, array $headers): WebhookEvent` | Verify an inbound webhook's authenticity and parse it into an event. `$headers` is `array<string, string\|array<int, string>>`. |
@@ -82,6 +83,7 @@ throw UnsupportedOperationException::forOperation($this->name(), '<operation>');
 | `validatePayerAuth` | `'validatePayerAuth'` |
 | `vaultInstrument` | `'vaultInstrument'` |
 | `chargeStoredCredential` | `'chargeStoredCredential'` |
+| `chargeWallet` | `'chargeWallet'` |
 | `getTransaction` | `'getTransaction'` |
 | `searchTransaction` | `'searchTransaction'` |
 | `verifyWebhook` | `'verifyWebhook'` |

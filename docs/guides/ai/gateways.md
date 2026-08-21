@@ -4,7 +4,7 @@ Terse, code-forward reference to all nine payment gateway drivers in `hyprpay/pa
 
 ## Architecture in one screen
 
-- **Port:** `Hyprpay\Payments\Domain\Contract\PaymentGatewayInterface` — the 16-method contract every driver implements: `name`, `credentials`, `createCheckoutSession`, `requestDccRate`, `charge`, `capture`, `refund`, `void`, `reverseAuthorization`, `enrollPayerAuth`, `validatePayerAuth`, `vaultInstrument`, `chargeStoredCredential`, `getTransaction`, `searchTransaction`, `verifyWebhook`.
+- **Port:** `Hyprpay\Payments\Domain\Contract\PaymentGatewayInterface` — the 17-method contract every driver implements: `name`, `credentials`, `createCheckoutSession`, `requestDccRate`, `charge`, `capture`, `refund`, `void`, `reverseAuthorization`, `enrollPayerAuth`, `validatePayerAuth`, `vaultInstrument`, `chargeStoredCredential`, `chargeWallet`, `getTransaction`, `searchTransaction`, `verifyWebhook`.
 - **Base:** `Hyprpay\Payments\Domain\AbstractPaymentGateway` — constructed with `GatewayCredentials`; provides a default for every operation that throws `UnsupportedOperationException::forOperation($this->name(), '<op>')`. Concrete drivers **override only what they support**; everything else is "inherited-as-unsupported" and throws.
 - **Resolution:** `Hyprpay\Payments\Domain\Enum\GatewayName` (string-backed) identifies each gateway. `Hyprpay\Payments\Application\PaymentGatewayFactory::make(GatewayName, ?GatewayCredentials)` constructs the driver via a `match`, wiring the shared `HttpClient` and resolved credentials, then optionally wraps it in `EventDispatchingGateway` (when an `EventDispatcher` is supplied) and `LoggingGateway` (when a `LoggerInterface` is supplied). `makeByName(string)` maps the enum backing value via `GatewayName::tryFrom`.
 - **Normalized status:** every driver folds provider states onto `Hyprpay\Payments\Domain\Enum\PaymentStatus`: `Authorized`, `Captured`, `Pending`, `Declined`, `Voided`, `Reversed`, `Refunded`, `Failed`. `isSuccessful()` treats all but `Declined`/`Failed` as successful.
@@ -41,6 +41,7 @@ Legend: ● implemented · — inherited-as-unsupported (throws `UnsupportedOper
 | validatePayerAuth | ● | — | — | — | — | — | ● | — | — |
 | vaultInstrument | ● | — | — | ● | — | ● | ● | ● | ● |
 | chargeStoredCredential | ● | — | — | ● | ● | ● | ● | ● | ● |
+| chargeWallet | ● | — | — | — | — | — | — | — | — |
 | getTransaction | ● | ● | ● | ● | ● | ● | ● | ● | ● |
 | searchTransaction | ● | — | ● | — | — | — | ● | — | ● |
 | verifyWebhook | ● | ● | ● | ● | ● | ● | ● | ● | ● |
@@ -55,7 +56,7 @@ Non-interface extras: Paylink and Paytabs each expose `deleteToken(string): bool
 - **CheckoutOptions:** none. Configured directly from `CheckoutSessionRequest`.
 - **Client — `CybersourceClient`:** host from `GatewayCredentials::host`, URL `https://{host}{path}`. Auth is **CyberSource HTTP Signature (HMAC-SHA256)**. Signing string headers in strict order: `(request-target)`, `host`, `digest` (POST/PUT/PATCH only), `v-c-date`, `v-c-merchant-id`; digest = `SHA-256=base64(sha256(payload))`; shared secret base64-decoded before use as the HMAC key; `Signature: keyid="{apiKeyId}", algorithm="HmacSHA256", headers="...", signature="{base64}"`. Extra headers: `v-c-merchant-id`, `v-c-date` (RFC 7231), optional unsigned `v-c-idempotency-key`. `Accept: application/hal+json` on GET, `application/json` on POST. Non-2xx → `GatewayRequestException`.
 
-**Operations:** `createCheckoutSession`, `requestDccRate`, `charge`, `capture`, `refund`, `void`, `reverseAuthorization`, `enrollPayerAuth`, `validatePayerAuth`, `vaultInstrument`, `chargeStoredCredential`, `getTransaction`, `searchTransaction`, `verifyWebhook`, plus `confirmOrchestratedPayment` (UC v1 autoProcessing; offline RS256 JWT verification, no server round-trip).
+**Operations:** `createCheckoutSession`, `requestDccRate`, `charge`, `capture`, `refund`, `void`, `reverseAuthorization`, `enrollPayerAuth`, `validatePayerAuth`, `vaultInstrument`, `chargeStoredCredential`, `chargeWallet` (native Apple Pay / Google Pay; decrypted token → `tokenizedCard` transactionType 1, or encrypted token → `fluidData`; `paymentSolution` `001`/`012`), `getTransaction`, `searchTransaction`, `verifyWebhook`, plus `confirmOrchestratedPayment` (UC v1 autoProcessing; offline RS256 JWT verification, no server round-trip).
 
 **Concerns (`Concerns/`):**
 - `ParsesTransientToken` — decodes the *unsigned* UC transient-token / capture-context JWT (base64url payload only, not cryptographically verified); extracts `jti`, `content`/`data` claims, and Apple Pay/Google Pay wallet markers.

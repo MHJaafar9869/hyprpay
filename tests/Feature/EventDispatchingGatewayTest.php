@@ -11,8 +11,10 @@ use Hyprpay\Payments\Domain\Command\ReversalRequest;
 use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
 use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
+use Hyprpay\Payments\Domain\Command\WalletChargeRequest;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
+use Hyprpay\Payments\Domain\Enum\WalletType;
 use Hyprpay\Payments\Domain\Event\AuthorizationReversed;
 use Hyprpay\Payments\Domain\Event\CheckoutSessionCreated;
 use Hyprpay\Payments\Domain\Event\InstrumentVaulted;
@@ -21,6 +23,7 @@ use Hyprpay\Payments\Domain\Event\PaymentCharged;
 use Hyprpay\Payments\Domain\Event\PaymentRefunded;
 use Hyprpay\Payments\Domain\Event\PaymentVoided;
 use Hyprpay\Payments\Domain\Event\StoredCredentialCharged;
+use Hyprpay\Payments\Domain\Event\WalletCharged;
 use Hyprpay\Payments\Domain\Event\WebhookReceived;
 use Hyprpay\Payments\Domain\Exception\GatewayRequestException;
 use Hyprpay\Payments\Domain\Result\CheckoutSession;
@@ -29,6 +32,7 @@ use Hyprpay\Payments\Domain\Result\RefundResult;
 use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
 use Hyprpay\Payments\Domain\Result\VaultedInstrument;
 use Hyprpay\Payments\Domain\Result\WebhookEvent;
+use Hyprpay\Payments\Domain\ValueObject\EncryptedWalletToken;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 use Hyprpay\Payments\Infrastructure\Events\RecordingEventDispatcher;
@@ -79,6 +83,11 @@ function eventStubGateway(): AbstractPaymentGateway
         public function chargeStoredCredential(StoredCredentialChargeRequest $request): PaymentResult
         {
             return new PaymentResult(true, PaymentStatus::Captured, 'SC-1');
+        }
+
+        public function chargeWallet(WalletChargeRequest $request): PaymentResult
+        {
+            return new PaymentResult(true, PaymentStatus::Captured, 'WAL-1');
         }
 
         public function vaultInstrument(TokenizeInstrumentRequest $request): VaultedInstrument
@@ -182,6 +191,16 @@ it('dispatches AuthorizationReversed', function (): void {
 
     expect($events->last())->toBeInstanceOf(AuthorizationReversed::class)
         ->and($events->last()->result->status)->toBe(PaymentStatus::Reversed);
+});
+
+it('dispatches WalletCharged with the wallet type', function (): void {
+    [$gateway, $events] = eventGateway();
+
+    $gateway->chargeWallet(new WalletChargeRequest(token: new EncryptedWalletToken('{"data":"x"}'), wallet: WalletType::ApplePay, money: usd(), orderReference: 'ORD-1'));
+
+    expect($events->last())->toBeInstanceOf(WalletCharged::class)
+        ->and($events->last()->wallet)->toBe(WalletType::ApplePay)
+        ->and($events->last()->result->transactionId)->toBe('WAL-1');
 });
 
 it('dispatches StoredCredentialCharged with the instrument id', function (): void {

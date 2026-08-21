@@ -22,6 +22,7 @@ Operation → event map (as dispatched in `EventDispatchingGateway`):
 | `reverseAuthorization` | `AuthorizationReversed` | `name(), $request->transactionId, $request->orderReference, $request->money, $result` |
 | `vaultInstrument` | `InstrumentVaulted` | `name(), $request->customerReference, $result` |
 | `chargeStoredCredential` | `StoredCredentialCharged` | `name(), $request->paymentInstrumentId, $request->orderReference, $request->money, $result` |
+| `chargeWallet` | `WalletCharged` | `name(), $request->wallet, $request->orderReference, $request->money, $result` |
 | `verifyWebhook` | `WebhookReceived` | `name(), $event` |
 
 ## `PaymentEvent` (interface / marker)
@@ -138,6 +139,20 @@ __construct(
     public ?string $orderReference,        // merchant order ref for correlation
     public Money $money,                   // amount + currency charged
     public PaymentResult $result,          // normalized outcome
+)
+```
+
+## `WalletCharged`
+
+Fires after a digital-wallet charge (Apple Pay / Google Pay) completes.
+
+```php
+__construct(
+    public GatewayName $gateway,      // gateway that ran the charge
+    public WalletType $wallet,        // wallet whose token was charged
+    public ?string $orderReference,   // merchant order ref for correlation
+    public Money $money,              // amount + currency charged
+    public PaymentResult $result,     // normalized outcome
 )
 ```
 

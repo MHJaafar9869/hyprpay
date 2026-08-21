@@ -27,6 +27,7 @@ Every one of the 192 classes, interfaces, enums, and traits in `hyprpay/payments
 - **`TokenizeInstrumentRequest`** _class_ — Input DTO for tokenising (vaulting) a raw card into a reusable payment instrument.
 - **`ValidatePayerAuthRequest`** _class_ — Input DTO for validating a 3-D Secure authentication after a challenge (step-up).
 - **`VoidRequest`** _class_ — Input DTO for voiding an uncaptured transaction.
+- **`WalletChargeRequest`** _class_ — Input DTO for charging a native digital-wallet token (Apple Pay / Google Pay).
 
 ## `Domain\Contract`
 
@@ -41,6 +42,7 @@ Every one of the 192 classes, interfaces, enums, and traits in `hyprpay/payments
 - **`GatewayName`** _enum_ — Canonical identifier for each payment gateway the SDK can drive.
 - **`MandateCompletionType`** _enum_ — Orchestration mode requested from the CyberSource Unified Checkout v1 widget.
 - **`PaymentStatus`** _enum_ — Normalized, gateway-agnostic lifecycle status of a payment.
+- **`WalletType`** _enum_ — The digital wallet (Apple Pay / Google Pay) whose device-encrypted token is charged via `chargeWallet`.
 
 ## `Domain\Event`
 
@@ -53,6 +55,7 @@ Every one of the 192 classes, interfaces, enums, and traits in `hyprpay/payments
 - **`PaymentRefunded`** _class_ — Emitted after a refund of a settled payment completes.
 - **`PaymentVoided`** _class_ — Emitted after an authorized-but-uncaptured payment is voided.
 - **`StoredCredentialCharged`** _class_ — Emitted after a charge against a stored (vaulted) credential completes.
+- **`WalletCharged`** _class_ — Emitted after a digital-wallet charge (Apple Pay / Google Pay) completes.
 - **`WebhookReceived`** _class_ — Emitted after an inbound webhook is verified and parsed.
 
 ## `Domain\Exception`
@@ -87,8 +90,11 @@ Every one of the 192 classes, interfaces, enums, and traits in `hyprpay/payments
 - **`BillingAddress`** _class_ — Value object holding the payer's billing contact and postal details.
 - **`BrowserDeviceData`** _class_ — Value object holding the payer's browser device data for 3-D Secure authentication.
 - **`Customer`** _class_ — Value object identifying the customer behind a payment.
+- **`DecryptedWalletToken`** _class_ — Wallet token the merchant already decrypted into network-token fields (DPAN, cryptogram, expiry, optional ECI/card type).
+- **`EncryptedWalletToken`** _class_ — Wallet token forwarded to the gateway still encrypted, for the gateway to decrypt.
 - **`GatewayCredentials`** _class_ — Immutable DTO holding the per-gateway credentials and settings a driver needs.
 - **`Money`** _class_ — Immutable money value object holding an amount in minor units plus its currency.
+- **`WalletToken`** _interface_ — A digital-wallet payment token in one of two shapes (encrypted or decrypted) for a wallet charge.
 
 ## `Infrastructure`
 

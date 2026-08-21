@@ -15,6 +15,7 @@ use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
 use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\ValidatePayerAuthRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
+use Hyprpay\Payments\Domain\Command\WalletChargeRequest;
 use Hyprpay\Payments\Domain\Contract\PaymentGatewayInterface;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Exception\UnsupportedOperationException;
@@ -201,6 +202,19 @@ abstract class AbstractPaymentGateway implements PaymentGatewayInterface
     public function chargeStoredCredential(StoredCredentialChargeRequest $request): PaymentResult
     {
         throw UnsupportedOperationException::forOperation($this->name(), 'chargeStoredCredential');
+    }
+
+    /**
+     * Charge a digital-wallet payment token (Apple Pay / Google Pay); unsupported unless overridden.
+     *
+     * @param  WalletChargeRequest  $request  The wallet charge details (encrypted token, wallet type, amount, context).
+     * @return PaymentResult The normalized outcome of the charge.
+     *
+     * @throws UnsupportedOperationException Always, unless a concrete gateway overrides this.
+     */
+    public function chargeWallet(WalletChargeRequest $request): PaymentResult
+    {
+        throw UnsupportedOperationException::forOperation($this->name(), 'chargeWallet');
     }
 
     /**

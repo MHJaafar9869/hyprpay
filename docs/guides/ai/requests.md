@@ -71,6 +71,22 @@ Method:
 | `$deviceFingerprintId` | `?string` | `null` | Device fingerprint session id for fraud screening |
 | `$useRawFingerprintSessionId` | `bool` | `false` | When true, use the fingerprint session id exactly as sent |
 
+### WalletChargeRequest
+`Hyprpay\Payments\Domain\Command\WalletChargeRequest` — charges a native digital-wallet token (Apple Pay / Google Pay). The token is supplied as a `WalletToken` — already-decrypted network-token fields (canonical) or an encrypted blob the gateway decrypts — and the SDK never decrypts it or handles the cleartext PAN.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$token` | `WalletToken` | — | The wallet token: `DecryptedWalletToken` (DPAN, cryptogram, expiry, optional ECI/card type the merchant decrypted — canonical) or `EncryptedWalletToken` (raw device-encrypted token the gateway decrypts) |
+| `$wallet` | `WalletType` | — | Which wallet produced the token (selects the gateway's payment-solution mapping) |
+| `$money` | `Money` | — | Amount and currency to charge |
+| `$capture` | `bool` | `true` | Capture immediately (true) or authorise only (false) |
+| `$orderReference` | `?string` | `null` | Merchant order/reference for reconciliation |
+| `$billTo` | `?BillingAddress` | `null` | Billing address for the payer |
+| `$idempotencyKey` | `?string` | `null` | Idempotency key; defaults to the order reference when omitted |
+| `$dcc` | `?DccQuote` | `null` | DCC quote to bill in the cardholder's currency |
+| `$deviceFingerprintId` | `?string` | `null` | Device fingerprint session id for fraud screening |
+| `$useRawFingerprintSessionId` | `bool` | `false` | When true, use the fingerprint session id exactly as sent |
+
 ### TokenizeInstrumentRequest
 `Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest` — tokenises (vaults) a card into a reusable payment instrument, later charged via `StoredCredentialChargeRequest`. Supply either the raw card fields **or** a `$transientToken` (a browser-tokenised nonce such as Authorize.Net Accept.js opaque data) to vault without the PAN touching the server.
 

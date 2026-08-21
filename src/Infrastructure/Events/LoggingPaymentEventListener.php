@@ -13,6 +13,7 @@ use Hyprpay\Payments\Domain\Event\PaymentEvent;
 use Hyprpay\Payments\Domain\Event\PaymentRefunded;
 use Hyprpay\Payments\Domain\Event\PaymentVoided;
 use Hyprpay\Payments\Domain\Event\StoredCredentialCharged;
+use Hyprpay\Payments\Domain\Event\WalletCharged;
 use Hyprpay\Payments\Domain\Event\WebhookReceived;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
 use Hyprpay\Payments\Infrastructure\Http\LoggingHttpClient;
@@ -61,6 +62,7 @@ final readonly class LoggingPaymentEventListener
             $event instanceof AuthorizationReversed => ['authorization' => $event->transactionId, 'order' => $event->orderReference, ...$this->outcome($event->result)],
             $event instanceof PaymentRefunded => ['transaction' => $event->transactionId, 'order' => $event->orderReference, 'refund' => $event->result->refundId, 'status' => $event->result->status->value, 'success' => $event->result->success],
             $event instanceof StoredCredentialCharged => ['instrument' => $event->paymentInstrumentId, 'order' => $event->orderReference, ...$this->outcome($event->result)],
+            $event instanceof WalletCharged => ['wallet' => $event->wallet->value, 'order' => $event->orderReference, ...$this->outcome($event->result)],
             $event instanceof InstrumentVaulted => ['customer' => $event->customerReference, 'instrument' => $event->result->paymentInstrumentId, 'success' => $event->result->success],
             $event instanceof WebhookReceived => ['transaction' => $event->webhook->transactionId, 'verified' => $event->webhook->verified, 'status' => $event->webhook->status?->value, 'type' => $event->webhook->eventType],
             default => [],
