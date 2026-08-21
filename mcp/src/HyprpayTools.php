@@ -61,6 +61,30 @@ final class HyprpayTools
                 'title' => 'Orchestrated result JWT envelope varies',
                 'detail' => 'The completed-payment result JWT nests its claims under a details, data, or content envelope (or flat at the top level) across Unified Checkout client versions. VerifiesResultJwt resolves each claim across all of them — do not assume a single envelope.',
             ],
+            [
+                'title' => 'Idempotency is short-lived — reconcile before a delayed retry',
+                'detail' => 'The v-c-idempotency-id header (sent by CybersourceClient on every write) only deduplicates within CyberSource\'s bounded retention window, so a retry spaced hours or days after the first attempt — a scheduled installment or a subscription rebill — is not caught by the key. Before such a retry, reconcile via Transaction Search: findSuccessfulTransactionByReference() (POST /tss/v2/searches, querying clientReferenceInformation.code) returns any prior AUTHORIZED/CAPTURED charge on the same reference so you adopt it instead of charging twice. TSS is eventually consistent (a lag of seconds to minutes), so it is reliable a day later but not for an immediate retry — send a stable per-attempt reference on the original charge so it stays findable.',
+            ],
+            [
+                'title' => 'PARTIAL_AUTHORIZED holds funds — reverse it, never treat it as paid',
+                'detail' => 'A low-balance or prepaid card can approve less than the requested amount (status PARTIAL_AUTHORIZED). It holds funds but does not settle the charge, and the SDK\'s normalized PaymentStatus flattens it to Authorized — so a naive success check strands a hold on the cardholder\'s card. Detect the raw status with CybersourceTransactionStatus::isPartialAuthorization(), call reverseAuthorization() to release the hold, then treat the charge as declined.',
+            ],
+            [
+                'title' => 'Classify a decline before retrying (reason + merchantAdvice.code)',
+                'detail' => 'Retrying a permanently-declined credential (expired/stolen/invalid account; Mastercard merchant-advice codes 01/03/04/21/99, Visa 1 = ISSUER_WILL_NEVER_APPROVE) never succeeds and can draw processor penalties. Read both errorInformation.reason and processorInformation.merchantAdvice.code — DeclineClassifier::classify()/fromResult() does this and returns a DeclineOutcome flagging isPermanent vs isRetryable(). Retry only transient declines (insufficient funds, issuer unavailable), and no more than 15 times over 30 days per the card-network mandates.',
+            ],
+            [
+                'title' => 'Review and pending states are neither paid nor failed',
+                'detail' => 'AUTHORIZED_PENDING_REVIEW, PENDING_REVIEW, and PENDING_AUTHENTICATION are held for a Decision Manager review or payer authentication — not a settlement and not a terminal decline. Do not mark the order paid or failed; use CybersourceTransactionStatus::isReviewOrIncomplete() to detect them, then poll getTransaction() or await the webhook. The normalized PaymentStatus reads AUTHORIZED_PENDING_REVIEW as Authorized and the pending states as Pending, so the raw status is what distinguishes a held transaction from a settled one.',
+            ],
+            [
+                'title' => 'Merchant-initiated charges need the original cardholder transaction id',
+                'detail' => 'A recurring or installment charge via chargeStoredCredential() is a merchant-initiated transaction (MIT) that must reference the network transaction id of the initial cardholder-initiated charge (the CIT that established the credential-on-file). The first charge in the series is that CIT — capture its transaction id and thread it into the subsequent StoredCredentialChargeRequests. Omitting it leads issuers to decline or downgrade the MIT.',
+            ],
+            [
+                'title' => 'Guard concurrent scheduled charges with an atomic claim',
+                'detail' => 'When a scheduler and a manual run (or two app servers) can both fire the same due charge, claim the work with a database compare-and-swap before calling the gateway and never hold a lock across the network round-trip. Combine the claim with the v-c-idempotency-id key and a findSuccessfulTransactionByReference() reconcile for exactly-once charging. The SDK provides the gateway primitives; the claim and the scheduling live in your app.',
+            ],
         ],
         'paymob' => [
             [

@@ -376,6 +376,53 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
     }
 
     /**
+     * Finds the most recent settled transaction carrying a merchant reference, to reconcile before
+     * retrying a charge whose response was lost.
+     *
+     * Searches TSS by `clientReferenceInformation.code` (newest first) and returns the first summary
+     * whose status is authorized or captured — so a charge that actually settled but whose response
+     * never arrived is adopted rather than repeated. A partial approval (a stranded hold to reverse) and
+     * a still-pending transaction are deliberately not adopted. TSS is eventually consistent, so this
+     * reconciles a retry spaced minutes-or-more after the lost attempt, not an immediate one.
+     *
+     * @param  string  $reference  The merchant reference the original charge was sent with.
+     */
+    public function findSuccessfulTransactionByReference(string $reference): ?TransactionSnapshot
+    {
+        $response = $this->client->post(
+            CybersourceEndpoint::TransactionSearch->path(),
+            SearchPayload::build(sprintf('clientReferenceInformation.code:"%s"', $reference), 20),
+            'reconcile transaction by reference',
+        );
+
+        $summaries = Value::array(data_get($response, '_embedded.transactionSummaries'));
+
+        foreach ($summaries as $summary) {
+            $summary = Value::array($summary);
+
+            if ($this->isSettledSummary($summary)) {
+                return $this->toSnapshot($summary);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Whether a TSS summary represents a settled charge worth adopting on reconcile — an authorized or
+     * captured transaction. Excludes partial approvals (a hold to reverse) and pending transactions.
+     *
+     * @param  array<string, mixed>  $summary  A single TSS transaction summary.
+     */
+    private function isSettledSummary(array $summary): bool
+    {
+        return in_array(strtoupper(Value::string($this->statusString($summary))), [
+            CybersourceTransactionStatus::Authorized->value,
+            CybersourceTransactionStatus::Captured->value,
+        ], true);
+    }
+
+    /**
      * Verifies and parses an inbound CyberSource webhook into a WebhookEvent.
      *
      * Checks the signature against the configured webhook secret, then decodes the

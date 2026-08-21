@@ -23,7 +23,7 @@ it('sends the CyberSource idempotency header from an explicit key', function ():
         idempotencyKey: 'idem-123',
     ));
 
-    expect($http->lastRequest()?->header('v-c-idempotency-key'))->toBe('idem-123');
+    expect($http->lastRequest()?->header('v-c-idempotency-id'))->toBe('idem-123');
 });
 
 it('defaults the CyberSource idempotency key to the order reference', function (): void {
@@ -35,7 +35,7 @@ it('defaults the CyberSource idempotency key to the order reference', function (
         orderReference: 'ORD-9',
     ));
 
-    expect($http->lastRequest()?->header('v-c-idempotency-key'))->toBe('ORD-9');
+    expect($http->lastRequest()?->header('v-c-idempotency-id'))->toBe('ORD-9');
 });
 
 it('omits the CyberSource idempotency header when no key or order reference is given', function (): void {
@@ -43,7 +43,7 @@ it('omits the CyberSource idempotency header when no key or order reference is g
 
     cybersourceWith($http)->charge(new ChargeRequest(transientToken: 'tok', money: Money::minor(1000, 'USD')));
 
-    expect($http->lastRequest()?->header('v-c-idempotency-key'))->toBeNull();
+    expect($http->lastRequest()?->header('v-c-idempotency-id'))->toBeNull();
 });
 
 it('builds an identical CyberSource charge body on repeated calls', function (): void {

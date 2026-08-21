@@ -486,7 +486,7 @@ composer require hyprpay/payments</code></pre></div>
 
     <p class="start-foot reveal">
       Retries are safe by construction: bodies are deterministic and every write carries an
-      idempotency key — routed to <code>v-c-idempotency-key</code>, <code>merchantRefNum</code>,
+      idempotency key — routed to <code>v-c-idempotency-id</code>, <code>merchantRefNum</code>,
       <code>merchant_order_id</code>, or an <code>Idempotency-Key</code> / <code>PayPal-Request-Id</code>
       header, per gateway.
     </p>

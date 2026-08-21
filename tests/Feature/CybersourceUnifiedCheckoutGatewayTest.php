@@ -303,6 +303,44 @@ it('returns null when a search finds no transactions', function (): void {
     expect($gateway->searchTransaction('clientReferenceInformation.code:none'))->toBeNull();
 });
 
+it('reconciles a reference to the first settled transaction, searching by client reference code', function (): void {
+    [$gateway, $http] = gatewayWithFakeHttp();
+    $http->queueJson(['_embedded' => ['transactionSummaries' => [
+        ['id' => 'pending1', 'applicationInformation' => ['status' => 'PENDING']],
+        ['id' => 'auth1', 'applicationInformation' => ['status' => 'AUTHORIZED']],
+    ]]]);
+
+    $snapshot = $gateway->findSuccessfulTransactionByReference('INST-9');
+    $request = $http->lastRequest();
+
+    expect($snapshot?->transactionId)->toBe('auth1')
+        ->and($snapshot?->status)->toBe(PaymentStatus::Authorized)
+        ->and($request?->method)->toBe('POST')
+        ->and(json_decode((string) $request?->body, true)['query'])->toContain('INST-9');
+});
+
+it('does not adopt a partial authorization when reconciling', function (): void {
+    [$gateway, $http] = gatewayWithFakeHttp();
+    $http->queueJson(['_embedded' => ['transactionSummaries' => [
+        ['id' => 'partial1', 'applicationInformation' => ['status' => 'PARTIAL_AUTHORIZED']],
+        ['id' => 'cap1', 'applicationInformation' => ['status' => 'CAPTURED']],
+    ]]]);
+
+    $snapshot = $gateway->findSuccessfulTransactionByReference('INST-9');
+
+    expect($snapshot?->transactionId)->toBe('cap1')
+        ->and($snapshot?->status)->toBe(PaymentStatus::Captured);
+});
+
+it('returns null when reconciling finds only unsettled transactions', function (): void {
+    [$gateway, $http] = gatewayWithFakeHttp();
+    $http->queueJson(['_embedded' => ['transactionSummaries' => [
+        ['id' => 'd1', 'applicationInformation' => ['status' => 'DECLINED']],
+    ]]]);
+
+    expect($gateway->findSuccessfulTransactionByReference('INST-9'))->toBeNull();
+});
+
 it('throws a GatewayRequestException on a non-2xx response', function (): void {
     [$gateway, $http] = gatewayWithFakeHttp();
     $http->queueJson(['reason' => 'INVALID_DATA', 'message' => 'bad request'], 400);

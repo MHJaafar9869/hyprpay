@@ -209,6 +209,13 @@ final readonly class LoggingGateway implements PaymentGatewayInterface
         ]));
     }
 
+    public function findSuccessfulTransactionByReference(string $reference): ?TransactionSnapshot
+    {
+        return $this->logTimedAction('findSuccessfulTransactionByReference', fn (): ?TransactionSnapshot => $this->inner->findSuccessfulTransactionByReference($reference), $this->context([
+            'reference' => $reference,
+        ]));
+    }
+
     /**
      * @param  array<string, string|array<int, string>>  $headers
      */

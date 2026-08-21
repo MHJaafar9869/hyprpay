@@ -152,7 +152,7 @@ Retries are safe. Every write is idempotent through two guarantees:
 
 | Gateway | Mechanism |
 | --- | --- |
-| CyberSource UC | `v-c-idempotency-key` header |
+| CyberSource UC | `v-c-idempotency-id` header |
 | Fawry | `merchantRefNum` (= your order reference) |
 | Paymob | `merchant_order_id` (= your order reference) |
 | PayLink | `Idempotency-Key` header |
