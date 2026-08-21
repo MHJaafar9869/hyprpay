@@ -49,6 +49,14 @@ Methods:
 Methods:
 - `isMerchantInitiated(): bool` — true for merchant-initiated (MIT), false for customer-initiated (CIT).
 
+## WalletType
+`Hyprpay\Payments\Domain\Enum\WalletType` — the digital wallet whose device-encrypted token is charged via `chargeWallet`. The gateway driver maps each wallet to its provider-specific payment-solution id.
+
+| case | backing value |
+|---|---|
+| `ApplePay` | `apple_pay` |
+| `GooglePay` | `google_pay` |
+
 ## MandateCompletionType
 `Hyprpay\Payments\Domain\Enum\MandateCompletionType` — orchestration mode requested from the CyberSource Unified Checkout v1 widget. Setting a `completeMandate` switches the widget from the manual transient-token flow to the orchestrated (autoProcessing) flow. The type selects the financial outcome.
 

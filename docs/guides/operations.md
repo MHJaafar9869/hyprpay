@@ -95,7 +95,7 @@ UUID`, inject the tag, and keep the UUID to send to your server:
 On the request, send **only the `<session id>` part** — *not* the merchant-prefixed value
 from the tag. Pass it as `deviceFingerprintId`; it maps to
 `deviceInformation.fingerprintSessionId`. It is accepted on `charge`,
-`chargeStoredCredential`, and `enrollPayerAuth`:
+`chargeStoredCredential`, `chargeWallet`, and `enrollPayerAuth`:
 
 ```php
 use Hyprpay\Payments\Domain\Command\ChargeRequest;
@@ -147,8 +147,8 @@ Retries are safe. Every write is idempotent through two guarantees:
 1. **Deterministic request bodies** — the SDK never injects `uniqid()`, `time()`, or
    `rand()`, so the same inputs always produce a byte-for-byte identical request.
 2. **An idempotency key on every write** — `charge`, `capture`, `refund`, `void`,
-   `reverseAuthorization`, and `chargeStoredCredential` carry an `idempotencyKey`, sent
-   to the gateway's native deduplication mechanism:
+   `reverseAuthorization`, `chargeStoredCredential`, and `chargeWallet` carry an
+   `idempotencyKey`, sent to the gateway's native deduplication mechanism:
 
 | Gateway | Mechanism |
 | --- | --- |

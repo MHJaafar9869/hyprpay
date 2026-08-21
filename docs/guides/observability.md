@@ -65,6 +65,7 @@ The events and the payload each carries:
 | `PaymentVoided` | `transactionId`, `orderReference`, `result` |
 | `AuthorizationReversed` | `transactionId`, `orderReference`, `money`, `result` |
 | `StoredCredentialCharged` | `paymentInstrumentId`, `orderReference`, `money`, `result` |
+| `WalletCharged` | `wallet`, `orderReference`, `money`, `result` |
 | `InstrumentVaulted` | `customerReference`, `result` |
 | `WebhookReceived` | `webhook` |
 

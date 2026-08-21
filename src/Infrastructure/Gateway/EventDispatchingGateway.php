@@ -15,6 +15,7 @@ use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
 use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\ValidatePayerAuthRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
+use Hyprpay\Payments\Domain\Command\WalletChargeRequest;
 use Hyprpay\Payments\Domain\Contract\EventDispatcher;
 use Hyprpay\Payments\Domain\Contract\PaymentGatewayInterface;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
@@ -27,6 +28,7 @@ use Hyprpay\Payments\Domain\Event\PaymentEvent;
 use Hyprpay\Payments\Domain\Event\PaymentRefunded;
 use Hyprpay\Payments\Domain\Event\PaymentVoided;
 use Hyprpay\Payments\Domain\Event\StoredCredentialCharged;
+use Hyprpay\Payments\Domain\Event\WalletCharged;
 use Hyprpay\Payments\Domain\Event\WebhookReceived;
 use Hyprpay\Payments\Domain\Result\CheckoutSession;
 use Hyprpay\Payments\Domain\Result\DccQuote;
@@ -154,6 +156,15 @@ final readonly class EventDispatchingGateway implements PaymentGatewayInterface
         $result = $this->inner->chargeStoredCredential($request);
 
         $this->events->dispatch(new StoredCredentialCharged($this->name(), $request->paymentInstrumentId, $request->orderReference, $request->money, $result));
+
+        return $result;
+    }
+
+    public function chargeWallet(WalletChargeRequest $request): PaymentResult
+    {
+        $result = $this->inner->chargeWallet($request);
+
+        $this->events->dispatch(new WalletCharged($this->name(), $request->wallet, $request->orderReference, $request->money, $result));
 
         return $result;
     }

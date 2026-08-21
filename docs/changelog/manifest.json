@@ -1,6 +1,12 @@
 {
   "releases": [
     {
+      "version": "0.7.0",
+      "date": "2026-08-21",
+      "title": "Digital-wallet charges (Apple Pay / Google Pay)",
+      "file": "v0.7.0.md"
+    },
+    {
       "version": "0.6.3",
       "date": "2026-08-19",
       "title": "Developer MCP: per-gateway integration gotchas",

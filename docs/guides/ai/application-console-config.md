@@ -48,6 +48,7 @@ After the inner driver returns, dispatches the matching `PaymentEvent`:
 | `reverseAuthorization` | `AuthorizationReversed` |
 | `vaultInstrument` | `InstrumentVaulted` |
 | `chargeStoredCredential` | `StoredCredentialCharged` |
+| `chargeWallet` | `WalletCharged` |
 | `verifyWebhook` | `WebhookReceived` |
 
 Events fire on **completion regardless of success** (the result's status carries the outcome, so listeners see declines). If the inner call throws, the exception propagates and **no** event is dispatched. Pass-through / no event: `requestDccRate`, `enrollPayerAuth`, `validatePayerAuth`, `getTransaction`, `searchTransaction`.

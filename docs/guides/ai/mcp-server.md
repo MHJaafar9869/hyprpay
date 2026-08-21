@@ -30,7 +30,7 @@ is **read-only** — it helps you *write* an integration; it never calls a gatew
 | `search` | Find types by name or one-line purpose across the package. |
 
 The support matrix is derived from `PaymentGatewayFactory` and `AbstractPaymentGateway`, so it is
-always exact (CyberSource implements all 14 operations; Fawry implements 6). `get_code_template`
+always exact (CyberSource implements all 15 operations; Fawry implements 6). `get_code_template`
 refuses an unsupported gateway/operation pair and names the gateways that do support it.
 
 ### Setup

@@ -15,6 +15,7 @@ use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
 use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\ValidatePayerAuthRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
+use Hyprpay\Payments\Domain\Command\WalletChargeRequest;
 use Hyprpay\Payments\Domain\Contract\PaymentGatewayInterface;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Result\CheckoutSession;
@@ -178,6 +179,16 @@ final readonly class LoggingGateway implements PaymentGatewayInterface
     {
         return $this->logTimedAction('chargeStoredCredential', fn (): PaymentResult => $this->inner->chargeStoredCredential($request), $this->context([
             'payment_instrument_id' => $request->paymentInstrumentId,
+            'order_reference' => $request->orderReference,
+            'amount' => $request->money->toDecimalString(),
+            'currency' => $request->money->currency,
+        ]));
+    }
+
+    public function chargeWallet(WalletChargeRequest $request): PaymentResult
+    {
+        return $this->logTimedAction('chargeWallet', fn (): PaymentResult => $this->inner->chargeWallet($request), $this->context([
+            'wallet' => $request->wallet->value,
             'order_reference' => $request->orderReference,
             'amount' => $request->money->toDecimalString(),
             'currency' => $request->money->currency,

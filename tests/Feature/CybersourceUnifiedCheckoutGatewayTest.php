@@ -14,8 +14,10 @@ use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
 use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\ValidatePayerAuthRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
+use Hyprpay\Payments\Domain\Command\WalletChargeRequest;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
+use Hyprpay\Payments\Domain\Enum\WalletType;
 use Hyprpay\Payments\Domain\Exception\GatewayRequestException;
 use Hyprpay\Payments\Domain\Exception\UnsupportedOperationException;
 use Hyprpay\Payments\Domain\Result\DccQuote;
@@ -184,6 +186,42 @@ it('charges a stored credential as a merchant-initiated transaction', function (
     expect($result->success)->toBeTrue()
         ->and($result->transactionId)->toBe('mit_1')
         ->and(recordedBody($http)['paymentInformation']['paymentInstrument']['id'])->toBe('pi_1');
+});
+
+it('charges an apple pay wallet token as fluidData for CyberSource to decrypt', function (): void {
+    [$gateway, $http] = gatewayWithFakeHttp();
+    $http->queueJson(['id' => 'ap_1', 'status' => 'AUTHORIZED']);
+
+    $result = $gateway->chargeWallet(new WalletChargeRequest(
+        encryptedToken: '{"data":"encrypted-blob"}',
+        wallet: WalletType::ApplePay,
+        money: Money::minor(2599, 'USD'),
+    ));
+
+    $fluidData = recordedBody($http)['paymentInformation']['fluidData'];
+
+    expect($result->success)->toBeTrue()
+        ->and($result->status)->toBe(PaymentStatus::Authorized)
+        ->and($result->transactionId)->toBe('ap_1')
+        ->and($http->lastRequest()?->url)->toBe('https://apitest.cybersource.com/pts/v2/payments')
+        ->and(recordedBody($http)['processingInformation']['paymentSolution'])->toBe('001')
+        ->and($fluidData['descriptor'])->toBe(base64_encode('FID=COMMON.APPLE.INAPP.PAYMENT'))
+        ->and($fluidData['encoding'])->toBe('Base64')
+        ->and($fluidData['value'])->toBe(base64_encode('{"data":"encrypted-blob"}'));
+});
+
+it('maps a google pay wallet token to payment solution 012', function (): void {
+    [$gateway, $http] = gatewayWithFakeHttp();
+    $http->queueJson(['id' => 'gp_1', 'status' => 'AUTHORIZED']);
+
+    $gateway->chargeWallet(new WalletChargeRequest(
+        encryptedToken: 'google-token',
+        wallet: WalletType::GooglePay,
+        money: Money::minor(500, 'USD'),
+    ));
+
+    expect(recordedBody($http)['processingInformation']['paymentSolution'])->toBe('012')
+        ->and(recordedBody($http)['paymentInformation']['fluidData']['descriptor'])->toBe(base64_encode('FID=COMMON.GOOGLE.INAPP.PAYMENT'));
 });
 
 it('fetches a transaction via a GET request without a digest header', function (): void {

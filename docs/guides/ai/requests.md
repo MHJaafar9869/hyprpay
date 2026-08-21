@@ -71,6 +71,22 @@ Method:
 | `$deviceFingerprintId` | `?string` | `null` | Device fingerprint session id for fraud screening |
 | `$useRawFingerprintSessionId` | `bool` | `false` | When true, use the fingerprint session id exactly as sent |
 
+### WalletChargeRequest
+`Hyprpay\Payments\Domain\Command\WalletChargeRequest` — charges a native digital-wallet token (Apple Pay / Google Pay); the encrypted token is forwarded to the gateway to decrypt, so the SDK never handles the cleartext PAN.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$encryptedToken` | `string` | — | The wallet's device-encrypted token as delivered client-side (Apple Pay: `paymentData` serialized to JSON) |
+| `$wallet` | `WalletType` | — | Which wallet produced the token (selects the gateway's payment-solution mapping) |
+| `$money` | `Money` | — | Amount and currency to charge |
+| `$capture` | `bool` | `true` | Capture immediately (true) or authorise only (false) |
+| `$orderReference` | `?string` | `null` | Merchant order/reference for reconciliation |
+| `$billTo` | `?BillingAddress` | `null` | Billing address for the payer |
+| `$idempotencyKey` | `?string` | `null` | Idempotency key; defaults to the order reference when omitted |
+| `$dcc` | `?DccQuote` | `null` | DCC quote to bill in the cardholder's currency |
+| `$deviceFingerprintId` | `?string` | `null` | Device fingerprint session id for fraud screening |
+| `$useRawFingerprintSessionId` | `bool` | `false` | When true, use the fingerprint session id exactly as sent |
+
 ### TokenizeInstrumentRequest
 `Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest` — tokenises (vaults) a card into a reusable payment instrument, later charged via `StoredCredentialChargeRequest`. Supply either the raw card fields **or** a `$transientToken` (a browser-tokenised nonce such as Authorize.Net Accept.js opaque data) to vault without the PAN touching the server.
 
