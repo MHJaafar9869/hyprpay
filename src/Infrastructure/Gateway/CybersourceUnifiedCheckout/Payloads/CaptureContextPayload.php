@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads;
 
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
+use Hyprpay\Payments\Domain\Enum\CybersourcePaymentType;
 use Hyprpay\Payments\Domain\Enum\MandateCompletionType;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
 
@@ -53,7 +54,10 @@ final class CaptureContextPayload
             'clientVersion' => $request->clientVersion,
             'targetOrigins' => $request->targetOrigins,
             'allowedCardNetworks' => $request->allowedCardNetworks,
-            'allowedPaymentTypes' => $request->allowedPaymentTypes,
+            'allowedPaymentTypes' => array_values(array_map(
+                static fn (CybersourcePaymentType $type): string => $type->value,
+                $request->allowedPaymentTypes,
+            )),
             'country' => $request->country ?? $credentials->country,
             'locale' => $request->locale ?? $credentials->locale,
             'captureMandate' => [
