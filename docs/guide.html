@@ -109,7 +109,7 @@
     <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'EGP'</span>),
     <span class="a">targetOrigins:</span> [<span class="s">'https://shop.test'</span>],       <span class="c">// origin(s) that embed the widget</span>
     <span class="a">orderReference:</span> <span class="s">'ORDER-123'</span>,                <span class="c">// reconcile — and default the charge idempotency key — off this</span>
-    <span class="a">allowedPaymentTypes:</span> [<span class="s">'PANENTRY'</span>, <span class="s">'GOOGLEPAY'</span>], <span class="c">// cards + wallets (defaults to ['PANENTRY'])</span>
+    <span class="a">allowedPaymentTypes:</span> [<span class="t">CybersourcePaymentType</span>::<span class="cn">PanEntry</span>, <span class="t">CybersourcePaymentType</span>::<span class="cn">GooglePay</span>], <span class="c">// cards + wallets (defaults to [PanEntry])</span>
 ));
 
 <span class="c">// load the widget script from $session->clientLibrary (pin it with</span>

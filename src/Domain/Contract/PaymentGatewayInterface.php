@@ -185,6 +185,26 @@ interface PaymentGatewayInterface
     public function findSuccessfulTransactionByReference(string $reference): ?TransactionSnapshot;
 
     /**
+     * List every transaction matching a gateway-specific query, newest first.
+     *
+     * Unlike searchTransaction(), which returns only the first match, this returns the whole result
+     * set — use it to render a transaction's full history.
+     *
+     * @param  string  $query  The search query understood by the gateway.
+     * @return list<TransactionSnapshot> Every matching transaction as a snapshot, newest first; empty when none match.
+     */
+    public function listTransactions(string $query): array;
+
+    /**
+     * List the full history of a payment by its merchant reference, newest first — every authorization,
+     * capture, reversal, refund, and retry attempt sent under that reference.
+     *
+     * @param  string  $reference  The merchant reference the transactions were sent with.
+     * @return list<TransactionSnapshot> Every matching transaction as a snapshot, newest first; empty when none match.
+     */
+    public function listTransactionsByReference(string $reference): array;
+
+    /**
      * Verify an incoming webhook's authenticity and parse it into an event.
      *
      * @param  string  $rawBody  The raw, unparsed webhook request body used for signature verification.

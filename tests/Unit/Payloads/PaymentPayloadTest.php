@@ -8,6 +8,7 @@ use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
 use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
 use Hyprpay\Payments\Domain\Enum\CredentialInitiator;
+use Hyprpay\Payments\Domain\Enum\CybersourcePaymentType;
 use Hyprpay\Payments\Domain\Enum\MandateCompletionType;
 use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
 use Hyprpay\Payments\Domain\ValueObject\Money;
@@ -22,7 +23,7 @@ it('builds a capture-context payload with amount, mandate and optional billTo', 
         money: Money::minor(10000, 'EGP'),
         targetOrigins: ['https://shop.test'],
         allowedCardNetworks: ['VISA', 'MASTERCARD'],
-        allowedPaymentTypes: ['PANENTRY', 'APPLEPAY'],
+        allowedPaymentTypes: [CybersourcePaymentType::PanEntry, CybersourcePaymentType::ApplePay],
         billTo: new BillingAddress(firstName: 'Ada', country: 'EG'),
     );
 

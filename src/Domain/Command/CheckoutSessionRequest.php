@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Hyprpay\Payments\Domain\Command;
 
+use Hyprpay\Payments\Domain\Enum\CybersourcePaymentType;
 use Hyprpay\Payments\Domain\Enum\MandateCompletionType;
 use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
 use Hyprpay\Payments\Domain\ValueObject\Customer;
@@ -25,7 +26,7 @@ final readonly class CheckoutSessionRequest
      * @param  Money  $money  Amount and currency for the checkout session
      * @param  array<int, string>  $targetOrigins  UC: scheme + host of the page embedding the widget
      * @param  array<int, string>  $allowedCardNetworks  UC: card brands to accept (e.g. VISA, MASTERCARD)
-     * @param  array<int, string>  $allowedPaymentTypes  UC: payment types (e.g. PANENTRY, GOOGLEPAY, APPLEPAY)
+     * @param  array<int, CybersourcePaymentType>  $allowedPaymentTypes  UC: payment types the widget may offer (e.g. PanEntry, GooglePay, ApplePay)
      * @param  string|null  $country  Optional two-letter ISO country code for the transaction
      * @param  string|null  $locale  Optional locale for the widget/hosted UI (e.g. en_US, en-gb)
      * @param  string|null  $orderReference  Merchant order/reference number used for reconciliation
@@ -46,7 +47,7 @@ final readonly class CheckoutSessionRequest
         public Money $money,
         public array $targetOrigins = [],
         public array $allowedCardNetworks = ['VISA', 'MASTERCARD'],
-        public array $allowedPaymentTypes = ['PANENTRY'],
+        public array $allowedPaymentTypes = [CybersourcePaymentType::PanEntry],
         public ?string $country = null,
         public ?string $locale = null,
         public ?string $orderReference = null,

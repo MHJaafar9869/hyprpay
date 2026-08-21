@@ -12,7 +12,7 @@ Reference for every input DTO under `Hyprpay\Payments\Domain\Command`, plus the 
 | `$money` | `Money` | — | Amount and currency for the session |
 | `$targetOrigins` | `array<int,string>` | `[]` | UC: scheme + host of the page embedding the widget |
 | `$allowedCardNetworks` | `array<int,string>` | `['VISA','MASTERCARD']` | UC: card brands to accept |
-| `$allowedPaymentTypes` | `array<int,string>` | `['PANENTRY']` | UC: payment types (e.g. PANENTRY, GOOGLEPAY, APPLEPAY) |
+| `$allowedPaymentTypes` | `array<int, CybersourcePaymentType>` | `[CybersourcePaymentType::PanEntry]` | UC: payment types the widget may offer (`PanEntry`, `GooglePay`, `ApplePay`, `ClickToPay`, `ECheck`, `Paze`) |
 | `$country` | `?string` | `null` | Two-letter ISO country code |
 | `$locale` | `?string` | `null` | Locale for the widget/hosted UI (e.g. en_US) |
 | `$orderReference` | `?string` | `null` | Merchant order/reference for reconciliation |

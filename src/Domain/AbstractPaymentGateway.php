@@ -257,6 +257,32 @@ abstract class AbstractPaymentGateway implements PaymentGatewayInterface
     }
 
     /**
+     * List every transaction matching a gateway-specific query; unsupported unless overridden.
+     *
+     * @param  string  $query  The search query understood by the gateway.
+     * @return list<TransactionSnapshot> Every matching transaction as a snapshot, newest first.
+     *
+     * @throws UnsupportedOperationException Always, unless a concrete gateway overrides this.
+     */
+    public function listTransactions(string $query): array
+    {
+        throw UnsupportedOperationException::forOperation($this->name(), 'listTransactions');
+    }
+
+    /**
+     * List the full history of a payment by its merchant reference; unsupported unless overridden.
+     *
+     * @param  string  $reference  The merchant reference the transactions were sent with.
+     * @return list<TransactionSnapshot> Every matching transaction as a snapshot, newest first.
+     *
+     * @throws UnsupportedOperationException Always, unless a concrete gateway overrides this.
+     */
+    public function listTransactionsByReference(string $reference): array
+    {
+        throw UnsupportedOperationException::forOperation($this->name(), 'listTransactionsByReference');
+    }
+
+    /**
      * Verify and parse an incoming webhook; unsupported unless overridden.
      *
      * @param  string  $rawBody  The raw, unparsed webhook request body used for signature verification.

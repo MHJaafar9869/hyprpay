@@ -21,7 +21,7 @@ The 8 drivers (enum case → backing key → driver, under `src/Infrastructure/G
 
 Enum: `src/Domain/Enum/GatewayName.php` (backing value = stable machine key used in config + factory lookups; `->label()` for display).
 
-The interface defines every operation the SDK models: `createCheckoutSession`, `requestDccRate`, `charge`, `capture`, `refund`, `void`, `reverseAuthorization`, `enrollPayerAuth`, `validatePayerAuth` (3-D Secure), `vaultInstrument`, `chargeStoredCredential`, `chargeWallet` (Apple Pay / Google Pay), `getTransaction`, `searchTransaction`, `verifyWebhook`, plus `name()`/`credentials()`. Drivers extend `AbstractPaymentGateway`, which rejects operations a given gateway does not support (`UnsupportedOperation`).
+The interface defines every operation the SDK models: `createCheckoutSession`, `requestDccRate`, `charge`, `capture`, `refund`, `void`, `reverseAuthorization`, `enrollPayerAuth`, `validatePayerAuth` (3-D Secure), `vaultInstrument`, `chargeStoredCredential`, `chargeWallet` (Apple Pay / Google Pay), `getTransaction`, `searchTransaction`, `findSuccessfulTransactionByReference`, `listTransactions`, `listTransactionsByReference`, `verifyWebhook`, plus `name()`/`credentials()`. Drivers extend `AbstractPaymentGateway`, which rejects operations a given gateway does not support (`UnsupportedOperation`).
 
 ## Layers (DDD, under `src/`)
 

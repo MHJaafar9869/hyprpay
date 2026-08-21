@@ -22,6 +22,7 @@ use Hyprpay\Payments\Domain\Exception\GatewayRequestException;
 use Hyprpay\Payments\Domain\Exception\UnsupportedOperationException;
 use Hyprpay\Payments\Domain\Result\DccQuote;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
+use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
 use Hyprpay\Payments\Domain\ValueObject\DecryptedWalletToken;
 use Hyprpay\Payments\Domain\ValueObject\EncryptedWalletToken;
 use Hyprpay\Payments\Domain\ValueObject\Money;
@@ -339,6 +340,46 @@ it('returns null when reconciling finds only unsettled transactions', function (
     ]]]);
 
     expect($gateway->findSuccessfulTransactionByReference('INST-9'))->toBeNull();
+});
+
+it('lists the full payment history for a reference, newest first, searching by client reference code', function (): void {
+    [$gateway, $http] = gatewayWithFakeHttp();
+    $http->queueJson(['_embedded' => ['transactionSummaries' => [
+        ['id' => 'refund1', 'applicationInformation' => ['status' => 'REVERSED']],
+        ['id' => 'capture1', 'applicationInformation' => ['status' => 'CAPTURED']],
+        ['id' => 'auth1', 'applicationInformation' => ['status' => 'AUTHORIZED']],
+    ]]]);
+
+    $history = $gateway->listTransactionsByReference('ORD-7');
+    $request = $http->lastRequest();
+
+    expect($history)->toHaveCount(3)
+        ->and($history[0]->transactionId)->toBe('refund1')
+        ->and($history[0]->status)->toBe(PaymentStatus::Reversed)
+        ->and($history[1]->transactionId)->toBe('capture1')
+        ->and($history[2]->status)->toBe(PaymentStatus::Authorized)
+        ->and($request?->method)->toBe('POST')
+        ->and(json_decode((string) $request?->body, true)['query'])->toContain('ORD-7');
+});
+
+it('lists every transaction matching a raw search query', function (): void {
+    [$gateway, $http] = gatewayWithFakeHttp();
+    $http->queueJson(['_embedded' => ['transactionSummaries' => [
+        ['id' => 't2', 'status' => 'CAPTURED'],
+        ['id' => 't1', 'status' => 'AUTHORIZED'],
+    ]]]);
+
+    $history = $gateway->listTransactions('clientReferenceInformation.code:ORD-7');
+
+    expect($history)->toHaveCount(2)
+        ->and(array_map(fn (TransactionSnapshot $s): string => $s->transactionId, $history))->toBe(['t2', 't1']);
+});
+
+it('returns an empty history when no transactions match', function (): void {
+    [$gateway, $http] = gatewayWithFakeHttp();
+    $http->queueJson(['_embedded' => ['transactionSummaries' => []]]);
+
+    expect($gateway->listTransactionsByReference('ORD-none'))->toBe([]);
 });
 
 it('throws a GatewayRequestException on a non-2xx response', function (): void {
