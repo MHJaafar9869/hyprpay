@@ -179,6 +179,11 @@ final readonly class EventDispatchingGateway implements PaymentGatewayInterface
         return $this->inner->searchTransaction($query);
     }
 
+    public function findSuccessfulTransactionByReference(string $reference): ?TransactionSnapshot
+    {
+        return $this->inner->findSuccessfulTransactionByReference($reference);
+    }
+
     /**
      * @param  array<string, string|array<int, string>>  $headers
      */

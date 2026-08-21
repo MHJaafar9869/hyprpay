@@ -173,6 +173,18 @@ interface PaymentGatewayInterface
     public function searchTransaction(string $query): ?TransactionSnapshot;
 
     /**
+     * Find the most recent successful (authorized or captured) transaction carrying a merchant
+     * reference, to reconcile before retrying a charge whose response was lost.
+     *
+     * Use before re-charging a stable per-attempt reference (e.g. a scheduled installment) so a charge
+     * that actually settled but whose response never arrived is adopted rather than repeated.
+     *
+     * @param  string  $reference  The merchant reference the original charge was sent with.
+     * @return TransactionSnapshot|null The most recent settled transaction for the reference, or null when none exists.
+     */
+    public function findSuccessfulTransactionByReference(string $reference): ?TransactionSnapshot;
+
+    /**
      * Verify an incoming webhook's authenticity and parse it into an event.
      *
      * @param  string  $rawBody  The raw, unparsed webhook request body used for signature verification.

@@ -244,6 +244,19 @@ abstract class AbstractPaymentGateway implements PaymentGatewayInterface
     }
 
     /**
+     * Find the most recent settled transaction for a merchant reference; unsupported unless overridden.
+     *
+     * @param  string  $reference  The merchant reference the original charge was sent with.
+     * @return TransactionSnapshot|null The most recent settled transaction for the reference, or null when none exists.
+     *
+     * @throws UnsupportedOperationException Always, unless a concrete gateway overrides this.
+     */
+    public function findSuccessfulTransactionByReference(string $reference): ?TransactionSnapshot
+    {
+        throw UnsupportedOperationException::forOperation($this->name(), 'findSuccessfulTransactionByReference');
+    }
+
+    /**
      * Verify and parse an incoming webhook; unsupported unless overridden.
      *
      * @param  string  $rawBody  The raw, unparsed webhook request body used for signature verification.

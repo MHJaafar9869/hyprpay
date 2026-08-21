@@ -35,7 +35,7 @@ final readonly class CybersourceClient
      *
      * @param  array<string, mixed>  $body  Request payload to JSON-encode and sign.
      * @param  string  $context  Human-readable label used in error messages on failure.
-     * @param  string|null  $idempotencyKey  Optional value sent as the `v-c-idempotency-key` header so CyberSource safely deduplicates retries.
+     * @param  string|null  $idempotencyKey  Optional value sent as the `v-c-idempotency-id` header so CyberSource safely deduplicates retries.
      * @return array<string, mixed>
      */
     public function post(string $path, array $body, string $context = '', ?string $idempotencyKey = null): array
@@ -51,7 +51,7 @@ final readonly class CybersourceClient
      *
      * @param  array<string, mixed>  $body  Request payload to JSON-encode and sign.
      * @param  string  $context  Human-readable label used in error messages on failure.
-     * @param  string|null  $idempotencyKey  Optional value sent as the `v-c-idempotency-key` header so CyberSource safely deduplicates retries.
+     * @param  string|null  $idempotencyKey  Optional value sent as the `v-c-idempotency-id` header so CyberSource safely deduplicates retries.
      */
     public function postForBody(string $path, array $body, string $context = '', ?string $idempotencyKey = null): string
     {
@@ -91,7 +91,7 @@ final readonly class CybersourceClient
      * Builds the signature headers, resolves the absolute URL from the credential
      * host, and sends the request through the SDK HttpClient port.
      *
-     * When an idempotency key is supplied it is added as the `v-c-idempotency-key`
+     * When an idempotency key is supplied it is added as the `v-c-idempotency-id`
      * header. CyberSource does not require this header to be part of the signed
      * header set, so it is attached after signing.
      *
@@ -109,7 +109,7 @@ final readonly class CybersourceClient
         );
 
         if (filled($idempotencyKey)) {
-            $headers['v-c-idempotency-key'] = $idempotencyKey;
+            $headers['v-c-idempotency-id'] = $idempotencyKey;
         }
 
         $url = sprintf('https://%s%s', $this->credentials->host, $path);
