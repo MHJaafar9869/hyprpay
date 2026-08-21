@@ -72,11 +72,11 @@ Method:
 | `$useRawFingerprintSessionId` | `bool` | `false` | When true, use the fingerprint session id exactly as sent |
 
 ### WalletChargeRequest
-`Hyprpay\Payments\Domain\Command\WalletChargeRequest` — charges a native digital-wallet token (Apple Pay / Google Pay); the encrypted token is forwarded to the gateway to decrypt, so the SDK never handles the cleartext PAN.
+`Hyprpay\Payments\Domain\Command\WalletChargeRequest` — charges a native digital-wallet token (Apple Pay / Google Pay). The token is supplied as a `WalletToken` — already-decrypted network-token fields (canonical) or an encrypted blob the gateway decrypts — and the SDK never decrypts it or handles the cleartext PAN.
 
 | param | type | default | meaning |
 |---|---|---|---|
-| `$encryptedToken` | `string` | — | The wallet's device-encrypted token as delivered client-side (Apple Pay: `paymentData` serialized to JSON) |
+| `$token` | `WalletToken` | — | The wallet token: `DecryptedWalletToken` (DPAN, cryptogram, expiry, optional ECI/card type the merchant decrypted — canonical) or `EncryptedWalletToken` (raw device-encrypted token the gateway decrypts) |
 | `$wallet` | `WalletType` | — | Which wallet produced the token (selects the gateway's payment-solution mapping) |
 | `$money` | `Money` | — | Amount and currency to charge |
 | `$capture` | `bool` | `true` | Capture immediately (true) or authorise only (false) |

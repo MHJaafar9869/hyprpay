@@ -1,6 +1,6 @@
 # Value Objects
 
-Reference for the five value objects under `Hyprpay\Payments\Domain\ValueObject`. Each is a `final readonly class` with an all-`public` promoted-property constructor. `Money` never loses precision (integer minor units); the contact/device objects serialise only populated fields.
+Reference for the value objects under `Hyprpay\Payments\Domain\ValueObject`. Most are a `final readonly class` with an all-`public` promoted-property constructor; `WalletToken` is a marker interface with two implementations. `Money` never loses precision (integer minor units); the contact/device objects serialise only populated fields.
 
 ## Money
 `Hyprpay\Payments\Domain\ValueObject\Money` — immutable amount in minor units plus currency and decimal scale. Used everywhere amounts appear.
@@ -96,3 +96,25 @@ Methods:
 - `extra(string $key, mixed $default = null): mixed` — read a value from the `extra` bag by dot path (`data_get`).
 - `hasWebhookSecret(): bool` — true when a webhook verification secret is configured (`filled()`).
 - `toSigningArray(): array{host:string, merchant_id:string, api_key_id:string, shared_secret:string}` — export the fields required by the HMAC request-signing trait.
+
+## WalletToken
+`Hyprpay\Payments\Domain\ValueObject\WalletToken` — marker interface for a digital-wallet payment token supplied to `chargeWallet`, in one of two shapes. The SDK never decrypts a token itself; the gateway driver maps whichever shape it receives.
+
+### DecryptedWalletToken
+`Hyprpay\Payments\Domain\ValueObject\DecryptedWalletToken` — the canonical shape: a wallet token the merchant already decrypted into network-token fields (CyberSource: `paymentInformation.tokenizedCard`, `transactionType` 1).
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$number` | `string` | — | Device primary account number (DPAN) from the decrypted token |
+| `$cryptogram` | `string` | — | Online payment cryptogram from the decrypted token |
+| `$expiryMonth` | `string` | — | Two-digit expiry month (`MM`) |
+| `$expiryYear` | `string` | — | Four-digit expiry year (`YYYY`) preferred |
+| `$eci` | `?string` | `null` | Electronic Commerce Indicator from the decrypted token, when present |
+| `$cardType` | `?string` | `null` | Gateway card-network code (e.g. CyberSource `001` Visa, `002` Mastercard); omitted when null |
+
+### EncryptedWalletToken
+`Hyprpay\Payments\Domain\ValueObject\EncryptedWalletToken` — the opt-in alternative: a wallet token forwarded to the gateway still encrypted, for the gateway to decrypt (CyberSource: `paymentInformation.fluidData`).
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$value` | `string` | — | The wallet's device-encrypted payment token as delivered client-side (Apple Pay: `paymentData` serialized to JSON) |

@@ -22,6 +22,8 @@ use Hyprpay\Payments\Domain\Exception\GatewayRequestException;
 use Hyprpay\Payments\Domain\Exception\UnsupportedOperationException;
 use Hyprpay\Payments\Domain\Result\DccQuote;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
+use Hyprpay\Payments\Domain\ValueObject\DecryptedWalletToken;
+use Hyprpay\Payments\Domain\ValueObject\EncryptedWalletToken;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\CybersourceUnifiedCheckoutGateway;
 use Hyprpay\Payments\Infrastructure\Http\FakeHttpClient;
@@ -188,23 +190,69 @@ it('charges a stored credential as a merchant-initiated transaction', function (
         ->and(recordedBody($http)['paymentInformation']['paymentInstrument']['id'])->toBe('pi_1');
 });
 
-it('charges an apple pay wallet token as fluidData for CyberSource to decrypt', function (): void {
+it('charges an apple pay wallet token as tokenizedCard (canonical decrypted path)', function (): void {
     [$gateway, $http] = gatewayWithFakeHttp();
     $http->queueJson(['id' => 'ap_1', 'status' => 'AUTHORIZED']);
 
     $result = $gateway->chargeWallet(new WalletChargeRequest(
-        encryptedToken: '{"data":"encrypted-blob"}',
+        token: new DecryptedWalletToken(
+            number: '4111111111111111',
+            cryptogram: 'AceY+igABPs3jdwNaDg3MAACAAA=',
+            expiryMonth: '12',
+            expiryYear: '2031',
+            eci: '05',
+            cardType: '001',
+        ),
+        wallet: WalletType::ApplePay,
+        money: Money::minor(2599, 'USD'),
+    ));
+
+    $body = recordedBody($http);
+    $tokenizedCard = $body['paymentInformation']['tokenizedCard'];
+
+    expect($result->success)->toBeTrue()
+        ->and($result->status)->toBe(PaymentStatus::Authorized)
+        ->and($result->transactionId)->toBe('ap_1')
+        ->and($http->lastRequest()?->url)->toBe('https://apitest.cybersource.com/pts/v2/payments')
+        ->and($body['processingInformation']['paymentSolution'])->toBe('001')
+        ->and($tokenizedCard['number'])->toBe('4111111111111111')
+        ->and($tokenizedCard['cryptogram'])->toBe('AceY+igABPs3jdwNaDg3MAACAAA=')
+        ->and($tokenizedCard['expirationMonth'])->toBe('12')
+        ->and($tokenizedCard['expirationYear'])->toBe('2031')
+        ->and($tokenizedCard['transactionType'])->toBe('1')
+        ->and($tokenizedCard['type'])->toBe('001')
+        ->and($body['consumerAuthenticationInformation']['eciRaw'])->toBe('05');
+});
+
+it('omits the card type and ECI from a tokenizedCard wallet charge when not supplied', function (): void {
+    [$gateway, $http] = gatewayWithFakeHttp();
+    $http->queueJson(['id' => 'ap_2', 'status' => 'AUTHORIZED']);
+
+    $gateway->chargeWallet(new WalletChargeRequest(
+        token: new DecryptedWalletToken(number: '4111111111111111', cryptogram: 'abc', expiryMonth: '01', expiryYear: '2030'),
+        wallet: WalletType::ApplePay,
+        money: Money::minor(100, 'USD'),
+    ));
+
+    $body = recordedBody($http);
+
+    expect($body['paymentInformation']['tokenizedCard'])->not->toHaveKey('type')
+        ->and($body)->not->toHaveKey('consumerAuthenticationInformation');
+});
+
+it('forwards an encrypted wallet token as fluidData for CyberSource to decrypt', function (): void {
+    [$gateway, $http] = gatewayWithFakeHttp();
+    $http->queueJson(['id' => 'ap_3', 'status' => 'AUTHORIZED']);
+
+    $gateway->chargeWallet(new WalletChargeRequest(
+        token: new EncryptedWalletToken('{"data":"encrypted-blob"}'),
         wallet: WalletType::ApplePay,
         money: Money::minor(2599, 'USD'),
     ));
 
     $fluidData = recordedBody($http)['paymentInformation']['fluidData'];
 
-    expect($result->success)->toBeTrue()
-        ->and($result->status)->toBe(PaymentStatus::Authorized)
-        ->and($result->transactionId)->toBe('ap_1')
-        ->and($http->lastRequest()?->url)->toBe('https://apitest.cybersource.com/pts/v2/payments')
-        ->and(recordedBody($http)['processingInformation']['paymentSolution'])->toBe('001')
+    expect(recordedBody($http)['processingInformation']['paymentSolution'])->toBe('001')
         ->and($fluidData['descriptor'])->toBe(base64_encode('FID=COMMON.APPLE.INAPP.PAYMENT'))
         ->and($fluidData['encoding'])->toBe('Base64')
         ->and($fluidData['value'])->toBe(base64_encode('{"data":"encrypted-blob"}'));
@@ -215,7 +263,7 @@ it('maps a google pay wallet token to payment solution 012', function (): void {
     $http->queueJson(['id' => 'gp_1', 'status' => 'AUTHORIZED']);
 
     $gateway->chargeWallet(new WalletChargeRequest(
-        encryptedToken: 'google-token',
+        token: new EncryptedWalletToken('google-token'),
         wallet: WalletType::GooglePay,
         money: Money::minor(500, 'USD'),
     ));

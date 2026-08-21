@@ -7,21 +7,23 @@ namespace Hyprpay\Payments\Domain\Command;
 use Hyprpay\Payments\Domain\Enum\WalletType;
 use Hyprpay\Payments\Domain\Result\DccQuote;
 use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
+use Hyprpay\Payments\Domain\ValueObject\DecryptedWalletToken;
+use Hyprpay\Payments\Domain\ValueObject\EncryptedWalletToken;
 use Hyprpay\Payments\Domain\ValueObject\Money;
+use Hyprpay\Payments\Domain\ValueObject\WalletToken;
 
 /**
  * Input DTO for charging a digital-wallet payment token (Apple Pay / Google Pay).
  *
- * Carries the device-encrypted wallet token exactly as the wallet button delivered it,
- * together with the amount and optional billing/reconciliation context. The token is
- * forwarded to the gateway, which decrypts it and authorizes the payment; the SDK never
- * decrypts the token or handles the cleartext PAN itself. Passed to the gateway's
- * chargeWallet operation.
+ * Carries the wallet token in one of two shapes — an {@see EncryptedWalletToken}
+ * the gateway decrypts, or a {@see DecryptedWalletToken} the merchant decrypted
+ * and forwards as a network token — together with the amount and optional billing / reconciliation context. The SDK
+ * never decrypts the token itself. Passed to the gateway's chargeWallet operation.
  */
 final readonly class WalletChargeRequest
 {
     /**
-     * @param  string  $encryptedToken  The wallet's device-encrypted payment token as delivered client-side (Apple Pay: the `paymentData` object serialized to JSON)
+     * @param  WalletToken  $token  The wallet token to charge (encrypted for the gateway to decrypt, or already-decrypted network-token fields)
      * @param  WalletType  $wallet  Which wallet produced the token, selecting the gateway's payment-solution mapping
      * @param  Money  $money  Amount and currency to charge
      * @param  bool  $capture  Whether to capture immediately (true) or authorise only (false)
@@ -33,7 +35,7 @@ final readonly class WalletChargeRequest
      * @param  bool  $useRawFingerprintSessionId  When true, CyberSource uses the device fingerprint session id exactly as sent instead of the default merchant-prefixed lookup
      */
     public function __construct(
-        public string $encryptedToken,
+        public WalletToken $token,
         public WalletType $wallet,
         public Money $money,
         public bool $capture = true,

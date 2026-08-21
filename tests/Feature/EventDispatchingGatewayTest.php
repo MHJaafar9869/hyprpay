@@ -32,6 +32,7 @@ use Hyprpay\Payments\Domain\Result\RefundResult;
 use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
 use Hyprpay\Payments\Domain\Result\VaultedInstrument;
 use Hyprpay\Payments\Domain\Result\WebhookEvent;
+use Hyprpay\Payments\Domain\ValueObject\EncryptedWalletToken;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 use Hyprpay\Payments\Infrastructure\Events\RecordingEventDispatcher;
@@ -195,7 +196,7 @@ it('dispatches AuthorizationReversed', function (): void {
 it('dispatches WalletCharged with the wallet type', function (): void {
     [$gateway, $events] = eventGateway();
 
-    $gateway->chargeWallet(new WalletChargeRequest(encryptedToken: '{"data":"x"}', wallet: WalletType::ApplePay, money: usd(), orderReference: 'ORD-1'));
+    $gateway->chargeWallet(new WalletChargeRequest(token: new EncryptedWalletToken('{"data":"x"}'), wallet: WalletType::ApplePay, money: usd(), orderReference: 'ORD-1'));
 
     expect($events->last())->toBeInstanceOf(WalletCharged::class)
         ->and($events->last()->wallet)->toBe(WalletType::ApplePay)
