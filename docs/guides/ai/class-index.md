@@ -39,6 +39,7 @@ Every one of the 192 classes, interfaces, enums, and traits in `hyprpay/payments
 ## `Domain\Enum`
 
 - **`CredentialInitiator`** _enum_ — Identifies who initiated a stored-credential (card-on-file) transaction.
+- **`CybersourcePaymentType`** _enum_ — CyberSource Unified Checkout capture-context `allowedPaymentTypes` (PAN entry, Google Pay, Apple Pay, Click to Pay, eCheck, Paze).
 - **`GatewayName`** _enum_ — Canonical identifier for each payment gateway the SDK can drive.
 - **`MandateCompletionType`** _enum_ — Orchestration mode requested from the CyberSource Unified Checkout v1 widget.
 - **`PaymentStatus`** _enum_ — Normalized, gateway-agnostic lifecycle status of a payment.
@@ -170,7 +171,6 @@ Every one of the 192 classes, interfaces, enums, and traits in `hyprpay/payments
 ## `Infrastructure\Gateway\CybersourceUnifiedCheckout\Enums`
 
 - **`CybersourceEndpoint`** _enum_ — CyberSource REST API resource paths used by the Unified Checkout gateway.
-- **`CybersourcePaymentType`** _enum_ — Payment types (`allowedPaymentTypes`) offered by a CyberSource Unified Checkout
 - **`CybersourceTransactionStatus`** _enum_ — Raw transaction status strings returned by the CyberSource REST API, with a
 
 ## `Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads`

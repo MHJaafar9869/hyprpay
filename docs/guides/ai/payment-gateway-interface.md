@@ -27,6 +27,9 @@ The one contract every gateway driver implements, its abstract base class, and t
 | `chargeWallet` | `chargeWallet(WalletChargeRequest $request): PaymentResult` | Charge a native digital-wallet token (Apple Pay / Google Pay); the gateway decrypts the forwarded token. |
 | `getTransaction` | `getTransaction(string $transactionId): TransactionSnapshot` | Retrieve the current state of a transaction by its gateway identifier. |
 | `searchTransaction` | `searchTransaction(string $query): ?TransactionSnapshot` | Search for a transaction via a gateway-specific query; returns `null` when nothing matches. |
+| `findSuccessfulTransactionByReference` | `findSuccessfulTransactionByReference(string $reference): ?TransactionSnapshot` | Reconcile before a retry: the most recent settled (authorized/captured) transaction for a merchant reference, or `null`. |
+| `listTransactions` | `listTransactions(string $query): array` | List every transaction matching a gateway-specific query, newest first (`list<TransactionSnapshot>`). |
+| `listTransactionsByReference` | `listTransactionsByReference(string $reference): array` | List a payment's full history by merchant reference, newest first (`list<TransactionSnapshot>`). |
 | `verifyWebhook` | `verifyWebhook(string $rawBody, array $headers): WebhookEvent` | Verify an inbound webhook's authenticity and parse it into an event. `$headers` is `array<string, string\|array<int, string>>`. |
 
 Request → result mapping (which DTO maps to which return type):
@@ -86,6 +89,9 @@ throw UnsupportedOperationException::forOperation($this->name(), '<operation>');
 | `chargeWallet` | `'chargeWallet'` |
 | `getTransaction` | `'getTransaction'` |
 | `searchTransaction` | `'searchTransaction'` |
+| `findSuccessfulTransactionByReference` | `'findSuccessfulTransactionByReference'` |
+| `listTransactions` | `'listTransactions'` |
+| `listTransactionsByReference` | `'listTransactionsByReference'` |
 | `verifyWebhook` | `'verifyWebhook'` |
 
 So calling an operation a driver did not override raises `UnsupportedOperationException` (a subtype of `GatewayException`), whose message is `"The {label} gateway does not support the '{operation}' operation."`.

@@ -8,7 +8,7 @@ The `PaymentEvent` marker + every concrete event, its fields, and when it fires.
 
 - Events fire **on completion regardless of success** — the result's `success`/`status` carries the outcome, so listeners can react to declines too.
 - If the inner call **throws**, the exception propagates and **no event is dispatched**.
-- Read/query operations are **pass-through, no event**: `requestDccRate`, `enrollPayerAuth`, `validatePayerAuth`, `getTransaction`, `searchTransaction`, plus the identity accessors `name()` / `credentials()`.
+- Read/query operations are **pass-through, no event**: `requestDccRate`, `enrollPayerAuth`, `validatePayerAuth`, `getTransaction`, `searchTransaction`, `findSuccessfulTransactionByReference`, `listTransactions`, `listTransactionsByReference`, plus the identity accessors `name()` / `credentials()`.
 
 Operation → event map (as dispatched in `EventDispatchingGateway`):
 

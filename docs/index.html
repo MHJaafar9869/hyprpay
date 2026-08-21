@@ -255,7 +255,7 @@
           <tr><th scope="row"><code>reverseAuthorization</code></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="y">release</td><td class="n">—</td><td class="y">✓</td><td class="n">—</td><td class="y">cancel</td></tr>
           <tr><th scope="row"><code>enroll</code> / <code>validatePayerAuth</code> <small>(3-DS)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td></tr>
           <tr><th scope="row"><code>vault</code> / <code>chargeStoredCredential</code></th><td class="y">TMS · MIT/CIT</td><td class="n">—</td><td class="n">—</td><td class="y">vault · charge · revoke</td><td class="y">token · MIT/CIT</td><td class="y">vault · MIT/CIT</td><td class="y">token · MIT/CIT</td><td class="y">CIM · MIT/CIT</td><td class="y">consent charge</td></tr>
-          <tr><th scope="row"><code>getTransaction</code> / <code>searchTransaction</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">query</td><td class="y">order lookup</td><td class="y">order lookup</td><td class="y">transaction details</td><td class="y">intent lookup</td></tr>
+          <tr><th scope="row"><code>getTransaction</code> / <code>searchTransaction</code> <small>(+ full history)</small></th><td class="y">✓ &middot; history</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">query</td><td class="y">order lookup</td><td class="y">order lookup</td><td class="y">transaction details</td><td class="y">intent lookup</td></tr>
           <tr><th scope="row"><code>verifyWebhook</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">API</td><td class="y">secret</td><td class="y">HMAC-SHA512</td><td class="y">HMAC-SHA256</td></tr>
         </tbody>
       </table>
@@ -280,7 +280,7 @@
             <div class="op"><dt>reverseAuthorization</dt><dd>&#10003;</dd></div>
             <div class="op"><dt>enroll / validatePayerAuth</dt><dd>&#10003;</dd></div>
             <div class="op"><dt>vault / chargeStoredCredential</dt><dd>TMS &middot; MIT/CIT</dd></div>
-            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>&#10003;</dd></div>
+            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>&#10003; &middot; full history</dd></div>
             <div class="op"><dt>verifyWebhook</dt><dd>&#10003;</dd></div>
           </dl>
         </article>
