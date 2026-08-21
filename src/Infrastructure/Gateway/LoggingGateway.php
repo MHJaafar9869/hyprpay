@@ -216,6 +216,20 @@ final readonly class LoggingGateway implements PaymentGatewayInterface
         ]));
     }
 
+    public function listTransactions(string $query): array
+    {
+        return $this->logTimedAction('listTransactions', fn (): array => $this->inner->listTransactions($query), $this->context([
+            'query' => $query,
+        ]));
+    }
+
+    public function listTransactionsByReference(string $reference): array
+    {
+        return $this->logTimedAction('listTransactionsByReference', fn (): array => $this->inner->listTransactionsByReference($reference), $this->context([
+            'reference' => $reference,
+        ]));
+    }
+
     /**
      * @param  array<string, string|array<int, string>>  $headers
      */

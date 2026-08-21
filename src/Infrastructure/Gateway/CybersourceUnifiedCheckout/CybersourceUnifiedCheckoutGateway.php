@@ -423,6 +423,44 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
     }
 
     /**
+     * Lists every transaction matching a TSS query as snapshots, newest first.
+     *
+     * Returns the whole result set (SearchPayload sorts by id descending), capped at 100 records — a
+     * single payment reference never approaches that — so a caller can render a transaction's full
+     * history rather than only its first match.
+     *
+     * @param  string  $query  CyberSource transaction search expression.
+     * @return list<TransactionSnapshot>
+     */
+    public function listTransactions(string $query): array
+    {
+        $response = $this->client->post(
+            CybersourceEndpoint::TransactionSearch->path(),
+            SearchPayload::build($query, 100),
+            'list transactions',
+        );
+
+        $summaries = Value::array(data_get($response, '_embedded.transactionSummaries'));
+
+        return array_values(array_map(
+            fn (mixed $summary): TransactionSnapshot => $this->toSnapshot(Value::array($summary)),
+            $summaries,
+        ));
+    }
+
+    /**
+     * Lists the full history of a payment by its merchant reference — every authorization, capture,
+     * reversal, refund, and retry sent under clientReferenceInformation.code — newest first.
+     *
+     * @param  string  $reference  The merchant reference the transactions were sent with.
+     * @return list<TransactionSnapshot>
+     */
+    public function listTransactionsByReference(string $reference): array
+    {
+        return $this->listTransactions(sprintf('clientReferenceInformation.code:"%s"', $reference));
+    }
+
+    /**
      * Verifies and parses an inbound CyberSource webhook into a WebhookEvent.
      *
      * Checks the signature against the configured webhook secret, then decodes the
