@@ -242,5 +242,23 @@ return [
                 'account_id' => env('AIRWALLEX_ACCOUNT_ID'),
             ],
         ],
+
+        'tamara' => [
+            'test_mode' => (bool) env('TAMARA_TEST_MODE', true),
+            'live_host' => env('TAMARA_HOST', 'api.tamara.co'),
+            'test_host' => env('TAMARA_TEST_HOST', 'api-sandbox.tamara.co'),
+            'merchant_id' => env('TAMARA_MERCHANT_ID'),
+            'shared_secret' => env('TAMARA_API_TOKEN'),
+            'webhook_secret' => env('TAMARA_NOTIFICATION_TOKEN'),
+
+            'country' => env('TAMARA_COUNTRY', 'SA'),
+            'locale' => env('TAMARA_LOCALE', 'en_US'),
+            'currency' => env('TAMARA_CURRENCY', 'SAR'),
+
+            'extra' => [
+                'payment_type' => env('TAMARA_PAYMENT_TYPE', 'PAY_BY_INSTALMENTS'),
+                'instalments' => env('TAMARA_INSTALMENTS'),
+            ],
+        ],
     ],
 ];

@@ -18,6 +18,7 @@ use Hyprpay\Payments\Infrastructure\Console\ReconcilePaylinkCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcilePaymobCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcilePayPalCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcilePaytabsCommand;
+use Hyprpay\Payments\Infrastructure\Console\ReconcileTamaraCommand;
 use Hyprpay\Payments\Infrastructure\Credentials\ConfigCredentialResolver;
 use Hyprpay\Payments\Infrastructure\Events\LaravelEventDispatcher;
 use Hyprpay\Payments\Infrastructure\Events\LoggingPaymentEventListener;
@@ -168,6 +169,7 @@ final class GatewayServiceProvider extends ServiceProvider
                 ReconcileMpgsCommand::class,
                 ReconcileAuthorizeNetCommand::class,
                 ReconcileAirwallexCommand::class,
+                ReconcileTamaraCommand::class,
             ]);
         }
     }
