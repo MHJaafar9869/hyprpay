@@ -22,6 +22,7 @@ use Hyprpay\Payments\Infrastructure\Gateway\Paylink\PaylinkGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\Paymob\PaymobGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\PayPal\PayPalGateway;
 use Hyprpay\Payments\Infrastructure\Gateway\Paytabs\PaytabsGateway;
+use Hyprpay\Payments\Infrastructure\Gateway\Tamara\TamaraGateway;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -72,6 +73,7 @@ final readonly class PaymentGatewayFactory
             GatewayName::Mpgs => new MpgsGateway($resolved, $this->http),
             GatewayName::AuthorizeNet => new AuthorizeNetGateway($resolved, $this->http),
             GatewayName::Airwallex => new AirwallexGateway($resolved, $this->http),
+            GatewayName::Tamara => new TamaraGateway($resolved, $this->http),
         };
 
         if ($this->events instanceof EventDispatcher) {

@@ -418,27 +418,61 @@ $gateway = $factory->make(GatewayName::Fawry, new GatewayCredentials(
 ));
 ```
 
+**Tamara** — start a "buy now, pay later" checkout and redirect the customer to Tamara's
+hosted page:
+
+```php
+use Hyprpay\Payments\Application\PaymentGatewayFactory;
+use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
+use Hyprpay\Payments\Domain\Enum\GatewayName;
+use Hyprpay\Payments\Domain\ValueObject\Money;
+
+final readonly class StartTamaraCheckout
+{
+    public function __construct(private PaymentGatewayFactory $gateways) {}
+
+    public function handle(): string
+    {
+        $session = $this->gateways
+            ->make(GatewayName::Tamara)
+            ->createCheckoutSession(new CheckoutSessionRequest(
+                money: Money::minor(30000, 'SAR'), // 300.00 SAR, exact minor units
+                orderReference: 'ORDER-1',
+                returnUrl: 'https://shop.test/tamara/return',
+            ));
+
+        return (string) $session->redirectUrl; // send the customer to Tamara
+    }
+}
+```
+
+Tamara is a redirect flow: after the customer approves on the hosted page, Tamara sends an
+`order_approved` webhook — call `authorise($orderId)` to confirm the order, then `capture(...)`
+on fulfilment. `void(...)`/`reverseAuthorization(...)` cancel before capture and `refund(...)`
+returns funds after it. The default payment plan (`PAY_BY_INSTALMENTS`) is configurable via
+`gateway.gateways.tamara.extra.payment_type`. See the operation matrix note⁵ below for the flow.
+
 ## Gateways & operations
 
 Every driver implements the same `PaymentGatewayInterface`. Operations a gateway does
 not support throw `UnsupportedOperationException`, so you can rely on the same surface
 everywhere.
 
-| Operation | CyberSource UC | Fawry | Paymob | PayLink | PayTabs | PayPal | Mastercard MPGS | Authorize.Net | Airwallex |
-| --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| `createCheckoutSession` | ✅ capture context / orchestrated (autoProcessing) | ✅ hosted / card / wallet / pay-at-Fawry / MyFawry / instalment | ✅ iframe flow | ✅ invoice link / iframe | ✅ hosted / invoice / paylink / managed | ✅ order → approval redirect | ✅ hosted checkout session | — | ✅ PaymentIntent (client-side confirm) |
-| `charge` (transient token) | ✅ | — | — | — | ✅ Own Form (payment token) | ✅ complete approved order² | ✅ session (PAY / AUTHORIZE)³ | ✅ Accept.js opaque data | ✅ create + confirm (PaymentMethod id) |
-| `chargeWallet` (Apple Pay / Google Pay) | ✅ tokenizedCard / fluidData | — | — | — | — | — | — | — | — |
-| `confirmOrchestratedPayment` (verify result JWT) | ✅ RS256 (flx.jwk) | — | — | — | — | — | — | — | — |
-| `capture` | ✅ | ✅ (Auth/Capture) | ✅ | ✅ (settle) | ✅ | ✅ | ✅ | ✅ | ✅ (manual-capture intent) |
-| `refund` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `void` | ✅ | ✅ (cancel auth) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (cancel intent) |
-| `reverseAuthorization` | ✅ | — | — | ✅ | ✅ (release) | — | ✅ (void of auth) | — | ✅ (cancel intent) |
-| `enrollPayerAuth` / `validatePayerAuth` (3-DS) | ✅ | — | — | — | — | — | ✅ | — | — |
-| `vaultInstrument` / `chargeStoredCredential` | ✅ (TMS, MIT/CIT) | — | — | ✅ vault + charge + revoke⁴ | ✅ token (MIT/CIT)¹ | ✅ vault (MIT/CIT) | ✅ token (MIT/CIT) | ✅ CIM (opaque/card, MIT/CIT) | ✅ PaymentConsent (vault + charge) |
-| `requestDccRate` (Dynamic Currency Conversion) | ✅ | — | — | — | — | — | — | — | — |
-| `getTransaction` / `searchTransaction` | ✅ | ✅ | ✅ | ✅ | ✅ query | ✅ order lookup | ✅ order lookup | ✅ transaction details | ✅ intent lookup |
-| `verifyWebhook` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ API | ✅ notification secret | ✅ HMAC-SHA512 | ✅ HMAC-SHA256 |
+| Operation | CyberSource UC | Fawry | Paymob | PayLink | PayTabs | PayPal | Mastercard MPGS | Authorize.Net | Airwallex | Tamara |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| `createCheckoutSession` | ✅ capture context / orchestrated (autoProcessing) | ✅ hosted / card / wallet / pay-at-Fawry / MyFawry / instalment | ✅ iframe flow | ✅ invoice link / iframe | ✅ hosted / invoice / paylink / managed | ✅ order → approval redirect | ✅ hosted checkout session | — | ✅ PaymentIntent (client-side confirm) | ✅ hosted BNPL redirect |
+| `charge` (transient token) | ✅ | — | — | — | ✅ Own Form (payment token) | ✅ complete approved order² | ✅ session (PAY / AUTHORIZE)³ | ✅ Accept.js opaque data | ✅ create + confirm (PaymentMethod id) | — |
+| `chargeWallet` (Apple Pay / Google Pay) | ✅ tokenizedCard / fluidData | — | — | — | — | — | — | — | — | — |
+| `confirmOrchestratedPayment` (verify result JWT) | ✅ RS256 (flx.jwk) | — | — | — | — | — | — | — | — | — |
+| `capture` | ✅ | ✅ (Auth/Capture) | ✅ | ✅ (settle) | ✅ | ✅ | ✅ | ✅ | ✅ (manual-capture intent) | ✅ (after `authorise`)⁵ |
+| `refund` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (simplified refund) |
+| `void` | ✅ | ✅ (cancel auth) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (cancel intent) | ✅ (cancel order) |
+| `reverseAuthorization` | ✅ | — | — | ✅ | ✅ (release) | — | ✅ (void of auth) | — | ✅ (cancel intent) | ✅ (cancel order) |
+| `enrollPayerAuth` / `validatePayerAuth` (3-DS) | ✅ | — | — | — | — | — | ✅ | — | — | — |
+| `vaultInstrument` / `chargeStoredCredential` | ✅ (TMS, MIT/CIT) | — | — | ✅ vault + charge + revoke⁴ | ✅ token (MIT/CIT)¹ | ✅ vault (MIT/CIT) | ✅ token (MIT/CIT) | ✅ CIM (opaque/card, MIT/CIT) | ✅ PaymentConsent (vault + charge) | — |
+| `requestDccRate` (Dynamic Currency Conversion) | ✅ | — | — | — | — | — | — | — | — | — |
+| `getTransaction` / `searchTransaction` | ✅ | ✅ | ✅ | ✅ | ✅ query | ✅ order lookup | ✅ order lookup | ✅ transaction details | ✅ intent lookup | ✅ order / reference lookup |
+| `verifyWebhook` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ API | ✅ notification secret | ✅ HMAC-SHA512 | ✅ HMAC-SHA256 | ✅ shared auth header |
 
 Provider-specific inputs (e.g. Fawry payment method, Paymob integration/iframe ids,
 card or wallet details) are passed through `CheckoutSessionRequest::$options` and the
@@ -571,4 +605,14 @@ against the order id (`orderReference`) and transaction id (`idempotencyKey`) in
 vault (returning a reusable token), `chargeStoredCredential` charges that token as an MIT/CIT
 transaction — reusing the cardholder and billing captured at tokenize time, so no billing is
 resent — and `deleteToken` revokes it.
+
+⁵ **Tamara** is a redirect "buy now, pay later" flow with no immediate `charge`.
+`createCheckoutSession` returns the hosted checkout URL; after the customer approves,
+Tamara sends an `order_approved` webhook and you call the Tamara-specific
+`authorise($orderId)` to move the order to `authorised` before `capture`. `void` and
+`reverseAuthorization` both map to Tamara's single cancel operation (release an
+authorised order before capture), and `refund` uses the simplified-refund endpoint after
+capture. Every request is authenticated with the merchant Bearer token (`shared_secret`),
+and `verifyWebhook` checks the shared `Authorization` header registered for the webhook
+against `webhook_secret`.
 

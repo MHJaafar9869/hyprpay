@@ -68,6 +68,7 @@
       <li role="presentation"><button class="gw-opt" role="tab" data-gw="mpgs"    aria-selected="false" style="--g:var(--mpgs)">Mastercard MPGS</button></li>
       <li role="presentation"><button class="gw-opt" role="tab" data-gw="authorizenet" aria-selected="false" style="--g:var(--authorizenet)">Authorize.Net</button></li>
       <li role="presentation"><button class="gw-opt" role="tab" data-gw="airwallex" aria-selected="false" style="--g:var(--airwallex)">Airwallex</button></li>
+      <li role="presentation"><button class="gw-opt" role="tab" data-gw="tamara"  aria-selected="false" style="--g:var(--tamara)">Tamara</button></li>
       <li role="presentation"><button class="gw-opt" role="tab" data-gw="misc"    aria-selected="false" style="--g:var(--muted)">Misc</button></li>
     </ul>
     <p class="gw-nav-note">Switching a gateway rescopes the action list and the examples to that driver.</p>
@@ -82,7 +83,7 @@
       <span class="meta">Checkout returns · <span data-ctx="ret">jwt (capture context)</span></span>
     </div>
 
-    <section id="overview" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex">
+    <section id="overview" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara">
       <p class="doc-eyebrow">Start here</p>
       <h2>Overview</h2>
       <p>You resolve one gateway from the factory and call its actions. Every method below takes a request
@@ -96,7 +97,7 @@
          action list only shows what this driver actually implements.</p>
     </section>
 
-    <section id="create-checkout" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs airwallex">
+    <section id="create-checkout" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs airwallex tamara">
       <p class="doc-eyebrow">Payment flow</p>
       <h2>Create checkout</h2>
       <p class="doc-sig"><span class="fn">createCheckoutSession</span>(CheckoutSessionRequest): <span class="rt">CheckoutSession</span></p>
@@ -220,6 +221,20 @@
 
 <span class="c">// hand $session->reference (intent id) + $session->jwt (client_secret) to the</span>
 <span class="c">// Airwallex element on the front end — it collects the card and confirms the intent</span></code></pre>
+        </div>
+      </div>
+      <div class="gw-variant" data-gw="tamara">
+        <div class="code">
+<pre><code><span class="v">$session</span> = <span class="v">$gateway</span>-&gt;<span class="fn">createCheckoutSession</span>(<span class="k">new</span> <span class="t">CheckoutSessionRequest</span>(
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">30000</span>, <span class="s">'SAR'</span>), <span class="c">// 300.00 SAR, sent to Tamara as major units</span>
+    <span class="a">orderReference:</span> <span class="s">'ORDER-1'</span>,
+    <span class="a">returnUrl:</span> <span class="s">'https://shop.test/tamara/return'</span>,
+    <span class="a">customer:</span> <span class="k">new</span> <span class="t">Customer</span>(<span class="a">email:</span> <span class="s">'ada@shop.test'</span>, <span class="a">firstName:</span> <span class="s">'Ada'</span>, <span class="a">lastName:</span> <span class="s">'Lovelace'</span>),
+));
+
+<span class="c">// redirect the customer to $session->redirectUrl (Tamara's hosted BNPL page);</span>
+<span class="c">// $session->reference is the Tamara order_id. After the order_approved webhook,</span>
+<span class="c">// call $gateway->authorise($session->reference) before capture().</span></code></pre>
         </div>
       </div>
     </section>
@@ -403,7 +418,7 @@
          <code>completeMandate.decisionManager</code>.</p>
     </section>
 
-    <section id="capture" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex">
+    <section id="capture" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara">
       <p class="doc-eyebrow">Payment flow</p>
       <h2>Capture</h2>
       <p class="doc-sig"><span class="fn">capture</span>(CaptureRequest): <span class="rt">PaymentResult</span></p>
@@ -418,7 +433,7 @@
       </div>
     </section>
 
-    <section id="void" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex">
+    <section id="void" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara">
       <p class="doc-eyebrow">Payment flow</p>
       <h2>Void</h2>
       <p class="doc-sig"><span class="fn">void</span>(VoidRequest): <span class="rt">PaymentResult</span></p>
@@ -431,7 +446,7 @@
       </div>
     </section>
 
-    <section id="refund" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex">
+    <section id="refund" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara">
       <p class="doc-eyebrow">Payment flow</p>
       <h2>Refund</h2>
       <p class="doc-sig"><span class="fn">refund</span>(RefundRequest): <span class="rt">RefundResult</span></p>
@@ -446,7 +461,7 @@
       </div>
     </section>
 
-    <section id="reverse-authorization" class="doc-section" data-gws="cyber paylink paytabs mpgs airwallex">
+    <section id="reverse-authorization" class="doc-section" data-gws="cyber paylink paytabs mpgs airwallex tamara">
       <p class="doc-eyebrow">Payment flow</p>
       <h2>Reverse authorization</h2>
       <p class="doc-sig"><span class="fn">reverseAuthorization</span>(ReversalRequest): <span class="rt">PaymentResult</span></p>
@@ -461,7 +476,7 @@
       </div>
     </section>
 
-    <section id="get-transaction" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex">
+    <section id="get-transaction" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara">
       <p class="doc-eyebrow">After the payment</p>
       <h2>Get transaction</h2>
       <p class="doc-sig"><span class="fn">getTransaction</span>(id): <span class="rt">TransactionSnapshot</span></p>
@@ -475,7 +490,7 @@
       </div>
     </section>
 
-    <section id="search-transaction" class="doc-section" data-gws="cyber fawry paymob paylink mpgs airwallex">
+    <section id="search-transaction" class="doc-section" data-gws="cyber fawry paymob paylink mpgs airwallex tamara">
       <p class="doc-eyebrow">After the payment</p>
       <h2>Search transaction</h2>
       <p class="doc-sig"><span class="fn">searchTransaction</span>(ref): <span class="rt">TransactionSnapshot</span></p>
@@ -488,7 +503,7 @@
       </div>
     </section>
 
-    <section id="reconcile" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex">
+    <section id="reconcile" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara">
       <p class="doc-eyebrow">After the payment</p>
       <h2>Reconcile</h2>
       <p class="doc-sig"><span class="fn">reconcile</span>(GatewayName, ids): <span class="rt">ReconciliationOutcome[]</span></p>
@@ -596,9 +611,20 @@
 }</code></pre>
         </div>
       </div>
+      <div class="gw-variant" data-gw="tamara">
+        <div class="code">
+<pre><code><span class="v">$outcomes</span> = <span class="v">$reconciler</span>-&gt;<span class="fn">reconcile</span>(<span class="t">GatewayName</span>::<span class="cn">Tamara</span>, [
+    <span class="s">'f56a3123-9e23-45e4-87a2-95366d3b0bca'</span>, <span class="c">// Tamara order ids</span>
+]);
+
+<span class="k">foreach</span> (<span class="v">$outcomes</span> <span class="k">as</span> <span class="v">$outcome</span>) {
+    <span class="c">// $outcome->reconciled(), $outcome->snapshot?->status, $outcome->error</span>
+}</code></pre>
+        </div>
+      </div>
     </section>
 
-    <section id="verify-webhook" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex">
+    <section id="verify-webhook" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara">
       <p class="doc-eyebrow">After the payment</p>
       <h2>Verify webhook</h2>
       <p class="doc-sig"><span class="fn">verifyWebhook</span>(payload, headers): <span class="rt">WebhookEvent</span></p>

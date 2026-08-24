@@ -142,6 +142,20 @@ final class HyprpayTools
                 'detail' => 'createCheckoutSession first exchanges client id/secret for a bearer token (POST /v1/oauth2/token) then creates an order (POST /v2/checkout/orders). The redirect URL is the order link with rel "payer-action"/"approve". Test host api-m.sandbox.paypal.com, live api-m.paypal.com.',
             ],
         ],
+        'tamara' => [
+            [
+                'title' => 'Redirect BNPL flow — no immediate charge, authorise before capture',
+                'detail' => 'Tamara has no charge(). createCheckoutSession returns the hosted checkout_url (CheckoutSession::redirectUrl) and the Tamara order_id (::reference). After the customer approves, Tamara sends an order_approved webhook; call the Tamara-specific authorise($orderId) to move the order to "authorised", then capture() on fulfilment. Capturing before authorising is rejected.',
+            ],
+            [
+                'title' => 'void and reverseAuthorization both map to cancel',
+                'detail' => 'Tamara exposes one cancel operation (POST /orders/{id}/cancel) for undoing an authorised order before capture, so both void() and reverseAuthorization() call it. Cancel requires the order total, so void() first fetches the order (GET /orders/{id}) to echo its total_amount back; reverseAuthorization() uses the amount on the request. refund() (POST /payments/simplified-refund/{id}) applies after capture.',
+            ],
+            [
+                'title' => 'Bearer token auth; webhooks verify a shared Authorization header',
+                'detail' => 'Every request is authenticated with the merchant API/merchant token as an Authorization: Bearer header (config shared_secret). Tamara does not sign webhooks with an HMAC/JWT; instead it echoes the Authorization header value you registered for the webhook URL, so verifyWebhook() compares the inbound Authorization header against webhook_secret in constant time. Hosts: api-sandbox.tamara.co (test), api.tamara.co (live). Amounts are JSON numbers in major units ({amount, currency}).',
+            ],
+        ],
     ];
 
     private PackageReflector $reflector;

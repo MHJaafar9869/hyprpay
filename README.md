@@ -32,10 +32,10 @@ php artisan vendor:publish --tag=gateway-config
 ```
 
 A self-contained, multi-gateway payment SDK for PHP. One clean interface, a factory
-that resolves the right driver, and a swappable HTTP transport — with nine gateways
+that resolves the right driver, and a swappable HTTP transport — with ten gateways
 built in: **CyberSource Unified Checkout**, **Fawry**, **Paymob**, **PayLink**,
 **PayTabs**, **PayPal**, **Mastercard Payment Gateway Services**, **Authorize.Net**,
-and **Airwallex**.
+**Airwallex**, and **Tamara**.
 
 - **Domain-driven layering** — a pure `Domain` (contracts, commands, results, value
   objects, enums), a thin `Application` layer (`PaymentGatewayFactory`), and an
@@ -53,8 +53,9 @@ and **Airwallex**.
   HMAC-SHA512, PayLink HMAC-SHA256, PayTabs server-key auth + HMAC-SHA256 callbacks,
   PayPal OAuth 2.0 client credentials + API webhook-signature verification, Mastercard
   MPGS HTTP Basic auth, Authorize.Net name/transaction-key auth + HMAC-SHA512 webhooks,
-  Airwallex API-access login token + HMAC-SHA256 webhooks), so there are no heavy
-  third-party gateway dependencies.
+  Airwallex API-access login token + HMAC-SHA256 webhooks, Tamara Bearer API token +
+  shared webhook-authorization header), so there are no heavy third-party gateway
+  dependencies.
 - **Deterministic & idempotent** — request bodies are built deterministically (no
   hidden `uniqid()`/`time()`), and write operations carry an idempotency key.
 - **Exact money** — amounts are carried as minor units and never rounded.
@@ -117,9 +118,10 @@ so bind only the port you want to replace.
 
 ## Gateways
 
-Nine drivers behind one `PaymentGatewayInterface`: **CyberSource Unified Checkout**,
+Ten drivers behind one `PaymentGatewayInterface`: **CyberSource Unified Checkout**,
 **Fawry**, **Paymob**, **PayLink**, **PayTabs**, **PayPal**, **Mastercard Payment
-Gateway Services**, **Authorize.Net**, and **Airwallex**. Operations a gateway does not support throw
+Gateway Services**, **Authorize.Net**, **Airwallex**, and **Tamara** (buy now, pay
+later). Operations a gateway does not support throw
 `UnsupportedOperationException`, so the same surface holds everywhere. A runnable sample
 per gateway and the full operation-support matrix live in the docs below.
 
