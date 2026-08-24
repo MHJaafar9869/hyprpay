@@ -8,6 +8,7 @@ use Hyprpay\Payments\Application\PaymentGatewayFactory;
 use Hyprpay\Payments\Domain\Contract\CredentialResolver;
 use Hyprpay\Payments\Domain\Contract\EventDispatcher;
 use Hyprpay\Payments\Domain\Contract\HttpClient;
+use Hyprpay\Payments\Domain\Contract\PaymentActivityRepository;
 use Hyprpay\Payments\Domain\Event\PaymentEvent;
 use Hyprpay\Payments\Infrastructure\Console\ReconcileAirwallexCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcileAuthorizeNetCommand;
@@ -19,19 +20,27 @@ use Hyprpay\Payments\Infrastructure\Console\ReconcilePaymobCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcilePayPalCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcilePaytabsCommand;
 use Hyprpay\Payments\Infrastructure\Credentials\ConfigCredentialResolver;
+use Hyprpay\Payments\Infrastructure\Dashboard\CachePaymentActivityRepository;
+use Hyprpay\Payments\Infrastructure\Dashboard\NullPaymentActivityRepository;
 use Hyprpay\Payments\Infrastructure\Events\LaravelEventDispatcher;
 use Hyprpay\Payments\Infrastructure\Events\LoggingPaymentEventListener;
+use Hyprpay\Payments\Infrastructure\Events\RecordingPaymentEventListener;
 use Hyprpay\Payments\Infrastructure\Http\LaravelHttpClient;
 use Hyprpay\Payments\Infrastructure\Http\LoggingHttpClient;
+use Hyprpay\Payments\Infrastructure\Http\Middleware\AuthorizeDashboard;
 use Hyprpay\Payments\Infrastructure\Http\RateLimitingHttpClient;
 use Hyprpay\Payments\Infrastructure\Http\RetryingHttpClient;
 use Hyprpay\Payments\Infrastructure\Support\Value;
+use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Contracts\Events\Dispatcher as EventsDispatcher;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Log\LogManager;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Psr\Log\LoggerInterface;
 
@@ -91,6 +100,21 @@ final class GatewayServiceProvider extends ServiceProvider
             $app->make(EventsDispatcher::class),
         ));
 
+        $this->app->bind(PaymentActivityRepository::class, static function (Application $app): PaymentActivityRepository {
+            $config = $app->make(ConfigRepository::class);
+
+            if (! Value::bool($config->get('gateway.dashboard.store.enabled'))) {
+                return new NullPaymentActivityRepository;
+            }
+
+            return new CachePaymentActivityRepository(
+                $app->make(CacheFactory::class),
+                Value::nullableString($config->get('gateway.dashboard.store.cache')),
+                Value::string($config->get('gateway.dashboard.store.key'), 'hyprpay:activity'),
+                Value::int($config->get('gateway.dashboard.store.limit'), 500),
+            );
+        });
+
         $this->app->singleton(PaymentGatewayFactory::class, static function (Application $app): PaymentGatewayFactory {
             $config = $app->make(ConfigRepository::class);
 
@@ -140,14 +164,22 @@ final class GatewayServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register the payment-event audit logger (when enabled), then — in the console —
-     * publish the package config and register the reconciliation commands.
+     * Register the payment-event listeners and mount the dashboard (when enabled), then —
+     * in the console — publish the package assets and register the reconciliation commands.
      */
     public function boot(): void
     {
-        if (Value::bool($this->app->make(ConfigRepository::class)->get('gateway.events.log'))) {
+        $config = $this->app->make(ConfigRepository::class);
+
+        if (Value::bool($config->get('gateway.events.log'))) {
             $this->app->make(EventsDispatcher::class)->listen(PaymentEvent::class, LoggingPaymentEventListener::class);
         }
+
+        if (Value::bool($config->get('gateway.dashboard.store.enabled'))) {
+            $this->app->make(EventsDispatcher::class)->listen(PaymentEvent::class, RecordingPaymentEventListener::class);
+        }
+
+        $this->bootDashboard($config);
 
         if (! $this->app->runningInConsole()) {
             return;
@@ -157,7 +189,11 @@ final class GatewayServiceProvider extends ServiceProvider
             __DIR__.'/../../config/gateway.php' => $this->app->configPath('gateway.php'),
         ], 'gateway-config');
 
-        if (Value::bool($this->app->make(ConfigRepository::class)->get('gateway.commands.reconcile', true))) {
+        $this->publishes([
+            __DIR__.'/../../resources/views' => $this->app->resourcePath('views/vendor/hyprpay'),
+        ], 'gateway-dashboard-views');
+
+        if (Value::bool($config->get('gateway.commands.reconcile', true))) {
             $this->commands([
                 ReconcileCybersourceCommand::class,
                 ReconcileFawryCommand::class,
@@ -170,5 +206,59 @@ final class GatewayServiceProvider extends ServiceProvider
                 ReconcileAirwallexCommand::class,
             ]);
         }
+    }
+
+    /**
+     * Mount the monitoring dashboard when enabled: its views, its authorization gate, and its routes.
+     */
+    private function bootDashboard(ConfigRepository $config): void
+    {
+        if (! Value::bool($config->get('gateway.dashboard.enabled'))) {
+            return;
+        }
+
+        $this->loadViewsFrom(__DIR__.'/../../resources/views', 'hyprpay');
+        $this->registerDashboardGate();
+        $this->registerDashboardRoutes($config);
+    }
+
+    /**
+     * Define the default "viewHyprpay" gate (local-only) unless the host has already defined one.
+     */
+    private function registerDashboardGate(): void
+    {
+        if (Gate::has('viewHyprpay')) {
+            return;
+        }
+
+        Gate::define('viewHyprpay', fn (?Authenticatable $user = null): bool => $this->app->environment('local') === true);
+    }
+
+    /**
+     * Register the dashboard routes under the configured path, gated by AuthorizeDashboard and the host middleware.
+     */
+    private function registerDashboardRoutes(ConfigRepository $config): void
+    {
+        Route::group([
+            'prefix' => Value::string($config->get('gateway.dashboard.path'), 'hyprpay'),
+            'as' => 'hyprpay.dashboard.',
+            'middleware' => [AuthorizeDashboard::class, ...$this->dashboardMiddleware($config)],
+        ], function (): void {
+            $this->loadRoutesFrom(__DIR__.'/../../routes/dashboard.php');
+        });
+    }
+
+    /**
+     * Resolve the host-configured middleware stack for the dashboard, defaulting to the web group.
+     *
+     * @return list<string>
+     */
+    private function dashboardMiddleware(ConfigRepository $config): array
+    {
+        $middleware = $config->get('gateway.dashboard.middleware', ['web']);
+
+        return is_array($middleware)
+            ? array_values(array_map(static fn (mixed $item): string => Value::string($item), $middleware))
+            : ['web'];
     }
 }

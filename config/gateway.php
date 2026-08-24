@@ -103,6 +103,42 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Monitoring dashboard
+    |--------------------------------------------------------------------------
+    |
+    | An opt-in operator dashboard that mounts its own routes to visualise gateway
+    | activity: which gateways are configured and in which mode, a live feed of the
+    | recent lifecycle operations, aggregate stats, and an on-demand "look up a
+    | payment by reference" panel that queries the gateway directly. It is off by
+    | default; the SDK ships no UI unless you enable it here.
+    |
+    | Access is gated exactly like Telescope/Horizon: every request must satisfy the
+    | `viewHyprpay` authorization gate (default: allowed only in the local
+    | environment — override it in a service provider to open it to real operators)
+    | AND pass the configured `middleware` stack. `path` is the URL prefix the
+    | dashboard is served from (default /hyprpay).
+    |
+    | The activity feed reads from a store fed by an event listener; it is a
+    | separate toggle so you can mount the dashboard without recording anything. The
+    | default store is a bounded ring buffer in the cache (no database, no
+    | migration) keeping the last `limit` PII-safe records; bind a custom
+    | PaymentActivityRepository to persist durable history instead.
+    |
+    */
+    'dashboard' => [
+        'enabled' => (bool) env('GATEWAY_DASHBOARD', false),
+        'path' => env('GATEWAY_DASHBOARD_PATH', 'hyprpay'),
+        'middleware' => ['web'],
+        'store' => [
+            'enabled' => (bool) env('GATEWAY_DASHBOARD_STORE', false),
+            'cache' => env('GATEWAY_DASHBOARD_CACHE_STORE'),
+            'key' => env('GATEWAY_DASHBOARD_CACHE_KEY', 'hyprpay:activity'),
+            'limit' => (int) env('GATEWAY_DASHBOARD_LIMIT', 500),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Gateway credentials (fallback)
     |--------------------------------------------------------------------------
     |

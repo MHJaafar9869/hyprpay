@@ -59,7 +59,7 @@ and **Airwallex**.
   hidden `uniqid()`/`time()`), and write operations carry an idempotency key.
 - **Exact money** — amounts are carried as minor units and never rounded.
 - **Statically strict** — PHPStan **level max, zero baseline**; formatted with Pint;
-  refactor-checked with Rector; 310+ Pest tests.
+  refactor-checked with Rector; 370+ Pest tests.
 
 ## Quick start
 
@@ -114,6 +114,37 @@ port interface it is bound to (`HttpClient` sends the outbound gateway requests;
 out of the box the SDK binds a retrying Laravel HTTP adapter (`LaravelHttpClient`, with
 optional rate-limiting/logging decorators) and a config-driven `ConfigCredentialResolver`,
 so bind only the port you want to replace.
+
+## Monitoring dashboard
+
+An opt-in operator dashboard — off by default — mounts at `/hyprpay` to watch gateway
+activity: each gateway's health (configured vs not, test vs live, the default), headline
+stats and a live recent-activity feed, plus a look-up-by-reference panel that queries the
+gateway directly. Enable it (and, separately, the activity store that feeds the feed) via
+env:
+
+```dotenv
+GATEWAY_DASHBOARD=true          # mount the dashboard routes/views
+GATEWAY_DASHBOARD_STORE=true    # record activity into the (cache-backed) feed
+# GATEWAY_DASHBOARD_PATH=hyprpay
+# GATEWAY_DASHBOARD_LIMIT=500
+```
+
+Access is gated exactly like Telescope/Horizon: every request must pass the configured
+`gateway.dashboard.middleware` stack (default `['web']`) **and** satisfy the `viewHyprpay`
+gate. The default gate allows only the local environment — open it to real operators from
+any service provider:
+
+```php
+use Illuminate\Support\Facades\Gate;
+
+Gate::define('viewHyprpay', fn ($user = null) => $user?->isAdmin() === true);
+```
+
+The activity store is a bounded cache ring buffer by default (no database, no migration);
+bind a custom `PaymentActivityRepository` to persist durable history instead. The view is
+self-contained (inline CSS/JS, no build step) and publishable with
+`php artisan vendor:publish --tag=gateway-dashboard-views`.
 
 ## Gateways
 
