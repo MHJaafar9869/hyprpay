@@ -10,6 +10,7 @@
     mpgs:    { name: 'Mastercard MPGS', enumCase: 'Mpgs', hue: 'var(--mpgs)', sign: 'HTTP Basic (merchant.{id})', ret: 'reference (session id)' },
     authorizenet: { name: 'Authorize.Net', enumCase: 'AuthorizeNet', hue: 'var(--authorizenet)', sign: 'name + transaction key', ret: 'transactionId (Accept.js charge)' },
     airwallex: { name: 'Airwallex', enumCase: 'Airwallex', hue: 'var(--airwallex)', sign: 'API-access login token', ret: 'reference (intent id) + jwt (client secret)' },
+    tamara:  { name: 'Tamara', enumCase: 'Tamara', hue: 'var(--tamara)', sign: 'Bearer API token', ret: 'redirectUrl (hosted BNPL page)' },
     misc:    { name: 'Misc', enumCase: '', hue: 'var(--muted)', sign: '—', ret: '—', meta: false }
   };
   var opts     = [].slice.call(document.querySelectorAll('.gw-opt'));
