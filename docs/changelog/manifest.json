@@ -1,9 +1,15 @@
 {
   "releases": [
     {
+      "version": "0.10.0",
+      "date": "2026-08-25",
+      "title": "Opt-in monitoring dashboard at /hyprpay",
+      "file": "v0.10.0.md"
+    },
+    {
       "version": "0.9.0",
       "date": "2026-08-24",
-      "title": "Opt-in monitoring dashboard at /hyprpay",
+      "title": "Tamara buy-now-pay-later gateway",
       "file": "v0.9.0.md"
     },
     {
