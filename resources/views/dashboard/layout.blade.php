@@ -31,7 +31,6 @@
             --sans: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, Helvetica, Arial, sans-serif;
             --display: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
             --radius: 5px;
-            --side-w: 250px;
         }
         * { box-sizing: border-box; }
         html { -webkit-text-size-adjust: 100%; }
@@ -67,42 +66,27 @@
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; user-select: none;
         }
 
-        /* ---- Shell: fixed sidebar + fluid main ---- */
-        .shell { display: grid; grid-template-columns: var(--side-w) 1fr; min-height: 100vh; }
-
-        aside.side {
-            position: sticky; top: 0; align-self: start; height: 100vh;
-            display: flex; flex-direction: column; gap: 6px;
-            padding: 22px 16px; border-right: 1px solid var(--border);
-            background: linear-gradient(180deg, #151515, #0f0f0f);
+        /* ---- Top bar + full-width main ---- */
+        .topbar {
+            position: sticky; top: 0; z-index: 40;
+            display: flex; align-items: center; gap: 16px;
+            padding: 13px 30px; border-bottom: 1px solid var(--border);
+            background: rgba(12, 12, 12, .82); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
         }
-        .brand { display: flex; align-items: center; gap: 12px; padding: 4px 8px 20px; }
-        .glyph { width: 36px; height: 36px; flex: none; display: block; }
+        .brand { display: flex; align-items: center; gap: 12px; }
+        .glyph { width: 34px; height: 34px; flex: none; display: block; }
         .glyph svg { width: 100%; height: 100%; display: block; }
         .brand .lock { display: flex; flex-direction: column; }
-        .brand h1 { font: 700 17px/20px var(--display); margin: 0; letter-spacing: -.2px; }
+        .brand h1 { font: 700 16px/19px var(--display); margin: 0; letter-spacing: -.2px; }
         .brand h1 .accent { color: var(--ok); }
-        .brand .tag { color: var(--faint); font: 600 9.5px/16px var(--sans); letter-spacing: .16em; text-transform: uppercase; }
+        .brand .tag { color: var(--faint); font: 600 9px/15px var(--sans); letter-spacing: .16em; text-transform: uppercase; }
 
-        .nav-label { color: var(--faint); font: 600 10px/1 var(--sans); letter-spacing: .16em; text-transform: uppercase; padding: 16px 12px 8px; }
-        .nav-item {
-            display: flex; align-items: center; gap: 11px; color: var(--muted);
-            padding: 10px 12px; border-radius: 5px; font-weight: 500; font-size: 13.5px;
-            border: 1px solid transparent; transition: background .14s ease, color .14s ease, border-color .14s ease;
-        }
-        .nav-item:hover { color: var(--text); background: rgba(255, 255, 255, .05); }
-        .nav-item.active { color: var(--text); background: var(--accent-soft); border-color: rgba(90, 166, 42, .38); }
-        .nav-item.active .ic { color: var(--ok); }
-        .nav-item .ic { font-size: 20px; flex: none; color: var(--faint); }
-        .nav-item .ct { margin-left: auto; font: 600 11px/1 var(--sans); color: var(--faint); font-variant-numeric: tabular-nums; }
-        .nav-item.active .ct { color: var(--ok); }
-
-        .side-foot { margin-top: auto; padding: 12px 8px 2px; }
         .live {
+            margin-left: auto;
             display: inline-flex; align-items: center; gap: 9px; font: 600 11px/1 var(--sans);
             letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
-            border: 1px solid var(--border-strong); border-radius: 5px; padding: 10px 13px;
-            background: rgba(18, 23, 15, .5); width: 100%;
+            border: 1px solid var(--border-strong); border-radius: 5px; padding: 9px 13px;
+            background: rgba(18, 23, 15, .5);
         }
         .live .beacon { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
         .live b { color: var(--text); font-variant-numeric: tabular-nums; }
@@ -122,7 +106,7 @@
         h2::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
 
         .grid { display: grid; gap: 15px; }
-        .cards { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+        .cards { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
         .kpis { grid-template-columns: repeat(auto-fit, minmax(196px, 1fr)); }
         .split { grid-template-columns: 1.15fr 1fr 1fr; align-items: stretch; }
         @media (max-width: 1080px) { .split { grid-template-columns: 1fr 1fr; } }
@@ -311,13 +295,7 @@
         .btn-primary:hover { background: var(--accent-2); }
 
         @media (max-width: 820px) {
-            .shell { grid-template-columns: 1fr; }
-            aside.side { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; border-right: 0; border-bottom: 1px solid var(--border); padding: 14px 16px; }
-            .brand { padding: 0; width: 100%; margin-bottom: 6px; }
-            aside.side nav { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
-            .nav-label, .side-foot { display: none; }
-            .nav-item { flex: 0 0 auto; padding: 8px 12px; border: 1px solid var(--border); }
-            .nav-item .ct { display: none; }
+            .topbar { padding: 12px 18px; }
             .split { grid-template-columns: 1fr; }
             .main { padding: 20px 18px 70px; }
         }
@@ -337,32 +315,27 @@
             </linearGradient>
         </defs>
     </svg>
-    <div class="shell">
-        <aside class="side">
-            <div class="brand">
-                <span class="glyph">
-                    <svg viewBox="0 0 100 100" role="img" aria-label="HyprPay">
-                        <rect x="1" y="1" width="98" height="98" rx="24" fill="#0b0c0b" stroke="#1b1e25" stroke-width="1.5"/>
-                        <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="12">
-                            <polyline points="24,31 46,50 24,69" stroke="#c8f14e"/>
-                            <polyline points="49,31 71,50 49,69" stroke="#5e7726"/>
-                        </g>
-                    </svg>
-                </span>
-                <div class="lock">
-                    <h1>hyprpay<span class="accent">·</span>monitor</h1>
-                    <span class="tag">Gateway telemetry</span>
-                </div>
+    <header class="topbar">
+        <div class="brand">
+            <span class="glyph">
+                <svg viewBox="0 0 100 100" role="img" aria-label="HyprPay">
+                    <rect x="1" y="1" width="98" height="98" rx="24" fill="#0b0c0b" stroke="#1b1e25" stroke-width="1.5"/>
+                    <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="12">
+                        <polyline points="24,31 46,50 24,69" stroke="#c8f14e"/>
+                        <polyline points="49,31 71,50 49,69" stroke="#5e7726"/>
+                    </g>
+                </svg>
+            </span>
+            <div class="lock">
+                <h1>hyprpay<span class="accent">·</span>monitor</h1>
+                <span class="tag">Gateway telemetry</span>
             </div>
-            @yield('nav')
-            <div class="side-foot">
-                <span class="live"><span class="beacon"></span> Live <b id="updated-at">now</b></span>
-            </div>
-        </aside>
-        <main class="main">
-            @yield('content')
-        </main>
-    </div>
+        </div>
+        <span class="live"><span class="beacon"></span> Live <b id="updated-at">now</b></span>
+    </header>
+    <main class="main">
+        @yield('content')
+    </main>
     @yield('scripts')
 </body>
 </html>
