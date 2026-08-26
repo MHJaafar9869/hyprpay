@@ -1,6 +1,12 @@
 {
   "releases": [
     {
+      "version": "0.10.2",
+      "date": "2026-08-26",
+      "title": "Full-width dashboard; top bar replaces the sidebar",
+      "file": "v0.10.2.md"
+    },
+    {
       "version": "0.10.1",
       "date": "2026-08-26",
       "title": "Dashboard redesign, durable DB store, and payment lifecycle",
