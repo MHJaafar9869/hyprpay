@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Hyprpay\Payments\Domain\Contract\ReadsLog;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\Result\PaymentActivityRecord;
@@ -33,7 +34,15 @@ function dashboardData(array $records = []): DashboardData
         $activity->record($record);
     }
 
-    return new DashboardData($config, $activity);
+    $log = new class implements ReadsLog
+    {
+        public function recent(int $limit): array
+        {
+            return [];
+        }
+    };
+
+    return new DashboardData($config, $activity, $log);
 }
 
 /**

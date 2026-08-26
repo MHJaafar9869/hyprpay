@@ -52,6 +52,14 @@ final readonly class DashboardController
     }
 
     /**
+     * Return the SDK's recent log entries for the dashboard's log panel as JSON.
+     */
+    public function logs(): JsonResponse
+    {
+        return new JsonResponse($this->data->logs(200));
+    }
+
+    /**
      * Return a payment's full recorded lifecycle — its event timeline and summary — as JSON.
      */
     public function lifecycle(Request $request): JsonResponse

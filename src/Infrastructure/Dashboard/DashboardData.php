@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hyprpay\Payments\Infrastructure\Dashboard;
 
 use Hyprpay\Payments\Domain\Contract\PaymentGatewayInterface;
+use Hyprpay\Payments\Domain\Contract\ReadsLog;
 use Hyprpay\Payments\Domain\Contract\ReadsPaymentActivity;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
@@ -28,10 +29,12 @@ final readonly class DashboardData
     /**
      * @param  ConfigRepository  $config  Source of gateway configuration (credentials presence, mode, default).
      * @param  ReadsPaymentActivity  $activity  The read seam the activity feed and stats are read from.
+     * @param  ReadsLog  $log  The read seam the log panel reads recent SDK log entries from.
      */
     public function __construct(
         private ConfigRepository $config,
         private ReadsPaymentActivity $activity,
+        private ReadsLog $log,
     ) {}
 
     /**
@@ -62,6 +65,23 @@ final readonly class DashboardData
     public function recentActivity(int $limit): array
     {
         return array_map($this->present(...), $this->activity->recent($limit));
+    }
+
+    /**
+     * Read recent SDK log entries for the dashboard's log panel — newest first, each tagged
+     * with a display tone by level.
+     *
+     * @return list<array{time: string, level: string, tone: string, message: string, detail: string}>
+     */
+    public function logs(int $limit): array
+    {
+        return array_map(fn (array $entry): array => [
+            'time' => $entry['time'],
+            'level' => $entry['level'],
+            'tone' => $this->logTone($entry['level']),
+            'message' => $entry['message'],
+            'detail' => $entry['detail'],
+        ], $this->log->recent($limit));
     }
 
     /**
@@ -246,6 +266,19 @@ final readonly class DashboardData
         }
 
         return null;
+    }
+
+    /**
+     * Map a log level to a display tone the view colours by: bad, warn, ok, or none.
+     */
+    private function logTone(string $level): string
+    {
+        return match (strtoupper($level)) {
+            'EMERGENCY', 'ALERT', 'CRITICAL', 'ERROR' => 'bad',
+            'WARNING' => 'warn',
+            'NOTICE', 'INFO' => 'ok',
+            default => 'none',
+        };
     }
 
     /**

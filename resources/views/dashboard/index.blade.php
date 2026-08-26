@@ -24,7 +24,7 @@
             <h1 class="pagetitle">Overview</h1>
             <div class="subtitle">Real-time payment gateway telemetry across your integrations.</div>
         </div>
-        <div class="updated">Auto-refreshing every 10s</div>
+        <div class="updated" id="refresh-note">Auto-refresh is off</div>
     </header>
 
     <section id="overview">
@@ -194,6 +194,12 @@
             </table>
         </div>
     </div>
+
+    <h2 id="logs">Logs</h2>
+    <div class="panel scroll reveal">
+        <div id="logs-body"><div class="empty">Loading logs…</div></div>
+    </div>
+
     <div class="drawer" id="drawer" aria-hidden="true">
         <div class="drawer-scrim" data-drawer-close></div>
         <aside class="drawer-panel" role="dialog" aria-modal="true" aria-label="Payment lifecycle">
@@ -226,6 +232,7 @@
     <script>
         window.HYPRPAY = {
             activityUrl: "{{ route('hyprpay.dashboard.activity') }}",
+            logsUrl: "{{ route('hyprpay.dashboard.logs') }}",
             lifecycleUrl: "{{ route('hyprpay.dashboard.lifecycle') }}",
             lookupUrl: "{{ route('hyprpay.dashboard.lookup') }}",
             csrf: "{{ csrf_token() }}",
@@ -483,10 +490,69 @@
                 el.addEventListener('change', renderTable);
             });
 
+            const prettyDetail = (d) => {
+                try { return JSON.stringify(JSON.parse(d), null, 2); } catch (e) { return d; }
+            };
+
+            function renderLogs(entries) {
+                const body = document.getElementById('logs-body');
+                if (!body) return;
+                if (!entries.length) {
+                    body.innerHTML = '<div class="empty">No log entries yet. The SDK logs to the <span class="mono">hyprpay</span> channel.</div>';
+                    return;
+                }
+                body.innerHTML = entries.map((e) =>
+                    '<div class="log-entry' + (e.detail ? ' has-detail' : '') + '">'
+                    + '<div class="log-row">'
+                    + '<span class="log-level s-' + esc(e.tone) + '">' + esc(e.level) + '</span>'
+                    + '<span class="log-time">' + esc(e.time) + '</span>'
+                    + '<span class="log-msg">' + esc(e.message) + '</span>'
+                    + (e.detail ? '<span class="mi log-chev">expand_more</span>' : '<span></span>')
+                    + '</div>'
+                    + (e.detail ? '<pre class="log-detail" hidden>' + esc(prettyDetail(e.detail)) + '</pre>' : '')
+                    + '</div>'
+                ).join('');
+            }
+
+            async function pollLogs() {
+                try {
+                    const res = await fetch(window.HYPRPAY.logsUrl, { headers: { 'Accept': 'application/json' } });
+                    if (res.ok) renderLogs(await res.json());
+                } catch (e) {}
+            }
+
+            const logsBody = document.getElementById('logs-body');
+            if (logsBody) {
+                logsBody.addEventListener('click', (e) => {
+                    const entry = e.target.closest('.log-entry.has-detail');
+                    if (!entry) return;
+                    const open = entry.classList.toggle('open');
+                    const detail = entry.querySelector('.log-detail');
+                    if (detail) detail.hidden = !open;
+                });
+            }
+
             stamp();
             renderStats(rows);
             renderTable();
-            setInterval(pollActivity, 10000);
+            pollLogs();
+
+            let refreshTimer = null;
+            const refreshNote = document.getElementById('refresh-note');
+            const autoToggle = document.getElementById('auto-refresh');
+            if (autoToggle) {
+                autoToggle.addEventListener('change', () => {
+                    if (autoToggle.checked) {
+                        pollActivity();
+                        pollLogs();
+                        refreshTimer = setInterval(() => { pollActivity(); pollLogs(); }, 10000);
+                        if (refreshNote) refreshNote.textContent = 'Auto-refreshing every 10s';
+                    } else {
+                        if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+                        if (refreshNote) refreshNote.textContent = 'Auto-refresh is off';
+                    }
+                });
+            }
 
             const form = document.getElementById('lookup-form');
             const out = document.getElementById('lookup-result');
