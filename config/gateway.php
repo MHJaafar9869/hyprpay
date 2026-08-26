@@ -119,10 +119,17 @@ return [
     | dashboard is served from (default /hyprpay).
     |
     | The activity feed reads from a store fed by an event listener; it is a
-    | separate toggle so you can mount the dashboard without recording anything. The
-    | default store is a bounded ring buffer in the cache (no database, no
-    | migration) keeping the last `limit` PII-safe records; bind a custom
-    | PaymentActivityRepository to persist durable history instead.
+    | separate toggle so you can mount the dashboard without recording anything.
+    | Three drivers are available via GATEWAY_DASHBOARD_STORE_DRIVER:
+    |
+    |   database  Durable, normalized, PII-safe tables (payments, their attempts,
+    |             and webhooks) that the dashboard reads. This is the default; run
+    |             `php artisan hyprpay:install --migrate` to create the tables.
+    |   cache     A bounded ring buffer in the cache — no database, no migration —
+    |             keeping the last `limit` records.
+    |   null      Discard everything (an explicit no-op store).
+    |
+    | Or bind your own PaymentActivityRepository to persist history however you like.
     |
     */
     'dashboard' => [
@@ -131,9 +138,14 @@ return [
         'middleware' => ['web'],
         'store' => [
             'enabled' => (bool) env('GATEWAY_DASHBOARD_STORE', false),
+            'driver' => env('GATEWAY_DASHBOARD_STORE_DRIVER', 'database'),
             'cache' => env('GATEWAY_DASHBOARD_CACHE_STORE'),
             'key' => env('GATEWAY_DASHBOARD_CACHE_KEY', 'hyprpay:activity'),
             'limit' => (int) env('GATEWAY_DASHBOARD_LIMIT', 500),
+            'database' => [
+                'connection' => env('GATEWAY_DASHBOARD_DB_CONNECTION'),
+                'prefix' => env('GATEWAY_DASHBOARD_DB_PREFIX', 'hyprpay_'),
+            ],
         ],
     ],
 

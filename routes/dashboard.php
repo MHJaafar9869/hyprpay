@@ -19,4 +19,5 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [DashboardController::class, 'index'])->name('index');
 Route::get('/activity', [DashboardController::class, 'activity'])->name('activity');
+Route::get('/lifecycle', [DashboardController::class, 'lifecycle'])->name('lifecycle');
 Route::post('/lookup', [DashboardController::class, 'lookup'])->name('lookup');
