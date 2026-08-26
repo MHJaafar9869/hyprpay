@@ -108,7 +108,7 @@
         .live b { color: var(--text); font-variant-numeric: tabular-nums; }
 
         /* ---- Main column ---- */
-        .main { min-width: 0; padding: 26px 30px 90px; max-width: 1320px; }
+        .main { min-width: 0; padding: 26px 30px 90px; }
 
         header.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
         header.top .pagetitle { font: 700 27px/1.1 var(--display); letter-spacing: -.5px; margin: 0; }
