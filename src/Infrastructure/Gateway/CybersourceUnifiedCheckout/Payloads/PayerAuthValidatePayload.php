@@ -18,12 +18,14 @@ final class PayerAuthValidatePayload
      * Build the POST /risk/v1/authentication-results request body (3DS validation).
      *
      * Carries the client reference code, the order amount, the authentication transaction id
-     * to validate, and optionally the transient-token card reference.
+     * to validate, and the transient-token `jti` card reference when it can be read. The
+     * validate token model accepts only the `jti`, so an unparseable token carries no reference.
      *
      * @param  ValidatePayerAuthRequest  $request  Validation inputs (authentication transaction id, amount, optional transient token, order reference).
+     * @param  string|null  $jti  The transient token's `jti` claim, when readable.
      * @return array<string, mixed>
      */
-    public static function build(ValidatePayerAuthRequest $request): array
+    public static function build(ValidatePayerAuthRequest $request, ?string $jti): array
     {
         $payload = [
             'clientReferenceInformation' => [
@@ -40,8 +42,8 @@ final class PayerAuthValidatePayload
             ],
         ];
 
-        if (filled($request->transientToken)) {
-            $payload['tokenInformation'] = ['transientTokenJwt' => $request->transientToken];
+        if (filled($jti)) {
+            $payload['tokenInformation'] = ['jti' => $jti];
         }
 
         return $payload;

@@ -1,6 +1,12 @@
 {
   "releases": [
     {
+      "version": "0.11.1",
+      "date": "2026-08-27",
+      "title": "Fix CyberSource 3-D Secure validation card reference (jti)",
+      "file": "v0.11.1.md"
+    },
+    {
       "version": "0.11.0",
       "date": "2026-08-26",
       "title": "CyberSource 3-D Secure device data collection; dashboard log panel",

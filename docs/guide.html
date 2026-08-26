@@ -932,7 +932,12 @@
       <p class="doc-sig"><span class="fn">validatePayerAuth</span>(ValidatePayerAuthRequest): <span class="rt">PayerAuthResult</span></p>
       <p>Confirms the challenge result once the payer completes it — check it before charging.</p>
       <div class="code">
-<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">validatePayerAuth</span>(<span class="k">new</span> <span class="t">ValidatePayerAuthRequest</span>(<span class="c">/* … */</span>));</code></pre>
+<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">validatePayerAuth</span>(<span class="k">new</span> <span class="t">ValidatePayerAuthRequest</span>(
+    <span class="a">authenticationTransactionId:</span> <span class="v">$auth</span>-&gt;authenticationTransactionId,
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'USD'</span>),
+    <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>, <span class="c">// CyberSource references the card by the token's jti</span>
+));
+<span class="c">// $result->consumerAuthenticationInformation carries the CAVV/ECI for the charge</span></code></pre>
       </div>
       <p><em>MPGS:</em> pass 3-D Secure browser device data via a <code>BrowserDeviceData</code> on
          <code>ValidatePayerAuthRequest.device</code> — the user agent, <code>browserDetails</code>
@@ -1193,7 +1198,7 @@
     <a href="https://packagist.org/packages/hyprpay/payments">Packagist</a>
     <a href="https://github.com/MHJaafar9869/hyprpay/blob/main/README.md">README</a>
   </nav>
-  <p class="foot-note">Domain-driven · ports &amp; adapters · deterministic · exact money · <a href="https://packagist.org/packages/hyprpay/payments">v0.11.0</a></p>
+  <p class="foot-note">Domain-driven · ports &amp; adapters · deterministic · exact money · <a href="https://packagist.org/packages/hyprpay/payments">v0.11.1</a></p>
 </footer>
 
 <button class="to-top" type="button" aria-label="Back to top" title="Back to top">↑</button>

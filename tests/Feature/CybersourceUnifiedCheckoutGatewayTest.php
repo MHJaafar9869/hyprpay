@@ -229,6 +229,22 @@ it('validates payer auth results', function (): void {
         ->and($http->lastRequest()?->url)->toBe('https://apitest.cybersource.com/risk/v1/authentication-results');
 });
 
+it('references the card by transient-token jti when validating payer auth', function (): void {
+    [$gateway, $http] = gatewayWithFakeHttp();
+    $http->queueJson(['status' => 'AUTHENTICATION_SUCCESSFUL']);
+
+    $gateway->validatePayerAuth(new ValidatePayerAuthRequest(
+        authenticationTransactionId: 'auth_1',
+        money: Money::minor(2599, 'USD'),
+        transientToken: fakeJwt(['jti' => 'tok_jti_123']),
+    ));
+
+    $body = recordedBody($http);
+
+    expect($body['tokenInformation'])->toBe(['jti' => 'tok_jti_123'])
+        ->and($body['consumerAuthenticationInformation']['authenticationTransactionId'])->toBe('auth_1');
+});
+
 it('vaults a card through the three TMS calls', function (): void {
     [$gateway, $http] = gatewayWithFakeHttp();
     $http->queueJson(['id' => 'ii_1'])
