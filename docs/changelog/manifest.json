@@ -1,6 +1,12 @@
 {
   "releases": [
     {
+      "version": "0.11.0",
+      "date": "2026-08-26",
+      "title": "CyberSource 3-D Secure device data collection; dashboard log panel",
+      "file": "v0.11.0.md"
+    },
+    {
       "version": "0.10.2",
       "date": "2026-08-26",
       "title": "Full-width dashboard; top bar replaces the sidebar",
