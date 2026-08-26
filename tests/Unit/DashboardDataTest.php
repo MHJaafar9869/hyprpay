@@ -11,10 +11,10 @@ use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Cybersour
 use Hyprpay\Payments\Infrastructure\Gateway\Fawry\FawryGateway;
 use Hyprpay\Payments\Infrastructure\Http\FakeHttpClient;
 use Hyprpay\Payments\Tests\Support\ArrayConfig;
-use Hyprpay\Payments\Tests\Support\RecordingActivityRepository;
+use Hyprpay\Payments\Tests\Support\InMemoryPaymentActivity;
 
 /**
- * Build a DashboardData over a fixed config and a seeded activity repository.
+ * Build a DashboardData over a fixed config and a seeded activity store.
  *
  * @param  list<PaymentActivityRecord>  $records
  */
@@ -28,12 +28,12 @@ function dashboardData(array $records = []): DashboardData
         ],
     ]]);
 
-    $repository = new RecordingActivityRepository;
+    $activity = new InMemoryPaymentActivity;
     foreach ($records as $record) {
-        $repository->record($record);
+        $activity->record($record);
     }
 
-    return new DashboardData($config, $repository);
+    return new DashboardData($config, $activity);
 }
 
 /**
@@ -120,4 +120,24 @@ it('degrades gracefully for a gateway that does not support listing', function (
     expect($result['supported'])->toBeFalse()
         ->and($result['transactions'])->toBe([])
         ->and($result['message'])->toContain('does not support');
+});
+
+it('builds a payment lifecycle with a rolled-up summary and ordered events', function (): void {
+    $life = dashboardData([
+        statusRecord(PaymentStatus::Declined),
+        statusRecord(PaymentStatus::Captured, Money::minor(25000, 'SAR')),
+    ])->lifecycle('ORD');
+
+    expect($life['found'])->toBeTrue()
+        ->and($life['events'])->toHaveCount(2)
+        ->and($life['summary']['attempts'])->toBe(2)
+        ->and($life['summary']['successful'])->toBe(1)
+        ->and($life['summary']['status'])->toBe('Captured')
+        ->and($life['summary']['amount'])->toBe('250.00 SAR')
+        ->and($life['summary']['gatewayKey'])->toBe('cybersource_uc');
+});
+
+it('reports an empty lifecycle for an unknown reference', function (): void {
+    expect(dashboardData()->lifecycle('NOPE'))
+        ->toMatchArray(['found' => false, 'events' => []]);
 });

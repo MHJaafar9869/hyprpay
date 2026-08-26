@@ -8,8 +8,10 @@ use Hyprpay\Payments\Application\PaymentGatewayFactory;
 use Hyprpay\Payments\Domain\Contract\CredentialResolver;
 use Hyprpay\Payments\Domain\Contract\EventDispatcher;
 use Hyprpay\Payments\Domain\Contract\HttpClient;
-use Hyprpay\Payments\Domain\Contract\PaymentActivityRepository;
+use Hyprpay\Payments\Domain\Contract\ReadsPaymentActivity;
+use Hyprpay\Payments\Domain\Contract\RecordsPaymentActivity;
 use Hyprpay\Payments\Domain\Event\PaymentEvent;
+use Hyprpay\Payments\Infrastructure\Console\InstallCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcileAirwallexCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcileAuthorizeNetCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcileCybersourceCommand;
@@ -21,8 +23,12 @@ use Hyprpay\Payments\Infrastructure\Console\ReconcilePayPalCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcilePaytabsCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcileTamaraCommand;
 use Hyprpay\Payments\Infrastructure\Credentials\ConfigCredentialResolver;
-use Hyprpay\Payments\Infrastructure\Dashboard\CachePaymentActivityRepository;
-use Hyprpay\Payments\Infrastructure\Dashboard\NullPaymentActivityRepository;
+use Hyprpay\Payments\Infrastructure\Dashboard\Actions\DiscardActivity;
+use Hyprpay\Payments\Infrastructure\Dashboard\Actions\RecordActivityToCache;
+use Hyprpay\Payments\Infrastructure\Dashboard\Actions\RecordActivityToDatabase;
+use Hyprpay\Payments\Infrastructure\Dashboard\Queries\NoRecentActivity;
+use Hyprpay\Payments\Infrastructure\Dashboard\Queries\RecentActivityFromCache;
+use Hyprpay\Payments\Infrastructure\Dashboard\Queries\RecentActivityFromDatabase;
 use Hyprpay\Payments\Infrastructure\Events\LaravelEventDispatcher;
 use Hyprpay\Payments\Infrastructure\Events\LoggingPaymentEventListener;
 use Hyprpay\Payments\Infrastructure\Events\RecordingPaymentEventListener;
@@ -37,6 +43,7 @@ use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Contracts\Events\Dispatcher as EventsDispatcher;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Database\ConnectionResolverInterface;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Log\LogManager;
@@ -101,19 +108,49 @@ final class GatewayServiceProvider extends ServiceProvider
             $app->make(EventsDispatcher::class),
         ));
 
-        $this->app->bind(PaymentActivityRepository::class, static function (Application $app): PaymentActivityRepository {
+        $this->app->bind(RecordsPaymentActivity::class, static function (Application $app): RecordsPaymentActivity {
             $config = $app->make(ConfigRepository::class);
 
             if (! Value::bool($config->get('gateway.dashboard.store.enabled'))) {
-                return new NullPaymentActivityRepository;
+                return new DiscardActivity;
             }
 
-            return new CachePaymentActivityRepository(
-                $app->make(CacheFactory::class),
-                Value::nullableString($config->get('gateway.dashboard.store.cache')),
-                Value::string($config->get('gateway.dashboard.store.key'), 'hyprpay:activity'),
-                Value::int($config->get('gateway.dashboard.store.limit'), 500),
-            );
+            return match (self::storeDriver($config)) {
+                'null' => new DiscardActivity,
+                'cache' => new RecordActivityToCache(
+                    $app->make(CacheFactory::class),
+                    Value::nullableString($config->get('gateway.dashboard.store.cache')),
+                    Value::string($config->get('gateway.dashboard.store.key'), 'hyprpay:activity'),
+                    Value::int($config->get('gateway.dashboard.store.limit'), 500),
+                ),
+                default => new RecordActivityToDatabase(
+                    $app->make(ConnectionResolverInterface::class),
+                    Value::nullableString($config->get('gateway.dashboard.store.database.connection')),
+                    Value::string($config->get('gateway.dashboard.store.database.prefix'), 'hyprpay_'),
+                ),
+            };
+        });
+
+        $this->app->bind(ReadsPaymentActivity::class, static function (Application $app): ReadsPaymentActivity {
+            $config = $app->make(ConfigRepository::class);
+
+            if (! Value::bool($config->get('gateway.dashboard.store.enabled'))) {
+                return new NoRecentActivity;
+            }
+
+            return match (self::storeDriver($config)) {
+                'null' => new NoRecentActivity,
+                'cache' => new RecentActivityFromCache(
+                    $app->make(CacheFactory::class),
+                    Value::nullableString($config->get('gateway.dashboard.store.cache')),
+                    Value::string($config->get('gateway.dashboard.store.key'), 'hyprpay:activity'),
+                ),
+                default => new RecentActivityFromDatabase(
+                    $app->make(ConnectionResolverInterface::class),
+                    Value::nullableString($config->get('gateway.dashboard.store.database.connection')),
+                    Value::string($config->get('gateway.dashboard.store.database.prefix'), 'hyprpay_'),
+                ),
+            };
         });
 
         $this->app->singleton(PaymentGatewayFactory::class, static function (Application $app): PaymentGatewayFactory {
@@ -165,6 +202,14 @@ final class GatewayServiceProvider extends ServiceProvider
     }
 
     /**
+     * The configured activity-store driver ("database", "cache", or "null"); database by default.
+     */
+    private static function storeDriver(ConfigRepository $config): string
+    {
+        return Value::string($config->get('gateway.dashboard.store.driver'), 'database');
+    }
+
+    /**
      * Register the payment-event listeners and mount the dashboard (when enabled), then —
      * in the console — publish the package assets and register the reconciliation commands.
      */
@@ -181,6 +226,7 @@ final class GatewayServiceProvider extends ServiceProvider
         }
 
         $this->bootDashboard($config);
+        $this->bootActivityStore($config);
 
         if (! $this->app->runningInConsole()) {
             return;
@@ -193,6 +239,12 @@ final class GatewayServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../../resources/views' => $this->app->resourcePath('views/vendor/hyprpay'),
         ], 'gateway-dashboard-views');
+
+        $this->publishes([
+            __DIR__.'/../../database/migrations' => $this->app->databasePath('migrations'),
+        ], 'gateway-migrations');
+
+        $this->commands([InstallCommand::class]);
 
         if (Value::bool($config->get('gateway.commands.reconcile', true))) {
             $this->commands([
@@ -262,5 +314,25 @@ final class GatewayServiceProvider extends ServiceProvider
         return is_array($middleware)
             ? array_values(array_map(static fn (mixed $item): string => Value::string($item), $middleware))
             : ['web'];
+    }
+
+    /**
+     * Load the payment-store migrations when the durable database store is active.
+     *
+     * Only registers them when the store is enabled and using the database driver, so a host
+     * that never turns the store on keeps a clean migration set. Publishing (for customisation)
+     * and `hyprpay:install --migrate` remain available regardless.
+     */
+    private function bootActivityStore(ConfigRepository $config): void
+    {
+        if (! Value::bool($config->get('gateway.dashboard.store.enabled'))) {
+            return;
+        }
+
+        if (self::storeDriver($config) !== 'database') {
+            return;
+        }
+
+        $this->loadMigrationsFrom(__DIR__.'/../../database/migrations');
     }
 }

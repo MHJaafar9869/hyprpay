@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Hyprpay\Payments\Infrastructure\Dashboard;
 
-use Hyprpay\Payments\Domain\Contract\PaymentActivityRepository;
 use Hyprpay\Payments\Domain\Contract\PaymentGatewayInterface;
+use Hyprpay\Payments\Domain\Contract\ReadsPaymentActivity;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\Exception\GatewayException;
@@ -27,11 +27,11 @@ final readonly class DashboardData
 {
     /**
      * @param  ConfigRepository  $config  Source of gateway configuration (credentials presence, mode, default).
-     * @param  PaymentActivityRepository  $activity  The store the activity feed and stats are read from.
+     * @param  ReadsPaymentActivity  $activity  The read seam the activity feed and stats are read from.
      */
     public function __construct(
         private ConfigRepository $config,
-        private PaymentActivityRepository $activity,
+        private ReadsPaymentActivity $activity,
     ) {}
 
     /**
@@ -62,6 +62,24 @@ final readonly class DashboardData
     public function recentActivity(int $limit): array
     {
         return array_map($this->present(...), $this->activity->recent($limit));
+    }
+
+    /**
+     * Build one payment reference's full recorded lifecycle: an ordered event timeline
+     * (oldest first) plus a rolled-up summary. Every value is display-ready and PII-safe.
+     *
+     * @return array{reference: string, found: bool, summary: array<string, mixed>, events: list<array<string, mixed>>}
+     */
+    public function lifecycle(string $reference): array
+    {
+        $records = $this->activity->lifecycle($reference);
+
+        return [
+            'reference' => $reference,
+            'found' => $records !== [],
+            'summary' => $this->lifecycleSummary($records),
+            'events' => array_map($this->present(...), $records),
+        ];
     }
 
     /**
@@ -182,6 +200,52 @@ final readonly class DashboardData
             'orderReference' => $snapshot->orderReference,
             'amount' => $this->formatMoney($snapshot->money),
         ];
+    }
+
+    /**
+     * Roll a lifecycle's records up into a display summary (latest state, totals, span).
+     *
+     * @param  list<PaymentActivityRecord>  $records
+     * @return array<string, mixed>
+     */
+    private function lifecycleSummary(array $records): array
+    {
+        if ($records === []) {
+            return ['gateway' => null, 'gatewayKey' => null, 'status' => null, 'tone' => 'none', 'amount' => null, 'attempts' => 0, 'successful' => 0, 'firstAt' => null, 'lastAt' => null];
+        }
+
+        $latest = $records[count($records) - 1];
+        $successful = count(array_filter($records, static fn (PaymentActivityRecord $r): bool => $r->status?->isSuccessful() === true));
+
+        return [
+            'gateway' => $latest->gateway->label(),
+            'gatewayKey' => $latest->gateway->value,
+            'status' => $latest->status?->label(),
+            'tone' => $this->tone($latest->status),
+            'amount' => $this->latestAmount($records),
+            'attempts' => count($records),
+            'successful' => $successful,
+            'firstAt' => $records[0]->recordedAt,
+            'lastAt' => $latest->recordedAt,
+        ];
+    }
+
+    /**
+     * The most recent non-null amount across a lifecycle, formatted, or null.
+     *
+     * @param  list<PaymentActivityRecord>  $records
+     */
+    private function latestAmount(array $records): ?string
+    {
+        foreach (array_reverse($records) as $record) {
+            $amount = $this->formatAmount($record->amountMinor, $record->currency, $record->scale);
+
+            if ($amount !== null) {
+                return $amount;
+            }
+        }
+
+        return null;
     }
 
     /**

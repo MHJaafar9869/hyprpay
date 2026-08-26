@@ -52,6 +52,20 @@ final readonly class DashboardController
     }
 
     /**
+     * Return a payment's full recorded lifecycle — its event timeline and summary — as JSON.
+     */
+    public function lifecycle(Request $request): JsonResponse
+    {
+        $reference = trim(Value::string($request->input('reference')));
+
+        if ($reference === '') {
+            throw new HttpException(422, 'A payment reference is required.');
+        }
+
+        return new JsonResponse($this->data->lifecycle($reference));
+    }
+
+    /**
      * Look up a payment's history at a gateway by merchant reference and return it as JSON.
      */
     public function lookup(Request $request, PaymentGatewayFactory $factory): JsonResponse

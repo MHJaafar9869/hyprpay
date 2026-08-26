@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Hyprpay\Payments\Infrastructure\Events;
 
-use Hyprpay\Payments\Domain\Contract\PaymentActivityRepository;
+use Hyprpay\Payments\Domain\Contract\RecordsPaymentActivity;
 use Hyprpay\Payments\Domain\Event\AuthorizationReversed;
 use Hyprpay\Payments\Domain\Event\CheckoutSessionCreated;
 use Hyprpay\Payments\Domain\Event\InstrumentVaulted;
@@ -24,23 +24,23 @@ use Illuminate\Support\Carbon;
  *
  * Subscribes to the {@see PaymentEvent} interface so one registration covers every event,
  * then normalises each into a {@see PaymentActivityRecord} and hands it to the configured
- * {@see PaymentActivityRepository} — feeding the monitoring dashboard's activity feed.
+ * {@see RecordsPaymentActivity} action — feeding the monitoring dashboard's activity feed.
  * Mirrors {@see LoggingPaymentEventListener}: it captures only correlation ids, the
  * normalised status/outcome, and the amount — never the raw payload or any card data.
  */
 final readonly class RecordingPaymentEventListener
 {
     /**
-     * @param  PaymentActivityRepository  $repository  The store the activity record is written to.
+     * @param  RecordsPaymentActivity  $activity  The record action the activity entry is written through.
      */
-    public function __construct(private PaymentActivityRepository $repository) {}
+    public function __construct(private RecordsPaymentActivity $activity) {}
 
     /**
      * Handle any payment event by recording its normalised activity entry.
      */
     public function handle(PaymentEvent $event): void
     {
-        $this->repository->record($this->toRecord($event));
+        $this->activity->record($this->toRecord($event));
     }
 
     /**

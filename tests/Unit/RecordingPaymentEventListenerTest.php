@@ -16,20 +16,20 @@ use Hyprpay\Payments\Domain\Result\VaultedInstrument;
 use Hyprpay\Payments\Domain\Result\WebhookEvent;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 use Hyprpay\Payments\Infrastructure\Events\RecordingPaymentEventListener;
-use Hyprpay\Payments\Tests\Support\RecordingActivityRepository;
+use Hyprpay\Payments\Tests\Support\InMemoryPaymentActivity;
 use Illuminate\Support\Carbon;
 
 it('records a charge with its outcome and amount', function (): void {
-    $repository = new RecordingActivityRepository;
+    $activity = new InMemoryPaymentActivity;
 
-    (new RecordingPaymentEventListener($repository))->handle(new PaymentCharged(
+    (new RecordingPaymentEventListener($activity))->handle(new PaymentCharged(
         GatewayName::CybersourceUnifiedCheckout,
         'ORD-1',
         Money::minor(2599, 'USD'),
         new PaymentResult(true, PaymentStatus::Captured, 'txn_1'),
     ));
 
-    $record = $repository->records[0];
+    $record = $activity->records[0];
 
     expect($record->operation)->toBe('PaymentCharged')
         ->and($record->gateway)->toBe(GatewayName::CybersourceUnifiedCheckout)
@@ -42,9 +42,9 @@ it('records a charge with its outcome and amount', function (): void {
 });
 
 it('records a refund with the refund id as the transaction and the captured id as reference', function (): void {
-    $repository = new RecordingActivityRepository;
+    $activity = new InMemoryPaymentActivity;
 
-    (new RecordingPaymentEventListener($repository))->handle(new PaymentRefunded(
+    (new RecordingPaymentEventListener($activity))->handle(new PaymentRefunded(
         GatewayName::Paytabs,
         'CAP-1',
         'ORD-1',
@@ -52,7 +52,7 @@ it('records a refund with the refund id as the transaction and the captured id a
         new RefundResult(true, PaymentStatus::Refunded, 'REF-1'),
     ));
 
-    $record = $repository->records[0];
+    $record = $activity->records[0];
 
     expect($record->operation)->toBe('PaymentRefunded')
         ->and($record->status)->toBe(PaymentStatus::Refunded)
@@ -61,9 +61,9 @@ it('records a refund with the refund id as the transaction and the captured id a
 });
 
 it('records a wallet charge keyed by the wallet type', function (): void {
-    $repository = new RecordingActivityRepository;
+    $activity = new InMemoryPaymentActivity;
 
-    (new RecordingPaymentEventListener($repository))->handle(new WalletCharged(
+    (new RecordingPaymentEventListener($activity))->handle(new WalletCharged(
         GatewayName::CybersourceUnifiedCheckout,
         WalletType::ApplePay,
         'ORD-9',
@@ -71,19 +71,19 @@ it('records a wallet charge keyed by the wallet type', function (): void {
         new PaymentResult(true, PaymentStatus::Authorized, 'txn_w'),
     ));
 
-    expect($repository->records[0]->reference)->toBe(WalletType::ApplePay->value)
-        ->and($repository->records[0]->status)->toBe(PaymentStatus::Authorized);
+    expect($activity->records[0]->reference)->toBe(WalletType::ApplePay->value)
+        ->and($activity->records[0]->status)->toBe(PaymentStatus::Authorized);
 });
 
 it('records a webhook using the verified flag as the outcome', function (): void {
-    $repository = new RecordingActivityRepository;
+    $activity = new InMemoryPaymentActivity;
 
-    (new RecordingPaymentEventListener($repository))->handle(new WebhookReceived(
+    (new RecordingPaymentEventListener($activity))->handle(new WebhookReceived(
         GatewayName::PayPal,
         new WebhookEvent(true, 'PAYMENT.CAPTURE.COMPLETED', 'WT-1', PaymentStatus::Captured),
     ));
 
-    $record = $repository->records[0];
+    $record = $activity->records[0];
 
     expect($record->success)->toBeTrue()
         ->and($record->transactionId)->toBe('WT-1')
@@ -92,15 +92,15 @@ it('records a webhook using the verified flag as the outcome', function (): void
 });
 
 it('records a vaulting keyed by the customer reference', function (): void {
-    $repository = new RecordingActivityRepository;
+    $activity = new InMemoryPaymentActivity;
 
-    (new RecordingPaymentEventListener($repository))->handle(new InstrumentVaulted(
+    (new RecordingPaymentEventListener($activity))->handle(new InstrumentVaulted(
         GatewayName::CybersourceUnifiedCheckout,
         'CUST-7',
         new VaultedInstrument(true, paymentInstrumentId: 'PI-1'),
     ));
 
-    $record = $repository->records[0];
+    $record = $activity->records[0];
 
     expect($record->operation)->toBe('InstrumentVaulted')
         ->and($record->transactionId)->toBe('PI-1')
@@ -110,16 +110,16 @@ it('records a vaulting keyed by the customer reference', function (): void {
 });
 
 it('never stores the raw payload or card data', function (): void {
-    $repository = new RecordingActivityRepository;
+    $activity = new InMemoryPaymentActivity;
 
-    (new RecordingPaymentEventListener($repository))->handle(new PaymentCharged(
+    (new RecordingPaymentEventListener($activity))->handle(new PaymentCharged(
         GatewayName::CybersourceUnifiedCheckout,
         'ORD-1',
         Money::minor(2599, 'USD'),
         new PaymentResult(true, PaymentStatus::Captured, 'txn_1', raw: ['pan' => '4111111111111111']),
     ));
 
-    $stored = $repository->records[0]->toArray();
+    $stored = $activity->records[0]->toArray();
 
     expect($stored)->not->toHaveKey('raw')
         ->and(json_encode($stored))->not->toContain('4111111111111111');
@@ -127,13 +127,13 @@ it('never stores the raw payload or card data', function (): void {
 
 it('stamps the record with the current time', function (): void {
     Carbon::setTestNow('2026-08-24T12:00:00+00:00');
-    $repository = new RecordingActivityRepository;
+    $activity = new InMemoryPaymentActivity;
 
-    (new RecordingPaymentEventListener($repository))->handle(new PaymentCharged(
+    (new RecordingPaymentEventListener($activity))->handle(new PaymentCharged(
         GatewayName::Fawry, 'ORD-1', Money::minor(100, 'EGP'), new PaymentResult(true, PaymentStatus::Pending),
     ));
 
-    expect($repository->records[0]->recordedAt)->toBe(Carbon::now()->toIso8601String());
+    expect($activity->records[0]->recordedAt)->toBe(Carbon::now()->toIso8601String());
 
     Carbon::setTestNow();
 });
