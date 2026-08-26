@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Hyprpay\Payments\Domain\ValueObject;
 
+use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
 use Hyprpay\Payments\Domain\Command\ValidatePayerAuthRequest;
 
 /**
@@ -11,7 +12,7 @@ use Hyprpay\Payments\Domain\Command\ValidatePayerAuthRequest;
  *
  * Carries the EMV 3-D Secure browser fields collected on the checkout page — the user
  * agent, screen and locale characteristics, and the client IP — plus the challenge window
- * size. Passed on {@see ValidatePayerAuthRequest} so a
+ * size. Passed on {@see PayerAuthEnrollRequest} and {@see ValidatePayerAuthRequest} so a
  * gateway can populate its device block; richer device data lets the issuer risk-assess the
  * transaction and grant a frictionless (no-challenge) authentication more often. Every field
  * is optional; only those supplied are sent.

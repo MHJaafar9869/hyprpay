@@ -9,6 +9,7 @@ use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\DccRateRequest;
 use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
+use Hyprpay\Payments\Domain\Command\PayerAuthSetupRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
 use Hyprpay\Payments\Domain\Command\ReversalRequest;
 use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
@@ -33,6 +34,7 @@ use Hyprpay\Payments\Domain\Event\WebhookReceived;
 use Hyprpay\Payments\Domain\Result\CheckoutSession;
 use Hyprpay\Payments\Domain\Result\DccQuote;
 use Hyprpay\Payments\Domain\Result\PayerAuthResult;
+use Hyprpay\Payments\Domain\Result\PayerAuthSetupResult;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
 use Hyprpay\Payments\Domain\Result\RefundResult;
 use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
@@ -130,6 +132,11 @@ final readonly class EventDispatchingGateway implements PaymentGatewayInterface
         $this->events->dispatch(new AuthorizationReversed($this->name(), $request->transactionId, $request->orderReference, $request->money, $result));
 
         return $result;
+    }
+
+    public function setupPayerAuth(PayerAuthSetupRequest $request): PayerAuthSetupResult
+    {
+        return $this->inner->setupPayerAuth($request);
     }
 
     public function enrollPayerAuth(PayerAuthEnrollRequest $request): PayerAuthResult

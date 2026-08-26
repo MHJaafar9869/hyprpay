@@ -468,6 +468,7 @@ everywhere.
 | `refund` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (simplified refund) |
 | `void` | ✅ | ✅ (cancel auth) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (cancel intent) | ✅ (cancel order) |
 | `reverseAuthorization` | ✅ | — | — | ✅ | ✅ (release) | — | ✅ (void of auth) | — | ✅ (cancel intent) | ✅ (cancel order) |
+| `setupPayerAuth` (3-DS device data collection) | ✅ | — | — | — | — | — | — | — | — | — |
 | `enrollPayerAuth` / `validatePayerAuth` (3-DS) | ✅ | — | — | — | — | — | ✅ | — | — | — |
 | `vaultInstrument` / `chargeStoredCredential` | ✅ (TMS, MIT/CIT) | — | — | ✅ vault + charge + revoke⁴ | ✅ token (MIT/CIT)¹ | ✅ vault (MIT/CIT) | ✅ token (MIT/CIT) | ✅ CIM (opaque/card, MIT/CIT) | ✅ PaymentConsent (vault + charge) | — |
 | `requestDccRate` (Dynamic Currency Conversion) | ✅ | — | — | — | — | — | — | — | — | — |

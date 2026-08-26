@@ -8,6 +8,7 @@ use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\DccRateRequest;
 use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
+use Hyprpay\Payments\Domain\Command\PayerAuthSetupRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
 use Hyprpay\Payments\Domain\Command\ReversalRequest;
 use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
@@ -23,6 +24,7 @@ use Hyprpay\Payments\Domain\Exception\UnsupportedOperationException;
 use Hyprpay\Payments\Domain\Result\DccQuote;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
 use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
+use Hyprpay\Payments\Domain\ValueObject\BrowserDeviceData;
 use Hyprpay\Payments\Domain\ValueObject\DecryptedWalletToken;
 use Hyprpay\Payments\Domain\ValueObject\EncryptedWalletToken;
 use Hyprpay\Payments\Domain\ValueObject\Money;
@@ -122,6 +124,36 @@ it('reverses an authorization', function (): void {
         ->and($http->lastRequest()?->url)->toBe('https://apitest.cybersource.com/pts/v2/payments/txn_1/reversals');
 });
 
+it('sets up payer auth and surfaces the device-data-collection url', function (): void {
+    [$gateway, $http] = gatewayWithFakeHttp();
+    $http->queueJson([
+        'status' => 'COMPLETED',
+        'consumerAuthenticationInformation' => [
+            'accessToken' => 'ddc-jwt',
+            'referenceId' => 'ref_123',
+            'deviceDataCollectionUrl' => 'https://centinelapitest.cardinalcommerce.com/V1/Cruise/Collect',
+        ],
+    ]);
+
+    $result = $gateway->setupPayerAuth(new PayerAuthSetupRequest(
+        transientToken: fakeJwt(['jti' => 'jti_abc']),
+        orderReference: 'ORD-7',
+    ));
+
+    expect($result->success)->toBeTrue()
+        ->and($result->status)->toBe('COMPLETED')
+        ->and($result->accessToken)->toBe('ddc-jwt')
+        ->and($result->referenceId)->toBe('ref_123')
+        ->and($result->deviceDataCollectionUrl)->toBe('https://centinelapitest.cardinalcommerce.com/V1/Cruise/Collect')
+        ->and($result->requiresDeviceDataCollection())->toBeTrue()
+        ->and($http->lastRequest()?->url)->toBe('https://apitest.cybersource.com/risk/v1/authentication-setups');
+
+    $body = recordedBody($http);
+
+    expect($body['tokenInformation']['jti'])->toBe('jti_abc')
+        ->and($body['clientReferenceInformation']['code'])->toBe('ORD-7');
+});
+
 it('enrolls payer auth and surfaces the step-up challenge', function (): void {
     [$gateway, $http] = gatewayWithFakeHttp();
     $http->queueJson([
@@ -140,6 +172,47 @@ it('enrolls payer auth and surfaces the step-up challenge', function (): void {
         ->and($result->stepUpUrl)->toBe('https://acs.test/step-up')
         ->and($result->authenticationTransactionId)->toBe('auth_1')
         ->and($http->lastRequest()?->url)->toBe('https://apitest.cybersource.com/risk/v1/authentications');
+});
+
+it('sends browser device data and marks the browser device channel on enroll', function (): void {
+    [$gateway, $http] = gatewayWithFakeHttp();
+    $http->queueJson([
+        'status' => 'AUTHENTICATION_SUCCESSFUL',
+        'consumerAuthenticationInformation' => ['cavv' => 'abc'],
+    ]);
+
+    $gateway->enrollPayerAuth(new PayerAuthEnrollRequest(
+        transientToken: 'tok',
+        money: Money::minor(2599, 'USD'),
+        referenceId: 'ref_123',
+        device: new BrowserDeviceData(
+            ipAddress: '203.0.113.9',
+            userAgent: 'Mozilla/5.0',
+            acceptHeaders: 'text/html',
+            colorDepth: 24,
+            javaEnabled: false,
+            javaScriptEnabled: true,
+            language: 'en-US',
+            screenHeight: 900,
+            screenWidth: 1440,
+            timeZone: -120,
+        ),
+    ));
+
+    $device = recordedBody($http)['deviceInformation'];
+    $consumerAuth = recordedBody($http)['consumerAuthenticationInformation'];
+
+    expect($device['ipAddress'])->toBe('203.0.113.9')
+        ->and($device['userAgentBrowserValue'])->toBe('Mozilla/5.0')
+        ->and($device['httpAcceptContent'])->toBe('text/html')
+        ->and($device['httpBrowserColorDepth'])->toBe('24')
+        ->and($device['httpBrowserJavaEnabled'])->toBeFalse()
+        ->and($device['httpBrowserJavaScriptEnabled'])->toBeTrue()
+        ->and($device['httpBrowserScreenHeight'])->toBe('900')
+        ->and($device['httpBrowserScreenWidth'])->toBe('1440')
+        ->and($device['httpBrowserTimeDifference'])->toBe('-120')
+        ->and($consumerAuth['deviceChannel'])->toBe('Browser')
+        ->and($consumerAuth['referenceId'])->toBe('ref_123');
 });
 
 it('validates payer auth results', function (): void {

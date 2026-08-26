@@ -20,6 +20,7 @@ The one contract every gateway driver implements, its abstract base class, and t
 | `refund` | `refund(RefundRequest $request): RefundResult` | Refund all or part of a settled payment. |
 | `void` | `void(VoidRequest $request): PaymentResult` | Void an authorized-but-not-yet-captured payment. |
 | `reverseAuthorization` | `reverseAuthorization(ReversalRequest $request): PaymentResult` | Reverse an existing authorization, releasing held funds. |
+| `setupPayerAuth` | `setupPayerAuth(PayerAuthSetupRequest $request): PayerAuthSetupResult` | Set up 3-D Secure (device data collection) before enrollment; result carries the device-data-collection URL, access token, and reference id. |
 | `enrollPayerAuth` | `enrollPayerAuth(PayerAuthEnrollRequest $request): PayerAuthResult` | Begin 3-D Secure payer authentication by enrolling the card; result carries any challenge/redirect data. |
 | `validatePayerAuth` | `validatePayerAuth(ValidatePayerAuthRequest $request): PayerAuthResult` | Complete 3-D Secure payer auth after challenge/validation; result carries authentication values for the subsequent charge. |
 | `vaultInstrument` | `vaultInstrument(TokenizeInstrumentRequest $request): VaultedInstrument` | Tokenize a payment instrument into the gateway vault for reuse. |
@@ -38,6 +39,7 @@ Request → result mapping (which DTO maps to which return type):
 - `DccRateRequest` → `DccQuote`
 - `ChargeRequest` / `CaptureRequest` / `VoidRequest` / `ReversalRequest` / `StoredCredentialChargeRequest` → `PaymentResult`
 - `RefundRequest` → `RefundResult`
+- `PayerAuthSetupRequest` → `PayerAuthSetupResult`
 - `PayerAuthEnrollRequest` / `ValidatePayerAuthRequest` → `PayerAuthResult`
 - `TokenizeInstrumentRequest` → `VaultedInstrument`
 - `string $transactionId` → `TransactionSnapshot`
@@ -82,6 +84,7 @@ throw UnsupportedOperationException::forOperation($this->name(), '<operation>');
 | `refund` | `'refund'` |
 | `void` | `'void'` |
 | `reverseAuthorization` | `'reverseAuthorization'` |
+| `setupPayerAuth` | `'setupPayerAuth'` |
 | `enrollPayerAuth` | `'enrollPayerAuth'` |
 | `validatePayerAuth` | `'validatePayerAuth'` |
 | `vaultInstrument` | `'vaultInstrument'` |

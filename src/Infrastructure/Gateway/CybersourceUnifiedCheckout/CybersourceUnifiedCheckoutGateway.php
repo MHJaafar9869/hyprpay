@@ -11,6 +11,7 @@ use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\ConfirmOrchestratedPaymentRequest;
 use Hyprpay\Payments\Domain\Command\DccRateRequest;
 use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
+use Hyprpay\Payments\Domain\Command\PayerAuthSetupRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
 use Hyprpay\Payments\Domain\Command\ReversalRequest;
 use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
@@ -25,6 +26,7 @@ use Hyprpay\Payments\Domain\Result\CheckoutSession;
 use Hyprpay\Payments\Domain\Result\DccQuote;
 use Hyprpay\Payments\Domain\Result\OrchestratedPaymentResult;
 use Hyprpay\Payments\Domain\Result\PayerAuthResult;
+use Hyprpay\Payments\Domain\Result\PayerAuthSetupResult;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
 use Hyprpay\Payments\Domain\Result\RefundResult;
 use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
@@ -41,6 +43,7 @@ use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CapturePayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CurrencyConversionPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\PayerAuthEnrollPayload;
+use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\PayerAuthSetupPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\PayerAuthValidatePayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\PaymentPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\RefundPayload;
@@ -244,8 +247,24 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
     }
 
     /**
-     * Starts 3-D Secure by enrolling the payer for authentication (Cardinal setup /
-     * device data collection), returning the mapped PayerAuthResult.
+     * Sets up 3-D Secure by priming device data collection for the payer, returning the
+     * mapped PayerAuthSetupResult with the access token and device-data-collection URL.
+     *
+     * Reads the transient token's `jti` claim to reference the card without re-sending the
+     * whole token, falling back to the full transient token when the claim cannot be read.
+     */
+    public function setupPayerAuth(PayerAuthSetupRequest $request): PayerAuthSetupResult
+    {
+        return $this->toPayerAuthSetupResult($this->client->post(
+            CybersourceEndpoint::AuthenticationSetups->path(),
+            PayerAuthSetupPayload::build($request, $this->transientTokenJti($request->transientToken)),
+            'setup payer auth',
+        ));
+    }
+
+    /**
+     * Starts 3-D Secure by enrolling the payer for authentication, returning the mapped
+     * PayerAuthResult with any step-up challenge details.
      */
     public function enrollPayerAuth(PayerAuthEnrollRequest $request): PayerAuthResult
     {
@@ -591,6 +610,32 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
             accessToken: Value::nullableString($consumerAuth['accessToken'] ?? null),
             authenticationTransactionId: Value::nullableString($consumerAuth['authenticationTransactionId'] ?? null),
             consumerAuthenticationInformation: $consumerAuth,
+            raw: $response,
+        );
+    }
+
+    /**
+     * Maps a CyberSource payer-authentication setup (3DS DDC) JSON response into a
+     * PayerAuthSetupResult DTO.
+     *
+     * Extracts the consumer-authentication block to surface the access token, reference id,
+     * and device-data-collection URL, and marks success unless the raw status is
+     * INVALID_REQUEST or FAILED.
+     *
+     * @param  array<string, mixed>  $response  Decoded CyberSource authentication-setup response.
+     */
+    private function toPayerAuthSetupResult(array $response): PayerAuthSetupResult
+    {
+        $consumerAuth = Value::array($response['consumerAuthenticationInformation'] ?? null);
+
+        $status = Value::string($response['status'] ?? null);
+
+        return new PayerAuthSetupResult(
+            success: filled($status) && ! in_array($status, ['INVALID_REQUEST', 'FAILED'], true),
+            status: $status,
+            accessToken: Value::nullableString($consumerAuth['accessToken'] ?? null),
+            referenceId: Value::nullableString($consumerAuth['referenceId'] ?? null),
+            deviceDataCollectionUrl: Value::nullableString($consumerAuth['deviceDataCollectionUrl'] ?? null),
             raw: $response,
         );
     }

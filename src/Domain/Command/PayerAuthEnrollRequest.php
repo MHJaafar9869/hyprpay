@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hyprpay\Payments\Domain\Command;
 
 use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
+use Hyprpay\Payments\Domain\ValueObject\BrowserDeviceData;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 
 /**
@@ -25,6 +26,7 @@ final readonly class PayerAuthEnrollRequest
      * @param  BillingAddress|null  $billTo  Optional billing address for the payer
      * @param  string|null  $deviceFingerprintId  Optional device fingerprint session id for fraud screening
      * @param  bool  $useRawFingerprintSessionId  When true, CyberSource uses the device fingerprint session id exactly as sent instead of the default merchant-prefixed lookup
+     * @param  BrowserDeviceData|null  $device  Optional 3-D Secure browser device data (user agent, screen, locale, IP) collected during device data collection; richer data lets the issuer grant a frictionless (no-challenge) authentication more often
      */
     public function __construct(
         public string $transientToken,
@@ -35,5 +37,6 @@ final readonly class PayerAuthEnrollRequest
         public ?BillingAddress $billTo = null,
         public ?string $deviceFingerprintId = null,
         public bool $useRawFingerprintSessionId = false,
+        public ?BrowserDeviceData $device = null,
     ) {}
 }
