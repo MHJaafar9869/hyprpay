@@ -18,30 +18,6 @@
     }
 @endphp
 
-@section('nav')
-    <nav>
-        <div class="nav-label">Main</div>
-        <a class="nav-item active" href="#overview" data-spy="overview">
-            <span class="ic mi">dashboard</span>
-            <span>Overview</span>
-        </a>
-        <a class="nav-item" href="#gateways" data-spy="gateways">
-            <span class="ic mi">hub</span>
-            <span>Gateways</span>
-            <span class="ct">{{ count($activeGateways) }}</span>
-        </a>
-        <a class="nav-item" href="#lookup" data-spy="lookup">
-            <span class="ic mi">search</span>
-            <span>Lookup</span>
-        </a>
-        <a class="nav-item" href="#activity" data-spy="activity">
-            <span class="ic mi">monitoring</span>
-            <span>Activity</span>
-            <span class="ct" id="nav-ct-activity">{{ $total }}</span>
-        </a>
-    </nav>
-@endsection
-
 @section('content')
     <header class="top">
         <div>
@@ -511,17 +487,6 @@
             renderStats(rows);
             renderTable();
             setInterval(pollActivity, 10000);
-
-            const spies = Array.from(document.querySelectorAll('[data-spy]'));
-            const targets = spies.map((a) => document.getElementById(a.dataset.spy)).filter(Boolean);
-            if ('IntersectionObserver' in window && targets.length) {
-                const io = new IntersectionObserver((entries) => {
-                    entries.filter((e) => e.isIntersecting).forEach((e) => {
-                        spies.forEach((a) => a.classList.toggle('active', a.dataset.spy === e.target.id));
-                    });
-                }, { rootMargin: '-10% 0px -80% 0px' });
-                targets.forEach((t) => io.observe(t));
-            }
 
             const form = document.getElementById('lookup-form');
             const out = document.getElementById('lookup-result');
