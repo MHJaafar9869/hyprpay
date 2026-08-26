@@ -9,6 +9,7 @@ use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\DccRateRequest;
 use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
+use Hyprpay\Payments\Domain\Command\PayerAuthSetupRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
 use Hyprpay\Payments\Domain\Command\ReversalRequest;
 use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
@@ -22,6 +23,7 @@ use Hyprpay\Payments\Domain\Exception\UnsupportedOperationException;
 use Hyprpay\Payments\Domain\Result\CheckoutSession;
 use Hyprpay\Payments\Domain\Result\DccQuote;
 use Hyprpay\Payments\Domain\Result\PayerAuthResult;
+use Hyprpay\Payments\Domain\Result\PayerAuthSetupResult;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
 use Hyprpay\Payments\Domain\Result\RefundResult;
 use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
@@ -150,6 +152,19 @@ abstract class AbstractPaymentGateway implements PaymentGatewayInterface
     public function reverseAuthorization(ReversalRequest $request): PaymentResult
     {
         throw UnsupportedOperationException::forOperation($this->name(), 'reverseAuthorization');
+    }
+
+    /**
+     * Set up 3-D Secure payer authentication (device data collection); unsupported unless overridden.
+     *
+     * @param  PayerAuthSetupRequest  $request  The setup details (instrument, order context).
+     * @return PayerAuthSetupResult The setup outcome.
+     *
+     * @throws UnsupportedOperationException Always, unless a concrete gateway overrides this.
+     */
+    public function setupPayerAuth(PayerAuthSetupRequest $request): PayerAuthSetupResult
+    {
+        throw UnsupportedOperationException::forOperation($this->name(), 'setupPayerAuth');
     }
 
     /**

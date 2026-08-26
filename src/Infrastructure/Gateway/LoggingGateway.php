@@ -9,6 +9,7 @@ use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\DccRateRequest;
 use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
+use Hyprpay\Payments\Domain\Command\PayerAuthSetupRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
 use Hyprpay\Payments\Domain\Command\ReversalRequest;
 use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
@@ -21,6 +22,7 @@ use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Result\CheckoutSession;
 use Hyprpay\Payments\Domain\Result\DccQuote;
 use Hyprpay\Payments\Domain\Result\PayerAuthResult;
+use Hyprpay\Payments\Domain\Result\PayerAuthSetupResult;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
 use Hyprpay\Payments\Domain\Result\RefundResult;
 use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
@@ -150,6 +152,13 @@ final readonly class LoggingGateway implements PaymentGatewayInterface
             'order_reference' => $request->orderReference,
             'amount' => $request->money->toDecimalString(),
             'currency' => $request->money->currency,
+        ]));
+    }
+
+    public function setupPayerAuth(PayerAuthSetupRequest $request): PayerAuthSetupResult
+    {
+        return $this->logTimedAction('setupPayerAuth', fn (): PayerAuthSetupResult => $this->inner->setupPayerAuth($request), $this->context([
+            'order_reference' => $request->orderReference,
         ]));
     }
 

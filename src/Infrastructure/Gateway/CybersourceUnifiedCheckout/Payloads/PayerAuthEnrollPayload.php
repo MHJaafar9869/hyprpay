@@ -19,9 +19,11 @@ final class PayerAuthEnrollPayload
      *
      * Carries the client reference code, the transient-token card reference, the order
      * amount and optional billing address, plus optional return URL and reference id
-     * under consumerAuthenticationInformation and an optional device fingerprint session id.
+     * under consumerAuthenticationInformation. The deviceInformation block merges the
+     * optional fraud device fingerprint with the collected browser device data; when browser
+     * data is present the device channel is marked as Browser so the issuer risk-assesses it.
      *
-     * @param  PayerAuthEnrollRequest  $request  Enrollment inputs (transient token, amount, optional billTo, returnUrl, referenceId, order reference, device fingerprint id).
+     * @param  PayerAuthEnrollRequest  $request  Enrollment inputs (transient token, amount, optional billTo, returnUrl, referenceId, order reference, device fingerprint id, browser device data).
      * @return array<string, mixed>
      */
     public static function build(PayerAuthEnrollRequest $request): array
@@ -49,6 +51,12 @@ final class PayerAuthEnrollPayload
             $consumerAuthenticationInformation['referenceId'] = $request->referenceId;
         }
 
+        $browserDeviceInformation = BrowserDeviceInformation::fields($request->device);
+
+        if (filled($browserDeviceInformation)) {
+            $consumerAuthenticationInformation['deviceChannel'] = 'Browser';
+        }
+
         $payload = [
             'clientReferenceInformation' => [
                 'code' => ClientReference::code($request->orderReference),
@@ -61,7 +69,10 @@ final class PayerAuthEnrollPayload
             $payload['consumerAuthenticationInformation'] = $consumerAuthenticationInformation;
         }
 
-        $deviceInformation = DeviceInformation::fields($request->deviceFingerprintId, $request->useRawFingerprintSessionId);
+        $deviceInformation = array_merge(
+            DeviceInformation::fields($request->deviceFingerprintId, $request->useRawFingerprintSessionId),
+            $browserDeviceInformation,
+        );
 
         if (filled($deviceInformation)) {
             $payload['deviceInformation'] = $deviceInformation;

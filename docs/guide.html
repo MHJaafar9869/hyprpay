@@ -895,6 +895,21 @@
          or the <a href="https://github.com/MHJaafar9869/hyprpay/blob/main/mcp/README.md">developer MCP guide</a>.</p>
     </section>
 
+    <section id="setup-payer-auth" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">3-D Secure</p>
+      <h2>Setup payer auth</h2>
+      <p class="doc-sig"><span class="fn">setupPayerAuth</span>(PayerAuthSetupRequest): <span class="rt">PayerAuthSetupResult</span></p>
+      <p>Primes 3-D Secure device data collection before enrollment — returns the device-data-collection
+         URL to load in a hidden iframe, plus the reference id to carry into <code>enrollPayerAuth</code>.</p>
+      <div class="code">
+<pre><code><span class="v">$setup</span> = <span class="v">$gateway</span>-&gt;<span class="fn">setupPayerAuth</span>(<span class="k">new</span> <span class="t">PayerAuthSetupRequest</span>(
+    <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>,
+    <span class="a">orderReference:</span> <span class="s">'ORDER-123'</span>,
+));
+<span class="c">// Load $setup->deviceDataCollectionUrl in a hidden iframe, then enroll with $setup->referenceId</span></code></pre>
+      </div>
+    </section>
+
     <section id="enroll-payer-auth" class="doc-section" data-gws="cyber mpgs">
       <p class="doc-eyebrow">3-D Secure</p>
       <h2>Enroll payer auth</h2>
@@ -904,6 +919,11 @@
 <pre><code><span class="v">$auth</span> = <span class="v">$gateway</span>-&gt;<span class="fn">enrollPayerAuth</span>(<span class="k">new</span> <span class="t">PayerAuthEnrollRequest</span>(<span class="c">/* … */</span>));
 <span class="c">// $auth->status drives the challenge on the front end</span></code></pre>
       </div>
+      <p><em>CyberSource:</em> pass the <code>referenceId</code> from <code>setupPayerAuth</code> and the
+         collected browser device data via a <code>BrowserDeviceData</code> on
+         <code>PayerAuthEnrollRequest.device</code>. The SDK maps it onto CyberSource's
+         <code>deviceInformation</code> and marks the device channel as <code>Browser</code>, so the issuer
+         can risk-assess the browser and grant a frictionless (no-challenge) authentication more often.</p>
     </section>
 
     <section id="validate-payer-auth" class="doc-section" data-gws="cyber mpgs">
@@ -1153,6 +1173,7 @@
       <li data-gws="misc"><a href="#http-client" data-spy="http-client">HTTP client</a></li>
       <li data-gws="misc"><a href="#configuration" data-spy="configuration">Configuration</a></li>
       <li data-gws="misc"><a href="#ai-docs" data-spy="ai-docs">AI docs &amp; MCP</a></li>
+      <li data-gws="cyber"><a href="#setup-payer-auth" data-spy="setup-payer-auth">Setup payer auth</a></li>
       <li data-gws="cyber mpgs"><a href="#enroll-payer-auth" data-spy="enroll-payer-auth">Enroll payer auth</a></li>
       <li data-gws="cyber mpgs"><a href="#validate-payer-auth" data-spy="validate-payer-auth">Validate payer auth</a></li>
       <li data-gws="cyber paypal mpgs paylink authorizenet airwallex"><a href="#vault-instrument" data-spy="vault-instrument">Vault instrument</a></li>

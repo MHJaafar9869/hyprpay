@@ -140,6 +140,59 @@ $session = $cybersource->createCheckoutSession(new CheckoutSessionRequest(
 `decisionManager` defaults to `true`, so orchestrated sales are fraud-screened out of the
 box; set it to `false` to opt out. It is ignored unless `completeMandate` is set.
 
+## 3-D Secure (manual payer authentication)
+
+When you run the transient-token flow server-side (rather than letting the widget
+orchestrate everything), CyberSource 3-D Secure is a three-step handshake:
+
+1. **`setupPayerAuth`** — primes device data collection (DDC). Returns a
+   `PayerAuthSetupResult` with a `deviceDataCollectionUrl` and `accessToken` to load in a
+   hidden iframe, plus a `referenceId` that ties the collected data to enrollment.
+2. **`enrollPayerAuth`** — runs the enrollment check. Pass the `referenceId` from setup and
+   the browser device data collected on the page (`BrowserDeviceData`). The result either
+   comes back frictionless or `requiresChallenge()`, exposing a `stepUpUrl` + `accessToken`
+   to redirect the payer to.
+3. **`validatePayerAuth`** — after the challenge, fetches the final CAVV/ECI to thread into
+   the subsequent `charge`.
+
+```php
+use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
+use Hyprpay\Payments\Domain\Command\PayerAuthSetupRequest;
+use Hyprpay\Payments\Domain\ValueObject\BrowserDeviceData;
+use Hyprpay\Payments\Domain\ValueObject\Money;
+
+$setup = $cybersource->setupPayerAuth(new PayerAuthSetupRequest(
+    transientToken: $tokenFromWidget,
+    orderReference: 'ORDER-123',
+));
+// Load $setup->deviceDataCollectionUrl in a hidden iframe, POSTing $setup->accessToken.
+
+$enroll = $cybersource->enrollPayerAuth(new PayerAuthEnrollRequest(
+    transientToken: $tokenFromWidget,
+    money: Money::minor(10000, 'EGP'),
+    orderReference: 'ORDER-123',
+    returnUrl: 'https://shop.test/3ds/return',
+    referenceId: $setup->referenceId, // correlate DDC with enrollment
+    device: new BrowserDeviceData(
+        ipAddress: $request->ip(),
+        userAgent: $request->userAgent(),
+        acceptHeaders: $request->header('Accept'),
+        // colorDepth / screen size / language / timezone collected client-side
+    ),
+));
+
+if ($enroll->requiresChallenge()) {
+    // Redirect the payer to $enroll->stepUpUrl, POSTing $enroll->accessToken, then:
+    $validated = $cybersource->validatePayerAuth(/* ValidatePayerAuthRequest */);
+}
+```
+
+Passing `device` marks the enrollment's `deviceChannel` as `Browser` so the issuer
+risk-assesses the browser; richer device data earns a frictionless (no-challenge)
+authentication more often. Every `BrowserDeviceData` field is optional — only those set are
+sent. `enrollPayerAuth` also accepts a `deviceFingerprintId` for Decision Manager (see
+above); its fingerprint and browser device blocks are merged into one `deviceInformation`.
+
 ## Idempotency
 
 Retries are safe. Every write is idempotent through two guarantees:

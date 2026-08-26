@@ -9,6 +9,7 @@ use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\DccRateRequest;
 use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
+use Hyprpay\Payments\Domain\Command\PayerAuthSetupRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
 use Hyprpay\Payments\Domain\Command\ReversalRequest;
 use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
@@ -20,6 +21,7 @@ use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Result\CheckoutSession;
 use Hyprpay\Payments\Domain\Result\DccQuote;
 use Hyprpay\Payments\Domain\Result\PayerAuthResult;
+use Hyprpay\Payments\Domain\Result\PayerAuthSetupResult;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
 use Hyprpay\Payments\Domain\Result\RefundResult;
 use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
@@ -111,6 +113,14 @@ interface PaymentGatewayInterface
      * @return PaymentResult The normalized outcome of the reversal.
      */
     public function reverseAuthorization(ReversalRequest $request): PaymentResult;
+
+    /**
+     * Set up 3-D Secure payer authentication (device data collection) before enrollment.
+     *
+     * @param  PayerAuthSetupRequest  $request  The setup details (instrument, order context).
+     * @return PayerAuthSetupResult The setup outcome, including the device-data-collection URL and reference id.
+     */
+    public function setupPayerAuth(PayerAuthSetupRequest $request): PayerAuthSetupResult;
 
     /**
      * Begin 3-D Secure payer authentication by enrolling the card in the check.
