@@ -281,9 +281,13 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
      */
     public function validatePayerAuth(ValidatePayerAuthRequest $request): PayerAuthResult
     {
+        $jti = filled($request->transientToken)
+            ? $this->transientTokenJti($request->transientToken)
+            : null;
+
         return $this->toPayerAuthResult($this->client->post(
             CybersourceEndpoint::AuthenticationResults->path(),
-            PayerAuthValidatePayload::build($request),
+            PayerAuthValidatePayload::build($request, $jti),
             'validate payer auth',
         ));
     }

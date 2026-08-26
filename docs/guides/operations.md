@@ -158,6 +158,7 @@ orchestrate everything), CyberSource 3-D Secure is a three-step handshake:
 ```php
 use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
 use Hyprpay\Payments\Domain\Command\PayerAuthSetupRequest;
+use Hyprpay\Payments\Domain\Command\ValidatePayerAuthRequest;
 use Hyprpay\Payments\Domain\ValueObject\BrowserDeviceData;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 
@@ -183,7 +184,13 @@ $enroll = $cybersource->enrollPayerAuth(new PayerAuthEnrollRequest(
 
 if ($enroll->requiresChallenge()) {
     // Redirect the payer to $enroll->stepUpUrl, POSTing $enroll->accessToken, then:
-    $validated = $cybersource->validatePayerAuth(/* ValidatePayerAuthRequest */);
+    $validated = $cybersource->validatePayerAuth(new ValidatePayerAuthRequest(
+        authenticationTransactionId: $enroll->authenticationTransactionId,
+        money: Money::minor(10000, 'EGP'),
+        transientToken: $tokenFromWidget, // card is referenced by the token's jti
+        orderReference: 'ORDER-123',
+    ));
+    // $validated->consumerAuthenticationInformation carries the CAVV/ECI for the charge.
 }
 ```
 
