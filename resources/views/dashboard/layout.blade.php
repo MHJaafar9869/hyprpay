@@ -82,7 +82,6 @@
         .brand .tag { color: var(--faint); font: 600 9px/15px var(--sans); letter-spacing: .16em; text-transform: uppercase; }
 
         .live {
-            margin-left: auto;
             display: inline-flex; align-items: center; gap: 9px; font: 600 11px/1 var(--sans);
             letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
             border: 1px solid var(--border-strong); border-radius: 5px; padding: 9px 13px;
@@ -90,6 +89,15 @@
         }
         .live .beacon { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
         .live b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+        .switch { margin-left: auto; display: inline-flex; align-items: center; gap: 9px; cursor: pointer; user-select: none; }
+        .switch input { position: absolute; width: 0; height: 0; opacity: 0; }
+        .switch .track { position: relative; width: 34px; height: 19px; flex: none; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border-strong); transition: background .16s ease, border-color .16s ease; }
+        .switch .thumb { position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 50%; background: var(--muted); transition: transform .16s ease, background .16s ease; }
+        .switch input:checked + .track { background: var(--accent-soft); border-color: rgba(90, 166, 42, .5); }
+        .switch input:checked + .track .thumb { transform: translateX(15px); background: var(--ok); }
+        .switch input:focus-visible + .track { box-shadow: 0 0 0 3px var(--accent-soft); }
+        .switch .switch-label { font: 600 11px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 
         /* ---- Main column ---- */
         .main { min-width: 0; padding: 26px 30px 90px; }
@@ -201,6 +209,23 @@
         .pill.s-bad { color: var(--bad); background: var(--bad-soft); box-shadow: inset 0 0 0 1px rgba(255, 92, 114, .22); }
         .pill.s-none { color: var(--faint); background: var(--panel-2); }
         .empty { color: var(--muted); padding: 34px 12px; text-align: center; font-size: 13px; }
+
+        /* Log panel */
+        .log-entry { border-bottom: 1px solid var(--border); }
+        .log-entry:last-child { border-bottom: 0; }
+        .log-row { display: grid; grid-template-columns: 72px 150px 1fr 24px; gap: 14px; align-items: baseline; padding: 9px 2px; }
+        .log-entry.has-detail .log-row { cursor: pointer; }
+        .log-entry.has-detail .log-row:hover { background: rgba(255, 255, 255, .03); }
+        .log-chev { color: var(--faint); font-size: 20px; align-self: center; transition: transform .18s ease; }
+        .log-entry.open .log-chev { transform: rotate(180deg); }
+        .log-level { font: 700 9.5px/1.7 var(--sans); letter-spacing: .06em; text-transform: uppercase; padding: 2px 0; border-radius: 4px; text-align: center; }
+        .log-level.s-bad { color: var(--bad); background: var(--bad-soft); }
+        .log-level.s-warn { color: var(--warn); background: var(--warn-soft); }
+        .log-level.s-ok { color: var(--ok); background: var(--ok-soft); }
+        .log-level.s-none { color: var(--faint); background: var(--panel-2); }
+        .log-time { color: var(--faint); font: 500 11.5px/1.6 var(--mono); }
+        .log-msg { color: #d7dcd0; font-size: 12.5px; word-break: break-word; }
+        .log-detail { margin: 0 2px 12px 88px; padding: 9px 11px; background: var(--panel-2); border-radius: 5px; color: var(--muted); font: 500 11.5px/1.55 var(--mono); white-space: pre-wrap; word-break: break-word; max-height: 260px; overflow: auto; }
 
         /* Sortable table headers */
         th.sortable { cursor: pointer; user-select: none; transition: color .12s ease; }
@@ -331,6 +356,11 @@
                 <span class="tag">Gateway telemetry</span>
             </div>
         </div>
+        <label class="switch" title="Poll for new activity and logs every 10s">
+            <input type="checkbox" id="auto-refresh">
+            <span class="track"><span class="thumb"></span></span>
+            <span class="switch-label">Auto-refresh</span>
+        </label>
         <span class="live"><span class="beacon"></span> Live <b id="updated-at">now</b></span>
     </header>
     <main class="main">

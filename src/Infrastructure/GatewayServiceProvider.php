@@ -8,6 +8,7 @@ use Hyprpay\Payments\Application\PaymentGatewayFactory;
 use Hyprpay\Payments\Domain\Contract\CredentialResolver;
 use Hyprpay\Payments\Domain\Contract\EventDispatcher;
 use Hyprpay\Payments\Domain\Contract\HttpClient;
+use Hyprpay\Payments\Domain\Contract\ReadsLog;
 use Hyprpay\Payments\Domain\Contract\ReadsPaymentActivity;
 use Hyprpay\Payments\Domain\Contract\RecordsPaymentActivity;
 use Hyprpay\Payments\Domain\Event\PaymentEvent;
@@ -29,6 +30,7 @@ use Hyprpay\Payments\Infrastructure\Dashboard\Actions\RecordActivityToDatabase;
 use Hyprpay\Payments\Infrastructure\Dashboard\Queries\NoRecentActivity;
 use Hyprpay\Payments\Infrastructure\Dashboard\Queries\RecentActivityFromCache;
 use Hyprpay\Payments\Infrastructure\Dashboard\Queries\RecentActivityFromDatabase;
+use Hyprpay\Payments\Infrastructure\Dashboard\Queries\RecentLogEntries;
 use Hyprpay\Payments\Infrastructure\Events\LaravelEventDispatcher;
 use Hyprpay\Payments\Infrastructure\Events\LoggingPaymentEventListener;
 use Hyprpay\Payments\Infrastructure\Events\RecordingPaymentEventListener;
@@ -152,6 +154,11 @@ final class GatewayServiceProvider extends ServiceProvider
                 ),
             };
         });
+
+        $this->app->bind(ReadsLog::class, static fn (Application $app): ReadsLog => new RecentLogEntries(
+            $app->storagePath('logs'),
+            'hyprpay',
+        ));
 
         $this->app->singleton(PaymentGatewayFactory::class, static function (Application $app): PaymentGatewayFactory {
             $config = $app->make(ConfigRepository::class);
