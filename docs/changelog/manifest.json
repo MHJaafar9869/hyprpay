@@ -1,6 +1,12 @@
 {
   "releases": [
     {
+      "version": "0.10.1",
+      "date": "2026-08-26",
+      "title": "Dashboard redesign, durable DB store, and payment lifecycle",
+      "file": "v0.10.1.md"
+    },
+    {
       "version": "0.10.0",
       "date": "2026-08-25",
       "title": "Opt-in monitoring dashboard at /hyprpay",
