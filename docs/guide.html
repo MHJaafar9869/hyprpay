@@ -300,6 +300,23 @@
       </div>
     </section>
 
+    <section id="installments" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Payment flow</p>
+      <h2>Installments</h2>
+      <p class="doc-sig"><span class="fn">charge</span>(ChargeRequest + Installment): <span class="rt">PaymentResult</span></p>
+      <p>Split a charge into issuer-funded installments — common across MENA, LATAM, and Turkey — by
+         attaching an <code>Installment</code> to the <code>ChargeRequest</code>. The issuer funds and
+         splits the plan, so you authorise once instead of charging the card yourself. Only
+         <code>totalCount</code> is required; it maps to <code>processingInformation.installment</code>.</p>
+      <div class="code">
+<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="k">new</span> <span class="t">ChargeRequest</span>(
+    <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>,
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">48000</span>, <span class="s">'EGP'</span>),
+    <span class="a">installment:</span> <span class="k">new</span> <span class="t">Installment</span>(<span class="a">totalCount:</span> <span class="n">6</span>), <span class="c">// six issuer installments</span>
+));</code></pre>
+      </div>
+    </section>
+
     <section id="charge" class="doc-section" data-gws="cyber paytabs paypal mpgs authorizenet airwallex">
       <p class="doc-eyebrow">Payment flow</p>
       <h2>Charge</h2>
@@ -376,6 +393,24 @@
 <span class="c">// creates a PaymentIntent then confirms it with the payment_method id — one server call each;</span>
 <span class="c">// a 3-D Secure challenge resolves to a pending status with the next_action in $result->raw</span></code></pre>
         </div>
+      </div>
+    </section>
+
+    <section id="declines" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Payment flow</p>
+      <h2>Declines &amp; messages</h2>
+      <p class="doc-sig"><span class="t">DeclineClassifier</span>::<span class="fn">fromResult</span>(PaymentResult): <span class="rt">DeclineOutcome</span></p>
+      <p>Turn a declined charge into a retry decision and a safe, specific message for the cardholder —
+         without leaking a raw processor code. Pair <code>customerMessage()</code> with the stable
+         <code>reason</code> code to localise your own copy.</p>
+      <div class="code">
+<pre><code><span class="k">if</span> (! <span class="v">$result</span>-&gt;success) {
+    <span class="v">$decline</span> = <span class="t">DeclineClassifier</span>::<span class="fn">fromResult</span>(<span class="v">$result</span>);
+
+    <span class="v">$message</span> = <span class="v">$decline</span>-&gt;<span class="fn">customerMessage</span>(); <span class="c">// "Your card was declined for insufficient funds…"</span>
+    <span class="v">$retry</span>   = <span class="v">$decline</span>-&gt;<span class="fn">isRetryable</span>();     <span class="c">// false for expired / blocked / invalid cards</span>
+    <span class="v">$reason</span>  = <span class="v">$decline</span>-&gt;reason;              <span class="c">// stable code to localise your own copy</span>
+}</code></pre>
       </div>
     </section>
 
@@ -1162,7 +1197,9 @@
       <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs airwallex tamara"><a href="#create-checkout" data-spy="create-checkout">Create checkout</a></li>
       <li data-gws="cyber"><a href="#confirm-orchestrated" data-spy="confirm-orchestrated">Confirm orchestrated</a></li>
       <li data-gws="cyber"><a href="#dcc-rate" data-spy="dcc-rate">DCC rate</a></li>
+      <li data-gws="cyber"><a href="#installments" data-spy="installments">Installments</a></li>
       <li data-gws="cyber paytabs paypal mpgs authorizenet airwallex"><a href="#charge" data-spy="charge">Charge</a></li>
+      <li data-gws="cyber"><a href="#declines" data-spy="declines">Declines &amp; messages</a></li>
       <li data-gws="cyber"><a href="#device-fingerprint" data-spy="device-fingerprint">Device fingerprinting</a></li>
       <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#capture" data-spy="capture">Capture</a></li>
       <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#void" data-spy="void">Void</a></li>
@@ -1198,7 +1235,7 @@
     <a href="https://packagist.org/packages/hyprpay/payments">Packagist</a>
     <a href="https://github.com/MHJaafar9869/hyprpay/blob/main/README.md">README</a>
   </nav>
-  <p class="foot-note">Domain-driven · ports &amp; adapters · deterministic · exact money · <a href="https://packagist.org/packages/hyprpay/payments">v0.11.1</a></p>
+  <p class="foot-note">Domain-driven · ports &amp; adapters · deterministic · exact money · <a href="https://packagist.org/packages/hyprpay/payments">v0.12.0</a></p>
 </footer>
 
 <button class="to-top" type="button" aria-label="Back to top" title="Back to top">↑</button>

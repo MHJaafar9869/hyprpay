@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads;
 
 use Hyprpay\Payments\Domain\Command\ChargeRequest;
+use Hyprpay\Payments\Domain\ValueObject\Installment;
 
 /**
  * Builds the CyberSource payments (authorization/charge) request body for a Unified Checkout charge.
@@ -31,6 +32,10 @@ final class PaymentPayload
 
         if (filled($request->commerceIndicator)) {
             $processingInformation['commerceIndicator'] = $request->commerceIndicator;
+        }
+
+        if ($request->installment instanceof Installment) {
+            $processingInformation['installment'] = $request->installment->toArray();
         }
 
         $orderInformation = [

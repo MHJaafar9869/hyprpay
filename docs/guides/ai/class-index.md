@@ -94,6 +94,7 @@ Every one of the 192 classes, interfaces, enums, and traits in `hyprpay/payments
 - **`DecryptedWalletToken`** _class_ — Wallet token the merchant already decrypted into network-token fields (DPAN, cryptogram, expiry, optional ECI/card type).
 - **`EncryptedWalletToken`** _class_ — Wallet token forwarded to the gateway still encrypted, for the gateway to decrypt.
 - **`GatewayCredentials`** _class_ — Immutable DTO holding the per-gateway credentials and settings a driver needs.
+- **`Installment`** _class_ — Issuer-funded installment plan attached to a charge (maps to processingInformation.installment).
 - **`Money`** _class_ — Immutable money value object holding an amount in minor units plus its currency.
 - **`WalletToken`** _interface_ — A digital-wallet payment token in one of two shapes (encrypted or decrypted) for a wallet charge.
 

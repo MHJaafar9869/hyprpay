@@ -81,3 +81,20 @@ it('classifies straight from a PaymentResult raw response', function (): void {
     expect($outcome->isPermanent)->toBeTrue()
         ->and($outcome->reason)->toBe('STOLEN_LOST_CARD');
 });
+
+it('maps decline reasons to safe, specific customer messages', function (string $reason, string $status, string $expected): void {
+    $outcome = DeclineClassifier::classify(array_filter([
+        'status' => $status,
+        'errorInformation' => $reason !== '' ? ['reason' => $reason] : null,
+    ]));
+
+    expect($outcome->customerMessage())->toBe($expected);
+})->with([
+    'insufficient funds' => ['INSUFFICIENT_FUND', 'DECLINED', 'Your card was declined for insufficient funds. Please use another card.'],
+    'expired card' => ['EXPIRED_CARD', 'DECLINED', 'Your card appears to be expired. Please use a different card.'],
+    'blocked card' => ['STOLEN_LOST_CARD', 'DECLINED', 'This card cannot be used for this payment. Please use a different card.'],
+    'issuer decline (reason)' => ['PAYMENT_REFUSED', 'DECLINED', 'Your bank declined this card. Please try another card or contact your bank.'],
+    'issuer decline (status only)' => ['', 'DECLINED', 'Your bank declined this card. Please try another card or contact your bank.'],
+    'malformed request' => ['', 'INVALID_REQUEST', 'Your payment could not be processed. Please try again in a moment.'],
+    'unclassified' => ['', '', 'Your payment could not be completed. Please try again or use a different card.'],
+]);

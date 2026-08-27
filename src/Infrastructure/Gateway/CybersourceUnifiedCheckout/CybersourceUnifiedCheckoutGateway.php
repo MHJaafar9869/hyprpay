@@ -99,12 +99,13 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
      *
      * Posts a capture-context payload, receives a bare JWT, decodes its claims to
      * extract the embedded client-library URL and integrity hash, and returns the
-     * JWT plus those front-end bootstrap values.
+     * JWT plus those front-end bootstrap values. The endpoint is chosen by the
+     * `capture_context_endpoint` credential (see {@see captureContextEndpoint()}).
      */
     public function createCheckoutSession(CheckoutSessionRequest $request): CheckoutSession
     {
         $jwt = trim($this->client->postForBody(
-            CybersourceEndpoint::CaptureContexts->path(),
+            $this->captureContextEndpoint()->path(),
             CaptureContextPayload::build($request, $this->gatewayCredentials),
             'create checkout session',
         ));
@@ -118,6 +119,23 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
             clientLibraryIntegrity: Value::nullableString($context['clientLibraryIntegrity'] ?? null),
             raw: $claims,
         );
+    }
+
+    /**
+     * The capture-context endpoint for this merchant.
+     *
+     * Defaults to `/up/v1/capture-contexts`; set the `capture_context_endpoint` credential to
+     * `sessions` to target the `/uc/v1/sessions` Unified Checkout Sessions API instead. The two
+     * share the capture-context schema this driver builds, so the choice is purely which URL the
+     * merchant's account is provisioned for.
+     */
+    private function captureContextEndpoint(): CybersourceEndpoint
+    {
+        $endpoint = $this->gatewayCredentials->extra['capture_context_endpoint'] ?? 'capture-contexts';
+
+        return $endpoint === 'sessions'
+            ? CybersourceEndpoint::Sessions
+            : CybersourceEndpoint::CaptureContexts;
     }
 
     /**

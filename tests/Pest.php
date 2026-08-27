@@ -39,6 +39,7 @@ function testCredentials(array $overrides = []): GatewayCredentials
         sharedSecret: $overrides['sharedSecret'] ?? base64_encode('test_secret'),
         testMode: true,
         webhookSecret: $overrides['webhookSecret'] ?? base64_encode('webhook_secret'),
+        extra: $overrides['extra'] ?? [],
     );
 }
 

@@ -55,6 +55,7 @@ Method:
 | `$idempotencyKey` | `?string` | `null` | Idempotency key; defaults to the order reference when omitted |
 | `$dcc` | `?DccQuote` | `null` | DCC quote to bill the cardholder in their currency; set `money` to the quote's converted amount |
 | `$useRawFingerprintSessionId` | `bool` | `false` | When true, CyberSource uses the fingerprint session id exactly as sent (no merchant-prefixed lookup) |
+| `$installment` | `?Installment` | `null` | Issuer-funded installment plan to split the charge across (maps to `processingInformation.installment`) |
 
 ### StoredCredentialChargeRequest
 `Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest` — charges a previously vaulted instrument (stored credential) for merchant- or customer-initiated transactions.

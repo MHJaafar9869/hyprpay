@@ -1,6 +1,12 @@
 {
   "releases": [
     {
+      "version": "0.12.0",
+      "date": "2026-08-27",
+      "title": "Issuer installments, cardholder decline messages, configurable capture-context endpoint",
+      "file": "v0.12.0.md"
+    },
+    {
       "version": "0.11.1",
       "date": "2026-08-27",
       "title": "Fix CyberSource 3-D Secure validation card reference (jti)",

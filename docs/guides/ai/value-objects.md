@@ -72,6 +72,19 @@ Methods:
 Methods:
 - `isEmpty(): bool` — true when every field is null (nothing to send).
 
+## Installment
+`Hyprpay\Payments\Domain\ValueObject\Installment` — an issuer-funded installment plan attached to a `ChargeRequest` to split the charge into installments the issuer funds (common across MENA, LATAM, and Turkey), rather than the merchant splitting it into separate stored-credential charges. Maps to `processingInformation.installment`; only supplied fields are sent.
+
+| field | type | default | meaning |
+|---|---|---|---|
+| `$totalCount` | `int` | — | Total number of installments the plan is split into |
+| `$sequence` | `?int` | `null` | This installment's number within the plan (1-based), for a subsequent part |
+| `$planType` | `?string` | `null` | Processor-specific installment plan type |
+| `$gracePeriodDuration` | `?int` | `null` | Grace period before the first installment, in the processor's unit (usually months) |
+
+Methods:
+- `toArray(): array<string, int|string>` — the `processingInformation.installment` fields, omitting any not supplied.
+
 ## GatewayCredentials
 `Hyprpay\Payments\Domain\ValueObject\GatewayCredentials` — per-gateway credentials and settings a driver needs (API host, merchant/key ids, HMAC shared secret, optional webhook secret, localisation defaults). Produced by the credential resolver.
 
