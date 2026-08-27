@@ -200,6 +200,60 @@ authentication more often. Every `BrowserDeviceData` field is optional — only 
 sent. `enrollPayerAuth` also accepts a `deviceFingerprintId` for Decision Manager (see
 above); its fingerprint and browser device blocks are merged into one `deviceInformation`.
 
+## Installments
+
+Split a charge into issuer-funded installments (common across MENA, LATAM, and Turkey) by
+attaching an `Installment` to the `ChargeRequest` — the issuer funds and splits the plan, so
+you authorize once rather than charging the card N times yourself.
+
+```php
+use Hyprpay\Payments\Domain\Command\ChargeRequest;
+use Hyprpay\Payments\Domain\ValueObject\Installment;
+use Hyprpay\Payments\Domain\ValueObject\Money;
+
+$result = $cybersource->charge(new ChargeRequest(
+    transientToken: $tokenFromWidget,
+    money: Money::minor(48000, 'EGP'),
+    installment: new Installment(totalCount: 6),        // six issuer installments
+));
+```
+
+Only `totalCount` is required; `sequence`, `planType`, and `gracePeriodDuration` are optional
+and sent only when supplied. It maps to `processingInformation.installment`. For
+*merchant-managed* installments — where you split the amount and collect each part yourself —
+vault the card and use `chargeStoredCredential` (merchant-initiated) for the later parts
+instead.
+
+## Declines & customer messages
+
+`DeclineClassifier` already tells you whether a decline is worth retrying; `DeclineOutcome`
+also turns it into a safe, specific message for the cardholder — without leaking a raw
+processor code.
+
+```php
+use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\DeclineClassifier;
+
+if (! $result->success) {
+    $outcome = DeclineClassifier::fromResult($result);
+
+    $showToShopper = $outcome->customerMessage(); // "Your card was declined for insufficient funds…"
+    $retryLater    = $outcome->isRetryable();     // false for expired/blocked/invalid cards
+    $reasonCode    = $outcome->reason;            // stable code to localise your own copy
+}
+```
+
+## Capture-context endpoint
+
+The Unified Checkout session is created at `/up/v1/capture-contexts` by default. If your
+merchant account is provisioned for the Sessions API instead, set the `capture_context_endpoint`
+credential (under `extra`) to `sessions` and the SDK posts to `/uc/v1/sessions` — the
+capture-context body is identical, only the URL changes.
+
+```php
+// config/gateway.php → gateways.cybersource_uc.extra
+'extra' => ['capture_context_endpoint' => 'sessions'],
+```
+
 ## Idempotency
 
 Retries are safe. Every write is idempotent through two guarantees:

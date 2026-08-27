@@ -7,6 +7,7 @@ namespace Hyprpay\Payments\Domain\Command;
 use Hyprpay\Payments\Domain\Result\DccQuote;
 use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
 use Hyprpay\Payments\Domain\ValueObject\Customer;
+use Hyprpay\Payments\Domain\ValueObject\Installment;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 
 /**
@@ -31,6 +32,7 @@ final readonly class ChargeRequest
      * @param  string|null  $idempotencyKey  Optional idempotency key; sent to the gateway so a retried charge is not double-processed. Defaults to the order reference when omitted.
      * @param  DccQuote|null  $dcc  Optional DCC quote to bill the cardholder in their currency; set `money` to the quote's converted amount so the quoted rate is applied
      * @param  bool  $useRawFingerprintSessionId  When true, CyberSource uses the device fingerprint session id exactly as sent instead of the default merchant-prefixed lookup
+     * @param  Installment|null  $installment  Optional issuer-funded installment plan to split the charge across (maps to processingInformation.installment)
      */
     public function __construct(
         public string $transientToken,
@@ -45,5 +47,6 @@ final readonly class ChargeRequest
         public ?string $idempotencyKey = null,
         public ?DccQuote $dcc = null,
         public bool $useRawFingerprintSessionId = false,
+        public ?Installment $installment = null,
     ) {}
 }

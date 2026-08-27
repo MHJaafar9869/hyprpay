@@ -27,6 +27,7 @@ use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
 use Hyprpay\Payments\Domain\ValueObject\BrowserDeviceData;
 use Hyprpay\Payments\Domain\ValueObject\DecryptedWalletToken;
 use Hyprpay\Payments\Domain\ValueObject\EncryptedWalletToken;
+use Hyprpay\Payments\Domain\ValueObject\Installment;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\CybersourceUnifiedCheckoutGateway;
 use Hyprpay\Payments\Infrastructure\Http\FakeHttpClient;
@@ -80,6 +81,49 @@ it('charges a transient token and maps an authorized response', function (): voi
         ->and($result->transactionId)->toBe('txn_1')
         ->and($http->lastRequest()?->url)->toBe('https://apitest.cybersource.com/pts/v2/payments')
         ->and(recordedBody($http)['tokenInformation']['transientTokenJwt'])->toBe('tok');
+});
+
+it('threads an issuer installment plan into the charge processing information', function (): void {
+    [$gateway, $http] = gatewayWithFakeHttp();
+    $http->queueJson(['id' => 'txn_1', 'status' => 'AUTHORIZED']);
+
+    $gateway->charge(new ChargeRequest(
+        transientToken: 'tok',
+        money: Money::minor(48000, 'EGP'),
+        installment: new Installment(totalCount: 6, sequence: 1, planType: '3', gracePeriodDuration: 2),
+    ));
+
+    $installment = recordedBody($http)['processingInformation']['installment'];
+
+    expect($installment['totalCount'])->toBe(6)
+        ->and($installment['sequence'])->toBe(1)
+        ->and($installment['planType'])->toBe('3')
+        ->and($installment['gracePeriodDuration'])->toBe(2);
+});
+
+it('omits the installment block from a non-installment charge', function (): void {
+    [$gateway, $http] = gatewayWithFakeHttp();
+    $http->queueJson(['id' => 'txn_1', 'status' => 'AUTHORIZED']);
+
+    $gateway->charge(new ChargeRequest(transientToken: 'tok', money: Money::minor(2599, 'USD')));
+
+    expect(recordedBody($http)['processingInformation'])->not->toHaveKey('installment');
+});
+
+it('creates a checkout session against the sessions endpoint when the credential opts in', function (): void {
+    $http = new FakeHttpClient;
+    $gateway = new CybersourceUnifiedCheckoutGateway(
+        testCredentials(['extra' => ['capture_context_endpoint' => 'sessions']]),
+        $http,
+    );
+    $http->queueBody(fakeJwt(['ctx' => [['data' => ['clientLibrary' => 'https://lib.test/accept.js']]]]));
+
+    $gateway->createCheckoutSession(new CheckoutSessionRequest(
+        money: Money::minor(10000, 'EGP'),
+        targetOrigins: ['https://shop.test'],
+    ));
+
+    expect($http->lastRequest()?->url)->toBe('https://apitest.cybersource.com/uc/v1/sessions');
 });
 
 it('captures an authorization against the transaction id', function (): void {
