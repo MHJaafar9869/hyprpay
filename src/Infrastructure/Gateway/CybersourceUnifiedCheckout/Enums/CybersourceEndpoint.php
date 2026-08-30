@@ -16,6 +16,7 @@ enum CybersourceEndpoint: string
 {
     case CaptureContexts = '/up/v1/capture-contexts';
     case Sessions = '/uc/v1/sessions';
+    case MicroformSessions = '/microform/v2/sessions';
     case Payments = '/pts/v2/payments';
     case Captures = '/pts/v2/payments/{id}/captures';
     case Refunds = '/pts/v2/payments/{id}/refunds';

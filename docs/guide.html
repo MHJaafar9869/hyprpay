@@ -275,6 +275,38 @@
       </div>
     </section>
 
+    <section id="microform-session" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Payment flow</p>
+      <h2>Microform session</h2>
+      <p class="doc-sig"><span class="fn">createMicroformSession</span>(CheckoutSessionRequest): <span class="rt">CheckoutSession</span></p>
+      <p>Flex Microform is CyberSource's low-level, PCI-friendly card-field tokenizer — a
+         build-your-own alternative to the Unified Checkout widget. Mint a Microform v2 capture
+         context here, load <code>Microform.js</code> with the returned JWT to render the secure
+         card/expiry/CVV fields, and the browser mints a transient token you charge through the
+         same <code>charge</code> path. The context carries no order amount or capture mandate —
+         the amount is applied at charge time. Like <code>confirmOrchestratedPayment</code> it is a
+         CyberSource-specific method outside the shared <code>PaymentGatewayInterface</code>.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="c">// 1. Mint a Microform capture context for the secure card fields.</span>
+<span class="v">$session</span> = <span class="v">$gateway</span>-&gt;<span class="fn">createMicroformSession</span>(<span class="k">new</span> <span class="t">CheckoutSessionRequest</span>(
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'EGP'</span>), <span class="c">// currency only; the amount is applied at charge</span>
+    <span class="a">targetOrigins:</span> [<span class="s">'https://shop.test'</span>],       <span class="c">// origins allowed to launch Microform</span>
+    <span class="a">allowedCardNetworks:</span> [<span class="s">'VISA'</span>, <span class="s">'MASTERCARD'</span>],
+));
+
+<span class="c">// hand $session->jwt (+ $session->clientLibrary) to Microform.js; it mints a transient token.</span>
+
+<span class="c">// 2. Charge the transient token server-side — the same path Unified Checkout uses.</span>
+<span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="k">new</span> <span class="t">ChargeRequest</span>(
+    <span class="a">transientToken:</span> <span class="v">$transientToken</span>,          <span class="c">// returned by Microform on the front end</span>
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'EGP'</span>),
+    <span class="a">orderReference:</span> <span class="s">'ORDER-123'</span>,
+));</code></pre>
+        </div>
+      </div>
+    </section>
+
     <section id="dcc-rate" class="doc-section" data-gws="cyber">
       <p class="doc-eyebrow">Payment flow</p>
       <h2>DCC rate</h2>
@@ -1196,6 +1228,7 @@
       <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#overview" data-spy="overview">Overview</a></li>
       <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs airwallex tamara"><a href="#create-checkout" data-spy="create-checkout">Create checkout</a></li>
       <li data-gws="cyber"><a href="#confirm-orchestrated" data-spy="confirm-orchestrated">Confirm orchestrated</a></li>
+      <li data-gws="cyber"><a href="#microform-session" data-spy="microform-session">Microform session</a></li>
       <li data-gws="cyber"><a href="#dcc-rate" data-spy="dcc-rate">DCC rate</a></li>
       <li data-gws="cyber"><a href="#installments" data-spy="installments">Installments</a></li>
       <li data-gws="cyber paytabs paypal mpgs authorizenet airwallex"><a href="#charge" data-spy="charge">Charge</a></li>

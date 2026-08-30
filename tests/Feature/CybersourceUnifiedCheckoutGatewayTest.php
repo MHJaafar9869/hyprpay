@@ -70,6 +70,34 @@ it('creates a checkout session and returns the capture-context JWT', function ()
         ->and(recordedBody($http)['clientVersion'])->toBe('0.34');
 });
 
+it('creates a Flex Microform capture-context session for secure card fields', function (): void {
+    [$gateway, $http] = gatewayWithFakeHttp();
+    $jwt = fakeJwt(['ctx' => [['data' => ['clientLibrary' => 'https://lib.test/microform.js', 'clientLibraryIntegrity' => 'sha256-mf']]]]);
+    $http->queueBody($jwt);
+
+    $session = $gateway->createMicroformSession(new CheckoutSessionRequest(
+        money: Money::minor(10000, 'EGP'),
+        targetOrigins: ['https://shop.test'],
+        allowedCardNetworks: ['VISA', 'AMEX'],
+    ));
+
+    $request = $http->lastRequest();
+    $body = recordedBody($http);
+
+    expect($session->jwt)->toBe($jwt)
+        ->and($session->clientLibrary)->toBe('https://lib.test/microform.js')
+        ->and($session->clientLibraryIntegrity)->toBe('sha256-mf')
+        ->and($request?->url)->toBe('https://apitest.cybersource.com/microform/v2/sessions')
+        ->and($request?->method)->toBe('POST')
+        ->and($request?->header('Signature'))->not->toBeNull()
+        ->and($body['targetOrigins'])->toBe(['https://shop.test'])
+        ->and($body['allowedCardNetworks'])->toBe(['VISA', 'AMEX'])
+        ->and($body['allowedPaymentTypes'])->toBe(['CARD'])
+        ->and($body)->not->toHaveKey('orderInformation')
+        ->and($body)->not->toHaveKey('captureMandate')
+        ->and($body)->not->toHaveKey('clientVersion');
+});
+
 it('charges a transient token and maps an authorized response', function (): void {
     [$gateway, $http] = gatewayWithFakeHttp();
     $http->queueJson(['id' => 'txn_1', 'status' => 'AUTHORIZED']);

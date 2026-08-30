@@ -498,6 +498,16 @@ outcome plus the reusable TMS token — making no `/pts/v2/payments` call and no
 transaction-search lookup. A wallet result (Apple Pay / Google Pay) yields no reusable
 credential, flagged via `OrchestratedPaymentResult::$isWallet`.
 
+For a lighter-weight, build-your-own card form there is also **Flex Microform**:
+`createMicroformSession` mints a Microform v2 capture context (`POST /microform/v2/sessions`)
+that configures only the secure card fields — the browser origins allowed to launch Microform
+and the accepted card networks — with no order amount or capture mandate. Load Microform.js
+with the returned JWT, let the shopper type into the hosted card/expiry/CVV fields, and the
+browser mints a transient token that flows through the same `charge` (or `enrollPayerAuth` /
+`vaultInstrument`) path as the Unified Checkout widget — the amount is applied at charge time.
+`createMicroformSession`, like `confirmOrchestratedPayment`, is a CyberSource-specific method
+outside the shared `PaymentGatewayInterface`.
+
 Beyond the widget, the driver also charges a **native wallet token** directly. When you host
 your own Apple Pay / Google Pay button — running the wallet's own `ApplePaySession`, merchant
 validation, and (for Apple Pay) domain registration in your app — `chargeWallet` charges the
