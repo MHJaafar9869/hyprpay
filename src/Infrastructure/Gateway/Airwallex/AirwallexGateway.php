@@ -38,8 +38,10 @@ use Hyprpay\Payments\Infrastructure\Support\Value;
  * {@see charge()} is the server-side alternative: it creates a PaymentIntent and confirms it against
  * a client-tokenized PaymentMethod id. The follow-ons act on the resulting intent — {@see capture()}
  * settles a manual-capture (authorization-hold) intent, {@see void()} and {@see reverseAuthorization()}
- * cancel an uncaptured one, {@see refund()} returns funds on a captured one, and {@see getTransaction()}
- * / {@see searchTransaction()} read intents back for reconciliation. {@see vaultInstrument()} vaults a
+ * cancel an uncaptured one, {@see refund()} returns funds on a captured one, and {@see getTransaction()},
+ * {@see searchTransaction()}, {@see findSuccessfulTransactionByReference()}, {@see listTransactions()}
+ * and {@see listTransactionsByReference()} read intents back for reconciliation (keyed on
+ * `merchant_order_id`, Airwallex's reconciliation reference). {@see vaultInstrument()} vaults a
  * card into a PaymentConsent and {@see chargeStoredCredential()} charges it. {@see verifyWebhook()}
  * validates a notification by recomputing its HMAC-SHA256 signature over the timestamp and raw body.
  * Dynamic Currency Conversion and standalone 3-D Secure payer-auth (enroll/validate) are not part of
@@ -298,25 +300,106 @@ final class AirwallexGateway extends AbstractPaymentGateway
      */
     public function searchTransaction(string $query): ?TransactionSnapshot
     {
+        $intents = $this->listIntents($query, 'search transaction');
+
+        return isset($intents[0]) ? $this->intentSnapshot($intents[0], $query) : null;
+    }
+
+    /**
+     * Find the most recent settled PaymentIntent for a merchant order reference, to reconcile before
+     * retrying a charge whose response was lost.
+     *
+     * Lists PaymentIntents filtered by `merchant_order_id` (newest first) and returns the first whose
+     * status is authorized (`REQUIRES_CAPTURE`) or captured (`SUCCEEDED`) — so a charge that actually
+     * settled but whose response never arrived is adopted rather than repeated; a still-pending intent
+     * is deliberately not adopted. Airwallex keys reconciliation on `merchant_order_id`, so the SDK's
+     * merchant reference is passed straight through as that filter.
+     *
+     * @param  string  $reference  The merchant order reference the original charge was sent with.
+     */
+    public function findSuccessfulTransactionByReference(string $reference): ?TransactionSnapshot
+    {
+        foreach ($this->listIntents($reference, 'reconcile transaction by reference') as $intent) {
+            $snapshot = $this->intentSnapshot($intent, $reference);
+
+            if (in_array($snapshot->status, [PaymentStatus::Authorized, PaymentStatus::Captured], true)) {
+                return $snapshot;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * List every PaymentIntent carrying a merchant order id, newest first.
+     *
+     * Airwallex has no free-text transaction search — its reconciliation key is `merchant_order_id` —
+     * so the query is treated as the merchant order id and every intent created under it is returned as
+     * a snapshot (newest first), rather than only the first match {@see searchTransaction()} yields.
+     *
+     * @param  string  $query  The merchant order id whose PaymentIntents to list.
+     * @return list<TransactionSnapshot>
+     */
+    public function listTransactions(string $query): array
+    {
+        return array_values(array_map(
+            fn (array $intent): TransactionSnapshot => $this->intentSnapshot($intent, $query),
+            $this->listIntents($query, 'list transactions'),
+        ));
+    }
+
+    /**
+     * List the full history of a payment by its merchant order reference, newest first — every
+     * PaymentIntent (authorization, capture, retry) created under that `merchant_order_id`.
+     *
+     * @param  string  $reference  The merchant order reference the transactions were sent with.
+     * @return list<TransactionSnapshot>
+     */
+    public function listTransactionsByReference(string $reference): array
+    {
+        return $this->listTransactions($reference);
+    }
+
+    /**
+     * Fetch the PaymentIntents carrying a merchant order id as raw intent arrays, newest first.
+     *
+     * @param  string  $merchantOrderId  The `merchant_order_id` to filter by.
+     * @param  string  $context  Operation label used in error messages on failure.
+     * @return list<array<string, mixed>>
+     */
+    private function listIntents(string $merchantOrderId, string $context): array
+    {
         $response = $this->client->query(
             AirwallexEndpoint::PaymentIntentList,
-            ['merchant_order_id' => $query],
-            'search transaction',
+            ['merchant_order_id' => $merchantOrderId],
+            $context,
         );
 
         $items = $response['items'] ?? null;
 
-        if (! is_array($items) || ! isset($items[0]) || ! is_array($items[0])) {
-            return null;
+        if (! is_array($items)) {
+            return [];
         }
 
-        $intent = Value::array($items[0]);
+        return array_values(array_map(
+            Value::array(...),
+            array_filter($items, is_array(...)),
+        ));
+    }
 
+    /**
+     * Map a raw PaymentIntent array to a snapshot, defaulting the order reference to the merchant
+     * order id the list was filtered by when the intent carries none.
+     *
+     * @param  array<string, mixed>  $intent
+     */
+    private function intentSnapshot(array $intent, string $fallbackReference): TransactionSnapshot
+    {
         return new TransactionSnapshot(
             transactionId: Value::string($intent['id'] ?? null),
             status: AirwallexIntentStatus::toPaymentStatusOrFailed(Value::nullableString($intent['status'] ?? null)),
             money: $this->money($intent),
-            orderReference: Value::nullableString($intent['merchant_order_id'] ?? null) ?? $query,
+            orderReference: Value::nullableString($intent['merchant_order_id'] ?? null) ?? $fallbackReference,
             raw: $intent,
         );
     }

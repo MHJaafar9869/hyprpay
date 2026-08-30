@@ -236,6 +236,45 @@ it('returns null when the search matches no intent', function (): void {
     expect($snapshot)->toBeNull();
 });
 
+it('lists every intent for a merchant order reference', function (): void {
+    $http = airwallexHttp()->queueJson(['items' => [
+        ['id' => 'int_2', 'status' => 'SUCCEEDED', 'amount' => 100, 'currency' => 'USD', 'merchant_order_id' => 'ORD-L'],
+        ['id' => 'int_1', 'status' => 'CANCELLED', 'amount' => 100, 'currency' => 'USD', 'merchant_order_id' => 'ORD-L'],
+    ]]);
+
+    $history = (new AirwallexGateway(airwallexCredentials(), $http))->listTransactionsByReference('ORD-L');
+
+    expect($history)->toHaveCount(2)
+        ->and($history[0]->transactionId)->toBe('int_2')
+        ->and($history[0]->status)->toBe(PaymentStatus::Captured)
+        ->and($history[1]->transactionId)->toBe('int_1')
+        ->and($history[1]->status)->toBe(PaymentStatus::Voided)
+        ->and($http->lastRequest()?->url)->toBe('https://api-demo.airwallex.com/api/v1/pa/payment_intents?merchant_order_id=ORD-L');
+});
+
+it('finds the settled intent for a merchant order reference, skipping pending ones', function (): void {
+    $http = airwallexHttp()->queueJson(['items' => [
+        ['id' => 'int_pending', 'status' => 'REQUIRES_PAYMENT_METHOD', 'merchant_order_id' => 'ORD-F'],
+        ['id' => 'int_ok', 'status' => 'SUCCEEDED', 'merchant_order_id' => 'ORD-F'],
+    ]]);
+
+    $snapshot = (new AirwallexGateway(airwallexCredentials(), $http))->findSuccessfulTransactionByReference('ORD-F');
+
+    expect($snapshot?->transactionId)->toBe('int_ok')
+        ->and($snapshot?->status)->toBe(PaymentStatus::Captured);
+});
+
+it('returns an empty history and null reconcile when no intents match the reference', function (): void {
+    $http = airwallexHttp()
+        ->queueJson(['items' => []])
+        ->queueJson(['items' => []]);
+
+    $gateway = new AirwallexGateway(airwallexCredentials(), $http);
+
+    expect($gateway->listTransactions('NONE'))->toBe([])
+        ->and($gateway->findSuccessfulTransactionByReference('NONE'))->toBeNull();
+});
+
 it('captures an authorized payment intent', function (): void {
     $http = airwallexHttp()->queueJson([
         'id' => 'int_123',

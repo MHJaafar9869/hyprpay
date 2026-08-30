@@ -57,7 +57,7 @@
   <!-- ─────────────────────────  HERO  ───────────────────────── -->
   <section class="hero">
     <div class="hero-grid" aria-hidden="true"></div>
-    <p class="kicker reveal" data-d="0">Laravel&nbsp;10–13&nbsp;·&nbsp;Payment SDK&nbsp;·&nbsp;v0.12.0&nbsp;·&nbsp;MIT</p>
+    <p class="kicker reveal" data-d="0">Laravel&nbsp;10–13&nbsp;·&nbsp;Payment SDK&nbsp;·&nbsp;v0.13.0&nbsp;·&nbsp;MIT</p>
     <h1 class="hero-title">
       <span class="reveal" data-d="1">One clean interface.</span>
       <span class="reveal" data-d="2">Every payment <em>gateway</em>.</span>
@@ -194,14 +194,14 @@
       <article class="gw reveal" style="--gw:var(--paypal)">
         <header><span class="gw-tag">PayPal</span><span class="gw-sig">OAuth 2.0</span></header>
         <h3>Orders v2 checkout</h3>
-        <p>Create an order and redirect the buyer to approve it, then capture or authorize the approved order with <code>charge</code>. Captures, voids and refunds act on the payment resources; cards vault via the setup-token → payment-token flow for card-on-file charges, and webhooks verify through PayPal's signature API.</p>
-        <footer>order · approval redirect · capture · authorize · vault · MIT/CIT</footer>
+        <p>Create an order and redirect the buyer to approve it, then capture or authorize the approved order with <code>charge</code>. Captures, voids, reversals and refunds act on the payment resources; cards vault via the setup-token → payment-token flow for card-on-file charges, reconciliation runs through the Transaction Search (Reporting) API, and webhooks verify through PayPal's signature API.</p>
+        <footer>order · approval redirect · capture · authorize · reverse · vault · MIT/CIT · reporting</footer>
       </article>
       <article class="gw reveal" style="--gw:var(--mpgs)">
         <header><span class="gw-tag">Mastercard MPGS</span><span class="gw-sig">HTTP Basic</span></header>
         <h3>Order &amp; transaction</h3>
-        <p>Initiate a Hosted Checkout session, then PAY or AUTHORIZE it against the merchant-assigned order and transaction ids. Captures, refunds, voids and reversals settle against the order; cards tokenize for stored-credential charges, 3-D Secure runs through the authentication operations, and webhooks verify with the notification secret.</p>
-        <footer>hosted checkout · pay/authorize · capture · refund · void · 3-DS · token · MIT/CIT</footer>
+        <p>Initiate a Hosted Checkout session, then PAY or AUTHORIZE it against the merchant-assigned order and transaction ids. Quote a DCC rate via a payment-options inquiry and charge merchant-decrypted Apple Pay / Google Pay wallets. Captures, refunds, voids and reversals settle against the order; cards tokenize for stored-credential charges, 3-D Secure runs through the authentication operations, the order's transaction history reconciles by reference, and webhooks verify with the notification secret.</p>
+        <footer>hosted checkout · DCC · pay/authorize · wallet · capture · refund · void · 3-DS · token · MIT/CIT · history</footer>
       </article>
       <article class="gw reveal" style="--gw:var(--authorizenet)">
         <header><span class="gw-tag">Authorize.Net</span><span class="gw-sig">Name / Transaction Key</span></header>
@@ -212,8 +212,8 @@
       <article class="gw reveal" style="--gw:var(--airwallex)">
         <header><span class="gw-tag">Airwallex</span><span class="gw-sig">API-access login</span></header>
         <h3>PaymentIntents</h3>
-        <p>Create a PaymentIntent and hand its id + client secret to the Airwallex element, which collects the card and confirms in the browser. Capture a manual-capture hold, refund a captured intent, charge a saved card against a stored PaymentConsent, reconcile by intent id, and verify the HMAC-SHA256 webhook signature.</p>
-        <footer>PaymentIntent · client secret · capture · refund · consent charge · getTransaction · webhook</footer>
+        <p>Create a PaymentIntent and hand its id + client secret to the Airwallex element, which collects the card and confirms in the browser. Capture a manual-capture hold, refund a captured intent, charge a saved card against a stored PaymentConsent, reconcile by intent id or merchant order id with full transaction history, and verify the HMAC-SHA256 webhook signature.</p>
+        <footer>PaymentIntent · client secret · capture · refund · consent charge · getTransaction · history · webhook</footer>
       </article>
       <article class="gw reveal" style="--gw:var(--tamara)">
         <header><span class="gw-tag">Tamara</span><span class="gw-sig">Bearer API token</span></header>
@@ -253,17 +253,18 @@
         </thead>
         <tbody>
           <tr><th scope="row"><code>createCheckoutSession</code></th><td class="y">capture context / orchestrated</td><td class="y">hosted / card / wallet</td><td class="y">iframe flow</td><td class="y">invoice / iframe</td><td class="y">hosted / invoice / paylink / managed</td><td class="y">order → approval</td><td class="y">hosted checkout</td><td class="n">—</td><td class="y">PaymentIntent</td><td class="y">hosted BNPL redirect</td></tr>
+          <tr><th scope="row"><code>requestDccRate</code> <small>(Dynamic Currency Conversion)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">payment-options inquiry</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
           <tr><th scope="row"><code>charge</code> <small>(transient token)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">Own Form</td><td class="y">approved order</td><td class="y">session</td><td class="y">Accept.js</td><td class="y">confirm</td><td class="n">—</td></tr>
-          <tr><th scope="row"><code>chargeWallet</code> <small>(Apple Pay / Google Pay)</small></th><td class="y">tokenizedCard / fluidData</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
+          <tr><th scope="row"><code>chargeWallet</code> <small>(Apple Pay / Google Pay)</small></th><td class="y">tokenizedCard / fluidData</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">merchant-decrypted</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
           <tr><th scope="row"><code>confirmOrchestratedPayment</code> <small>(verify result JWT)</small></th><td class="y">RS256 · flx.jwk</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
           <tr><th scope="row"><code>capture</code></th><td class="y">✓</td><td class="y">Auth/Capture</td><td class="y">✓</td><td class="y">settle</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">after authorise</td></tr>
           <tr><th scope="row"><code>refund</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
           <tr><th scope="row"><code>void</code></th><td class="y">✓</td><td class="y">cancel auth</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">cancel</td><td class="y">cancel</td></tr>
-          <tr><th scope="row"><code>reverseAuthorization</code></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="y">release</td><td class="n">—</td><td class="y">✓</td><td class="n">—</td><td class="y">cancel</td><td class="y">cancel</td></tr>
+          <tr><th scope="row"><code>reverseAuthorization</code></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="y">release</td><td class="y">void of auth</td><td class="y">✓</td><td class="n">—</td><td class="y">cancel</td><td class="y">cancel</td></tr>
           <tr><th scope="row"><code>setupPayerAuth</code> <small>(3-DS device data collection)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
           <tr><th scope="row"><code>enroll</code> / <code>validatePayerAuth</code> <small>(3-DS)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
           <tr><th scope="row"><code>vault</code> / <code>chargeStoredCredential</code></th><td class="y">TMS · MIT/CIT</td><td class="n">—</td><td class="n">—</td><td class="y">vault · charge · revoke</td><td class="y">token · MIT/CIT</td><td class="y">vault · MIT/CIT</td><td class="y">token · MIT/CIT</td><td class="y">CIM · MIT/CIT</td><td class="y">consent charge</td><td class="n">—</td></tr>
-          <tr><th scope="row"><code>getTransaction</code> / <code>searchTransaction</code> <small>(+ full history)</small></th><td class="y">✓ &middot; history</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">query</td><td class="y">order lookup</td><td class="y">order lookup</td><td class="y">transaction details</td><td class="y">intent lookup</td><td class="y">order / reference</td></tr>
+          <tr><th scope="row"><code>getTransaction</code> / <code>searchTransaction</code> <small>(+ full history)</small></th><td class="y">✓ &middot; history</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">query</td><td class="y">order &middot; reporting history</td><td class="y">order &middot; history</td><td class="y">transaction details</td><td class="y">intent &middot; history</td><td class="y">order / reference</td></tr>
           <tr><th scope="row"><code>verifyWebhook</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">API</td><td class="y">secret</td><td class="y">HMAC-SHA512</td><td class="y">HMAC-SHA256</td><td class="y">shared header</td></tr>
         </tbody>
       </table>
@@ -361,10 +362,10 @@
             <div class="op"><dt>capture</dt><dd>&#10003;</dd></div>
             <div class="op"><dt>refund</dt><dd>&#10003;</dd></div>
             <div class="op"><dt>void</dt><dd>&#10003;</dd></div>
-            <div class="op off"><dt>reverseAuthorization</dt><dd>&mdash;</dd></div>
+            <div class="op"><dt>reverseAuthorization</dt><dd>void of auth</dd></div>
             <div class="op off"><dt>enroll / validatePayerAuth</dt><dd>&mdash;</dd></div>
             <div class="op"><dt>vault / chargeStoredCredential</dt><dd>vault &middot; MIT/CIT</dd></div>
-            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>order lookup</dd></div>
+            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>order &middot; reporting history</dd></div>
             <div class="op"><dt>verifyWebhook</dt><dd>&#10003;</dd></div>
           </dl>
         </article>
@@ -372,14 +373,16 @@
           <header class="deck-card-head"><span class="gw-tag">Mastercard MPGS</span><span class="gw-sig">HTTP Basic</span></header>
           <dl class="deck-ops">
             <div class="op"><dt>createCheckoutSession</dt><dd>hosted checkout</dd></div>
+            <div class="op"><dt>requestDccRate</dt><dd>payment-options inquiry</dd></div>
             <div class="op"><dt>charge</dt><dd>session</dd></div>
+            <div class="op"><dt>chargeWallet</dt><dd>merchant-decrypted</dd></div>
             <div class="op"><dt>capture</dt><dd>&#10003;</dd></div>
             <div class="op"><dt>refund</dt><dd>&#10003;</dd></div>
             <div class="op"><dt>void</dt><dd>&#10003;</dd></div>
             <div class="op"><dt>reverseAuthorization</dt><dd>&#10003;</dd></div>
             <div class="op"><dt>enroll / validatePayerAuth</dt><dd>&#10003;</dd></div>
             <div class="op"><dt>vault / chargeStoredCredential</dt><dd>token &middot; MIT/CIT</dd></div>
-            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>order lookup</dd></div>
+            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>order &middot; history</dd></div>
             <div class="op"><dt>verifyWebhook</dt><dd>secret</dd></div>
           </dl>
         </article>
@@ -409,7 +412,7 @@
             <div class="op"><dt>reverseAuthorization</dt><dd>cancel</dd></div>
             <div class="op off"><dt>enroll / validatePayerAuth</dt><dd>&mdash;</dd></div>
             <div class="op"><dt>vault / chargeStoredCredential</dt><dd>PaymentConsent</dd></div>
-            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>intent lookup</dd></div>
+            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>intent &middot; history</dd></div>
             <div class="op"><dt>verifyWebhook</dt><dd>HMAC-SHA256</dd></div>
           </dl>
         </article>

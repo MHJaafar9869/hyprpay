@@ -6,6 +6,7 @@ namespace Hyprpay\Payments\Infrastructure\Gateway\Mpgs\Payloads;
 
 use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
 use Hyprpay\Payments\Domain\ValueObject\BrowserDeviceData;
+use Hyprpay\Payments\Domain\ValueObject\DecryptedWalletToken;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 
 /**
@@ -74,6 +75,40 @@ final class MpgsPayloadParts
         return [
             'type' => 'CARD',
             'provided' => ['card' => $card],
+        ];
+    }
+
+    /**
+     * Build a device-payment (wallet) card `sourceOfFunds` block from a merchant-decrypted network
+     * token.
+     *
+     * The decrypted DPAN and expiry map to `provided.card`, and the online-payment cryptogram and ECI
+     * to the nested `devicePayment` block MPGS reads for Apple Pay / Google Pay. The wallet itself is
+     * flagged on the order (`order.walletProvider`), not here.
+     *
+     * @param  DecryptedWalletToken  $token  The merchant-decrypted wallet token to serialise.
+     * @return array<string, mixed>
+     */
+    public static function devicePaymentSourceOfFunds(DecryptedWalletToken $token): array
+    {
+        $devicePayment = array_filter([
+            'cryptogramFormat' => '3DSECURE',
+            'onlinePaymentCryptogram' => $token->cryptogram,
+            'eciIndicator' => $token->eci,
+        ], static fn (mixed $value): bool => $value !== null);
+
+        return [
+            'type' => 'CARD',
+            'provided' => [
+                'card' => [
+                    'number' => $token->number,
+                    'expiry' => [
+                        'month' => $token->expiryMonth,
+                        'year' => self::twoDigitYear($token->expiryYear),
+                    ],
+                    'devicePayment' => $devicePayment,
+                ],
+            ],
         ];
     }
 

@@ -2,11 +2,13 @@
 
 declare(strict_types=1);
 
+use Carbon\CarbonImmutable;
 use Hyprpay\Payments\Application\PaymentGatewayFactory;
 use Hyprpay\Payments\Domain\Command\CaptureRequest;
 use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
+use Hyprpay\Payments\Domain\Command\ReversalRequest;
 use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
 use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
@@ -248,6 +250,112 @@ it('voids an authorized payment', function (): void {
         ->and($result->transactionId)->toBe('AUTH1')
         ->and($http->lastRequest()?->url)->toBe('https://api-m.sandbox.paypal.com/v2/payments/authorizations/AUTH1/void')
         ->and($http->lastRequest()?->method)->toBe('POST');
+});
+
+it('reverses an authorization by voiding it', function (): void {
+    $http = paypalHttp();
+
+    $result = (new PayPalGateway(paypalCredentials(), $http))->reverseAuthorization(new ReversalRequest(
+        transactionId: 'AUTH1',
+        money: Money::minor(10000, 'USD'),
+        orderReference: 'ORD1',
+    ));
+
+    expect($result->success)->toBeTrue()
+        ->and($result->status)->toBe(PaymentStatus::Reversed)
+        ->and($result->transactionId)->toBe('AUTH1')
+        ->and($http->lastRequest()?->url)->toBe('https://api-m.sandbox.paypal.com/v2/payments/authorizations/AUTH1/void')
+        ->and($http->lastRequest()?->method)->toBe('POST')
+        ->and($http->lastRequest()?->header('PayPal-Request-Id'))->toBe('ORD1');
+});
+
+it('searches PayPal reporting by transaction id within the default window', function (): void {
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2025-03-20T00:00:00Z'));
+
+    $http = paypalHttp()->queueJson([
+        'transaction_details' => [[
+            'transaction_info' => [
+                'transaction_id' => 'TX1',
+                'transaction_status' => 'S',
+                'transaction_amount' => ['currency_code' => 'USD', 'value' => '100.00'],
+                'invoice_id' => 'ORD1',
+            ],
+        ]],
+    ]);
+
+    $snapshot = (new PayPalGateway(paypalCredentials(), $http))->searchTransaction('TX1');
+
+    $request = $http->lastRequest();
+    parse_str((string) parse_url((string) $request?->url, PHP_URL_QUERY), $params);
+
+    expect($snapshot?->transactionId)->toBe('TX1')
+        ->and($snapshot?->status)->toBe(PaymentStatus::Captured)
+        ->and($snapshot?->orderReference)->toBe('ORD1')
+        ->and($snapshot?->money?->toDecimalString())->toBe('100.00')
+        ->and($request?->method)->toBe('GET')
+        ->and((string) parse_url((string) $request?->url, PHP_URL_PATH))->toBe('/v1/reporting/transactions')
+        ->and($params['transaction_id'])->toBe('TX1')
+        ->and($params['fields'])->toBe('transaction_info')
+        ->and($params['start_date'])->toBe('2025-02-17T00:00:00.000Z')
+        ->and($params['end_date'])->toBe('2025-03-20T00:00:00.000Z');
+
+    CarbonImmutable::setTestNow();
+});
+
+it('lists reporting transactions matching a merchant reference client-side', function (): void {
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2025-03-20T00:00:00Z'));
+
+    $http = paypalHttp()->queueJson([
+        'transaction_details' => [
+            ['transaction_info' => ['transaction_id' => 'TXA', 'transaction_status' => 'S', 'invoice_id' => 'ORD1']],
+            ['transaction_info' => ['transaction_id' => 'TXB', 'transaction_status' => 'S', 'invoice_id' => 'OTHER']],
+            ['transaction_info' => ['transaction_id' => 'TXC', 'transaction_status' => 'V', 'invoice_id' => 'ORD1']],
+        ],
+    ]);
+
+    $history = (new PayPalGateway(paypalCredentials(), $http))->listTransactionsByReference('ORD1');
+
+    expect($history)->toHaveCount(2)
+        ->and($history[0]->transactionId)->toBe('TXA')
+        ->and($history[0]->status)->toBe(PaymentStatus::Captured)
+        ->and($history[1]->transactionId)->toBe('TXC')
+        ->and($history[1]->status)->toBe(PaymentStatus::Voided);
+
+    CarbonImmutable::setTestNow();
+});
+
+it('finds the settled reporting transaction for a merchant reference, skipping pending and mismatched', function (): void {
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2025-03-20T00:00:00Z'));
+
+    $http = paypalHttp()->queueJson([
+        'transaction_details' => [
+            ['transaction_info' => ['transaction_id' => 'TXpending', 'transaction_status' => 'P', 'invoice_id' => 'ORD1']],
+            ['transaction_info' => ['transaction_id' => 'TXok', 'transaction_status' => 'S', 'invoice_id' => 'ORD1']],
+            ['transaction_info' => ['transaction_id' => 'TXother', 'transaction_status' => 'S', 'invoice_id' => 'ZZZ']],
+        ],
+    ]);
+
+    $snapshot = (new PayPalGateway(paypalCredentials(), $http))->findSuccessfulTransactionByReference('ORD1');
+
+    expect($snapshot?->transactionId)->toBe('TXok')
+        ->and($snapshot?->status)->toBe(PaymentStatus::Captured);
+
+    CarbonImmutable::setTestNow();
+});
+
+it('returns an empty reporting history when nothing matches the reference', function (): void {
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2025-03-20T00:00:00Z'));
+
+    $http = paypalHttp()
+        ->queueJson(['transaction_details' => []])
+        ->queueJson(['transaction_details' => []]);
+
+    $gateway = new PayPalGateway(paypalCredentials(), $http);
+
+    expect($gateway->listTransactionsByReference('NONE'))->toBe([])
+        ->and($gateway->findSuccessfulTransactionByReference('NONE'))->toBeNull();
+
+    CarbonImmutable::setTestNow();
 });
 
 it('looks up an order and maps its status, amount, and reference', function (): void {

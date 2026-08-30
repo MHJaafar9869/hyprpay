@@ -7,20 +7,24 @@ use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\DccRateRequest;
 use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
+use Hyprpay\Payments\Domain\Command\PayerAuthSetupRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
 use Hyprpay\Payments\Domain\Command\ReversalRequest;
 use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
 use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\ValidatePayerAuthRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
+use Hyprpay\Payments\Domain\Command\WalletChargeRequest;
 use Hyprpay\Payments\Domain\Enum\CredentialInitiator;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
+use Hyprpay\Payments\Domain\Enum\WalletType;
 use Hyprpay\Payments\Domain\Exception\GatewayRequestException;
 use Hyprpay\Payments\Domain\Exception\UnsupportedOperationException;
 use Hyprpay\Payments\Domain\Http\HttpResponse;
-use Hyprpay\Payments\Domain\Result\DccQuote;
+use Hyprpay\Payments\Domain\Result\PayerAuthSetupResult;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
 use Hyprpay\Payments\Domain\ValueObject\BrowserDeviceData;
+use Hyprpay\Payments\Domain\ValueObject\DecryptedWalletToken;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 use Hyprpay\Payments\Infrastructure\Gateway\Mpgs\MpgsGateway;
@@ -402,9 +406,149 @@ it('rejects a request/validation error with a gateway exception', function (): v
     )))->toThrow(GatewayRequestException::class);
 });
 
-it('does not support DCC rate quotes', function (): void {
+it('requests a DCC rate quote via a payment-options inquiry', function (): void {
+    [$gateway, $http] = mpgsWithFakeHttp();
+    $http->queueJson([
+        'result' => 'SUCCESS',
+        'currencyConversion' => [
+            'gatewayCode' => 'QUOTE_PROVIDED',
+            'payerAmount' => '480.00',
+            'payerCurrency' => 'EGP',
+            'payerExchangeRate' => '48.00',
+        ],
+    ]);
+
+    $quote = $gateway->requestDccRate(new DccRateRequest(
+        money: Money::minor(1000, 'USD'),
+        cardNumber: '5123450000000008',
+        orderReference: 'ORD1',
+    ));
+
+    $request = $http->lastRequest();
+
+    expect($quote->offered)->toBeTrue()
+        ->and($quote->exchangeRate)->toBe('48.00')
+        ->and($quote->convertedAmount?->currency)->toBe('EGP')
+        ->and($quote->convertedAmount?->minorAmount)->toBe(48000)
+        ->and($quote->originalAmount?->currency)->toBe('USD')
+        ->and($request?->method)->toBe('POST')
+        ->and($request?->url)->toBe('https://test-gateway.mastercard.com/api/rest/version/100/merchant/TESTMERCHANT/paymentOptionsInquiry')
+        ->and(mpgsBody($http)['order']['amount'])->toBe('10.00')
+        ->and(mpgsBody($http)['order']['currency'])->toBe('USD')
+        ->and(mpgsBody($http)['sourceOfFunds']['provided']['card']['prefix'])->toBe('512345000');
+});
+
+it('reports DCC as not offered when the inquiry returns no conversion', function (): void {
+    [$gateway, $http] = mpgsWithFakeHttp();
+    $http->queueJson(['result' => 'SUCCESS', 'currencyConversion' => ['gatewayCode' => 'NO_RATE_AVAILABLE']]);
+
+    $quote = $gateway->requestDccRate(new DccRateRequest(money: Money::minor(1000, 'USD'), cardNumber: '5123450000000008'));
+
+    expect($quote->offered)->toBeFalse()
+        ->and($quote->convertedAmount)->toBeNull();
+});
+
+it('charges an Apple Pay wallet token as a merchant-decrypted PAY', function (): void {
+    [$gateway, $http] = mpgsWithFakeHttp();
+    $http->queueJson(['result' => 'SUCCESS', 'transaction' => ['id' => 'TXNW'], 'response' => ['gatewayCode' => 'APPROVED']]);
+
+    $result = $gateway->chargeWallet(new WalletChargeRequest(
+        token: new DecryptedWalletToken(number: '4111111111111111', cryptogram: 'CRYPTO==', expiryMonth: '12', expiryYear: '2030', eci: '05'),
+        wallet: WalletType::ApplePay,
+        money: Money::minor(10000, 'USD'),
+        orderReference: 'ORDW',
+        idempotencyKey: 'TXNW',
+    ));
+
+    $body = mpgsBody($http);
+
+    expect($result->success)->toBeTrue()
+        ->and($result->status)->toBe(PaymentStatus::Captured)
+        ->and($http->lastRequest()?->method)->toBe('PUT')
+        ->and($http->lastRequest()?->url)->toBe('https://test-gateway.mastercard.com/api/rest/version/100/merchant/TESTMERCHANT/order/ORDW/transaction/TXNW')
+        ->and($body['apiOperation'])->toBe('PAY')
+        ->and($body['order']['walletProvider'])->toBe('APPLE_PAY')
+        ->and($body['order']['amount'])->toBe('100.00')
+        ->and($body['sourceOfFunds']['provided']['card']['number'])->toBe('4111111111111111')
+        ->and($body['sourceOfFunds']['provided']['card']['expiry']['year'])->toBe('30')
+        ->and($body['sourceOfFunds']['provided']['card']['devicePayment']['cryptogramFormat'])->toBe('3DSECURE')
+        ->and($body['sourceOfFunds']['provided']['card']['devicePayment']['onlinePaymentCryptogram'])->toBe('CRYPTO==')
+        ->and($body['sourceOfFunds']['provided']['card']['devicePayment']['eciIndicator'])->toBe('05')
+        ->and($body['transaction']['source'])->toBe('INTERNET');
+});
+
+it('charges a Google Pay wallet token as an AUTHORIZE when capture is false', function (): void {
+    [$gateway, $http] = mpgsWithFakeHttp();
+    $http->queueJson(['result' => 'SUCCESS', 'transaction' => ['id' => 'TXNG']]);
+
+    $result = $gateway->chargeWallet(new WalletChargeRequest(
+        token: new DecryptedWalletToken(number: '4222222222222222', cryptogram: 'GCRYPTO', expiryMonth: '01', expiryYear: '2029'),
+        wallet: WalletType::GooglePay,
+        money: Money::minor(5000, 'USD'),
+        capture: false,
+        orderReference: 'ORDG',
+        idempotencyKey: 'TXNG',
+    ));
+
+    $body = mpgsBody($http);
+
+    expect($result->status)->toBe(PaymentStatus::Authorized)
+        ->and($body['apiOperation'])->toBe('AUTHORIZE')
+        ->and($body['order']['walletProvider'])->toBe('GOOGLE_PAY')
+        ->and($body['sourceOfFunds']['provided']['card']['devicePayment'])->not->toHaveKey('eciIndicator');
+});
+
+it('lists an order transaction history newest-first by reference', function (): void {
+    [$gateway, $http] = mpgsWithFakeHttp();
+    $http->queueJson([
+        'id' => 'ORD1',
+        'status' => 'CAPTURED',
+        'transaction' => [
+            ['transaction' => ['id' => '1', 'type' => 'AUTHORIZATION', 'amount' => '100.00', 'currency' => 'USD'], 'result' => 'SUCCESS'],
+            ['transaction' => ['id' => '2', 'type' => 'CAPTURE', 'amount' => '100.00', 'currency' => 'USD'], 'result' => 'SUCCESS'],
+        ],
+    ]);
+
+    $history = $gateway->listTransactionsByReference('ORD1');
+
+    expect($history)->toHaveCount(2)
+        ->and($history[0]->transactionId)->toBe('2')
+        ->and($history[0]->status)->toBe(PaymentStatus::Captured)
+        ->and($history[0]->money?->minorAmount)->toBe(10000)
+        ->and($history[1]->transactionId)->toBe('1')
+        ->and($history[1]->status)->toBe(PaymentStatus::Authorized)
+        ->and($http->lastRequest()?->method)->toBe('GET')
+        ->and($http->lastRequest()?->url)->toBe('https://test-gateway.mastercard.com/api/rest/version/100/merchant/TESTMERCHANT/order/ORD1');
+});
+
+it('finds the settled transaction for a reference', function (): void {
+    [$gateway, $http] = mpgsWithFakeHttp();
+    $http->queueJson([
+        'id' => 'ORD1',
+        'status' => 'CAPTURED',
+        'transaction' => [
+            ['transaction' => ['id' => '1', 'type' => 'AUTHORIZATION'], 'result' => 'SUCCESS'],
+            ['transaction' => ['id' => '2', 'type' => 'CAPTURE'], 'result' => 'SUCCESS'],
+        ],
+    ]);
+
+    $snapshot = $gateway->findSuccessfulTransactionByReference('ORD1');
+
+    expect($snapshot?->transactionId)->toBe('2')
+        ->and($snapshot?->status)->toBe(PaymentStatus::Captured);
+});
+
+it('returns an empty transaction history when the order is unknown', function (): void {
+    [$gateway, $http] = mpgsWithFakeHttp();
+    $http->queue(new HttpResponse(404, '{"error":{"cause":"NOT_FOUND"}}'));
+
+    expect($gateway->listTransactions('missing'))->toBe([])
+        ->and($gateway->findSuccessfulTransactionByReference('missing'))->toBeNull();
+});
+
+it('does not support standalone 3-D Secure setup', function (): void {
     [$gateway] = mpgsWithFakeHttp();
 
-    expect(fn (): DccQuote => $gateway->requestDccRate(new DccRateRequest(money: Money::minor(10000, 'USD'), cardNumber: '5123450000000008')))
+    expect(fn (): PayerAuthSetupResult => $gateway->setupPayerAuth(new PayerAuthSetupRequest(transientToken: 'tok')))
         ->toThrow(UnsupportedOperationException::class);
 });

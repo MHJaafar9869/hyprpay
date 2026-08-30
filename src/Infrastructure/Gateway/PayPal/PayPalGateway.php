@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Hyprpay\Payments\Infrastructure\Gateway\PayPal;
 
+use Carbon\CarbonImmutable;
 use Hyprpay\Payments\Domain\AbstractPaymentGateway;
 use Hyprpay\Payments\Domain\Command\CaptureRequest;
 use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
+use Hyprpay\Payments\Domain\Command\ReversalRequest;
 use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
 use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
@@ -26,6 +28,7 @@ use Hyprpay\Payments\Domain\ValueObject\Money;
 use Hyprpay\Payments\Infrastructure\Gateway\PayPal\Enums\PayPalEndpoint;
 use Hyprpay\Payments\Infrastructure\Gateway\PayPal\Enums\PayPalOrderStatus;
 use Hyprpay\Payments\Infrastructure\Gateway\PayPal\Enums\PayPalPaymentStatus;
+use Hyprpay\Payments\Infrastructure\Gateway\PayPal\Enums\PayPalReportingStatus;
 use Hyprpay\Payments\Infrastructure\Gateway\PayPal\Payloads\PayPalPayload;
 use Hyprpay\Payments\Infrastructure\Support\Value;
 
@@ -36,13 +39,20 @@ use Hyprpay\Payments\Infrastructure\Support\Value;
  * order and returns the buyer-approval redirect URL, then — once the buyer approves —
  * {@see charge()} completes that order (capturing immediately, or authorizing a hold when
  * the charge asks to authorize only), keyed by the order id carried in the request's
- * transient token. Follow-ons act on the resulting payment resources: {@see capture()} and
- * {@see void()} on an authorization id, {@see refund()} on a capture id. Cards are vaulted
- * with {@see vaultInstrument()} (setup-token → payment-token) and charged card-on-file via
- * {@see chargeStoredCredential()}; {@see getTransaction()} reads an order back, and
- * {@see verifyWebhook()} validates a notification through PayPal's verify-signature API.
- * Payer-auth and DCC are not part of this driver and inherit {@see AbstractPaymentGateway}'s
- * unsupported behaviour.
+ * transient token. Follow-ons act on the resulting payment resources: {@see capture()} on an
+ * authorization id, {@see void()} and {@see reverseAuthorization()} to release a held authorization,
+ * {@see refund()} on a capture id. Cards are vaulted with {@see vaultInstrument()} (setup-token →
+ * payment-token) and charged card-on-file via {@see chargeStoredCredential()}; {@see getTransaction()}
+ * reads an order back, {@see searchTransaction()}, {@see listTransactions()},
+ * {@see listTransactionsByReference()} and {@see findSuccessfulTransactionByReference()} reconcile
+ * through PayPal's Transaction Search (Reporting) API, and {@see verifyWebhook()} validates a
+ * notification through PayPal's verify-signature API. Payer-auth, DCC, and digital-wallet charges are
+ * not part of this driver and inherit {@see AbstractPaymentGateway}'s unsupported behaviour.
+ *
+ * PayPal's Reporting API cannot be filtered by a merchant reference and lags real time by up to a few
+ * hours, so the reference-based lookups pull a recent window (31 days by default, PayPal's maximum) and
+ * match `invoice_id` client-side; a null/empty result means "not found in the recent window", not
+ * "never happened".
  *
  * Requests are built deterministically from the caller's inputs, and idempotent operations
  * carry a `PayPal-Request-Id` derived from the caller's idempotency key or order reference,
@@ -50,6 +60,16 @@ use Hyprpay\Payments\Infrastructure\Support\Value;
  */
 final class PayPalGateway extends AbstractPaymentGateway
 {
+    /**
+     * PayPal's maximum Transaction Search window per query, in days — also the default lookback.
+     */
+    private const MAX_REPORTING_WINDOW_DAYS = 31;
+
+    /**
+     * Records requested per reporting page; a single reference rarely spans one page.
+     */
+    private const REPORTING_PAGE_SIZE = '500';
+
     private readonly PayPalClient $client;
 
     /**
@@ -197,6 +217,32 @@ final class PayPalGateway extends AbstractPaymentGateway
     }
 
     /**
+     * Reverse (release) an authorization hold by voiding it.
+     *
+     * PayPal has no distinct authorization-reversal endpoint — voiding the authorization is how held
+     * funds are released — so this voids the authorization referenced by the request's transaction id
+     * and reports the reversed status. Once funds are captured use {@see refund()} instead.
+     */
+    public function reverseAuthorization(ReversalRequest $request): PaymentResult
+    {
+        $response = $this->client->post(
+            PayPalEndpoint::AuthorizationVoid,
+            null,
+            'reverse authorization',
+            $request->transactionId,
+            $this->idempotencyHeader($request->idempotencyKey ?? $request->orderReference),
+        );
+
+        return new PaymentResult(
+            success: true,
+            status: PaymentStatus::Reversed,
+            transactionId: Value::nullableString($response['id'] ?? null) ?? $request->transactionId,
+            code: Value::nullableString($response['status'] ?? null),
+            raw: $response,
+        );
+    }
+
+    /**
      * Vault a raw card for later reuse via PayPal's two-step token flow.
      *
      * Creates a setup token from the card, then exchanges it for a permanent payment token.
@@ -274,6 +320,88 @@ final class PayPalGateway extends AbstractPaymentGateway
             orderReference: $this->orderReference($response) ?? $transactionId,
             raw: $response,
         );
+    }
+
+    /**
+     * Search PayPal's Transaction Search (Reporting) API and return the first matching transaction.
+     *
+     * The query is a PayPal reporting query — a bare PayPal transaction id, or a raw
+     * `key=value&…` string of reporting parameters (`transaction_id`, `transaction_status`,
+     * `start_date`, `end_date`, …). A `fields=transaction_info` default and a default date window are
+     * applied and can be overridden in the query. Note PayPal reporting cannot be filtered by a merchant
+     * reference and lags real time by up to a few hours; only PayPal-assigned ids are searchable directly.
+     *
+     * @param  string  $query  A PayPal transaction id, or a raw reporting query string.
+     */
+    public function searchTransaction(string $query): ?TransactionSnapshot
+    {
+        $details = $this->reportingDetails($this->reportingParams($query), 'search transaction');
+
+        return isset($details[0]) ? $this->reportingSnapshot($details[0]) : null;
+    }
+
+    /**
+     * Find a settled transaction carrying a merchant reference, to reconcile before retrying a charge
+     * whose response was lost.
+     *
+     * PayPal's Reporting API cannot be queried by a merchant reference, so this pulls the recent
+     * reporting window (a rolling 31 days by default, PayPal's maximum per query; override the span with
+     * the `reporting_window_days` credential extra) and returns the first transaction whose `invoice_id`
+     * equals the reference and whose status is settled (successful). Because reporting lags real time by
+     * up to a few hours and only the first result page is scanned, a very recent or very high-volume
+     * charge may not be found — treat a null result as "unknown", not "never happened".
+     *
+     * @param  string  $reference  The merchant reference (`invoice_id`) the original charge was sent with.
+     */
+    public function findSuccessfulTransactionByReference(string $reference): ?TransactionSnapshot
+    {
+        foreach ($this->reportingDetails($this->reportingWindowParams(), 'reconcile transaction by reference') as $detail) {
+            $snapshot = $this->reportingSnapshot($detail);
+
+            if ($snapshot->orderReference === $reference && $snapshot->status === PaymentStatus::Captured) {
+                return $snapshot;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * List transactions matching a PayPal reporting query.
+     *
+     * The query follows the same form as {@see searchTransaction()} (a bare transaction id or a raw
+     * reporting query string); unlike search this returns every matching transaction, subject to the
+     * same reporting-lag and single-page caveats.
+     *
+     * @param  string  $query  A PayPal transaction id, or a raw reporting query string.
+     * @return list<TransactionSnapshot>
+     */
+    public function listTransactions(string $query): array
+    {
+        return $this->reportingSnapshots($this->reportingDetails($this->reportingParams($query), 'list transactions'));
+    }
+
+    /**
+     * List the history of a payment by its merchant reference — every reporting record in the recent
+     * window whose `invoice_id` equals the reference.
+     *
+     * Because PayPal reporting cannot filter by reference, the recent window is pulled and matched on
+     * `invoice_id` client-side, with the same reporting-lag and single-page caveats as
+     * {@see findSuccessfulTransactionByReference()}.
+     *
+     * @param  string  $reference  The merchant reference (`invoice_id`) the transactions were sent with.
+     * @return list<TransactionSnapshot>
+     */
+    public function listTransactionsByReference(string $reference): array
+    {
+        $snapshots = $this->reportingSnapshots(
+            $this->reportingDetails($this->reportingWindowParams(), 'list transactions by reference'),
+        );
+
+        return array_values(array_filter(
+            $snapshots,
+            static fn (TransactionSnapshot $snapshot): bool => $snapshot->orderReference === $reference,
+        ));
     }
 
     /**
@@ -443,6 +571,157 @@ final class PayPalGateway extends AbstractPaymentGateway
         $units = $response['purchase_units'] ?? [];
 
         return is_array($units) && isset($units[0]) && is_array($units[0]) ? Value::array($units[0]) : [];
+    }
+
+    /**
+     * Fetch the reporting `transaction_details` for a set of query parameters as raw detail arrays.
+     *
+     * @param  array<string, string>  $params  Reporting query parameters (window, fields, filters).
+     * @param  string  $context  Operation label used in error messages on failure.
+     * @return list<array<string, mixed>>
+     */
+    private function reportingDetails(array $params, string $context): array
+    {
+        $response = $this->client->query(
+            PayPalEndpoint::ReportingTransactions,
+            $params + ['page_size' => self::REPORTING_PAGE_SIZE, 'page' => '1'],
+            $context,
+        );
+
+        $details = $response['transaction_details'] ?? null;
+
+        if (! is_array($details)) {
+            return [];
+        }
+
+        return array_values(array_map(
+            Value::array(...),
+            array_filter($details, is_array(...)),
+        ));
+    }
+
+    /**
+     * Map reporting detail arrays into snapshots.
+     *
+     * @param  list<array<string, mixed>>  $details
+     * @return list<TransactionSnapshot>
+     */
+    private function reportingSnapshots(array $details): array
+    {
+        return array_values(array_map(
+            $this->reportingSnapshot(...),
+            $details,
+        ));
+    }
+
+    /**
+     * Map a single reporting `transaction_details` element into a TransactionSnapshot.
+     *
+     * The merchant reference is taken from the transaction's `invoice_id` (falling back to
+     * `custom_field`), and the status from the reporting `transaction_status` code.
+     *
+     * @param  array<string, mixed>  $detail  One reporting `transaction_details` element.
+     */
+    private function reportingSnapshot(array $detail): TransactionSnapshot
+    {
+        $info = Value::array($detail['transaction_info'] ?? null);
+
+        return new TransactionSnapshot(
+            transactionId: Value::string($info['transaction_id'] ?? null),
+            status: PayPalReportingStatus::toPaymentStatusOrFailed(Value::nullableString($info['transaction_status'] ?? null)),
+            money: $this->reportingMoney($info),
+            orderReference: Value::nullableString($info['invoice_id'] ?? $info['custom_field'] ?? null),
+            raw: $detail,
+        );
+    }
+
+    /**
+     * Build a Money from a reporting transaction's `transaction_amount` (which may be negative for a
+     * reversal), or null when it is absent or not a decimal.
+     *
+     * @param  array<string, mixed>  $info  A reporting `transaction_info` block.
+     */
+    private function reportingMoney(array $info): ?Money
+    {
+        $value = Value::nullableString(data_get($info, 'transaction_amount.value'));
+        $currency = Value::nullableString(data_get($info, 'transaction_amount.currency_code'));
+
+        if ($value === null || $currency === null || preg_match('/^-?\d+(\.\d+)?$/', $value) !== 1) {
+            return null;
+        }
+
+        return Money::fromDecimalString($value, $currency);
+    }
+
+    /**
+     * Resolve the reporting query parameters for a caller-supplied query.
+     *
+     * A query containing `=` is parsed as raw reporting parameters; anything else is treated as a bare
+     * PayPal `transaction_id`. A `fields=transaction_info` default and the default date window are
+     * applied first so the caller's values win.
+     *
+     * @return array<string, string>
+     */
+    private function reportingParams(string $query): array
+    {
+        $provided = str_contains($query, '=') ? $this->parseReportingQuery($query) : ['transaction_id' => $query];
+
+        return ['fields' => 'transaction_info', ...$this->reportingWindow(), ...$provided];
+    }
+
+    /**
+     * The reporting parameters for a bare recent-window pull (used by the reference-matching lookups).
+     *
+     * @return array<string, string>
+     */
+    private function reportingWindowParams(): array
+    {
+        return ['fields' => 'transaction_info', ...$this->reportingWindow()];
+    }
+
+    /**
+     * Parse a raw `key=value&…` reporting query string into string parameters.
+     *
+     * @return array<string, string>
+     */
+    private function parseReportingQuery(string $query): array
+    {
+        parse_str($query, $parsed);
+
+        $params = [];
+
+        foreach ($parsed as $key => $value) {
+            $params[(string) $key] = is_array($value) ? '' : $value;
+        }
+
+        return $params;
+    }
+
+    /**
+     * Build the default reporting date window: a rolling span ending now, capped at PayPal's 31-day
+     * maximum and overridable via the `reporting_window_days` credential extra.
+     *
+     * @return array{start_date: string, end_date: string}
+     */
+    private function reportingWindow(): array
+    {
+        $configured = (int) Value::string($this->gatewayCredentials->extra('reporting_window_days'), (string) self::MAX_REPORTING_WINDOW_DAYS);
+        $days = $configured > 0 ? min($configured, self::MAX_REPORTING_WINDOW_DAYS) : self::MAX_REPORTING_WINDOW_DAYS;
+
+        $end = CarbonImmutable::now('UTC');
+
+        return [
+            'start_date' => $this->reportingDate($end->subDays($days)),
+            'end_date' => $this->reportingDate($end),
+        ];
+    }
+
+    /**
+     * Format an instant as the ISO-8601 millisecond-Zulu timestamp PayPal reporting expects.
+     */
+    private function reportingDate(CarbonImmutable $instant): string
+    {
+        return $instant->format('Y-m-d\TH:i:s.v\Z');
     }
 
     /**

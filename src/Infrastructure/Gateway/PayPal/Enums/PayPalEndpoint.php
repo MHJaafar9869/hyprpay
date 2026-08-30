@@ -28,6 +28,7 @@ enum PayPalEndpoint: string
     case Refund = '/v2/payments/refunds/:id';
     case SetupTokens = '/v3/vault/setup-tokens';
     case PaymentTokens = '/v3/vault/payment-tokens';
+    case ReportingTransactions = '/v1/reporting/transactions';
     case VerifyWebhookSignature = '/v1/notifications/verify-webhook-signature';
 
     /**
