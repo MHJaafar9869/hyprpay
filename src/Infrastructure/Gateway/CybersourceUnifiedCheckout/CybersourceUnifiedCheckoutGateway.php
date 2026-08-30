@@ -20,6 +20,7 @@ use Hyprpay\Payments\Domain\Command\ValidatePayerAuthRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
 use Hyprpay\Payments\Domain\Command\WalletChargeRequest;
 use Hyprpay\Payments\Domain\Contract\HttpClient;
+use Hyprpay\Payments\Domain\Contract\PaymentGatewayInterface;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\Result\CheckoutSession;
@@ -42,6 +43,7 @@ use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Enums\Cyb
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CaptureContextPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CapturePayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CurrencyConversionPayload;
+use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\MicroformCaptureContextPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\PayerAuthEnrollPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\PayerAuthSetupPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\PayerAuthValidatePayload;
@@ -104,12 +106,45 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
      */
     public function createCheckoutSession(CheckoutSessionRequest $request): CheckoutSession
     {
-        $jwt = trim($this->client->postForBody(
+        return $this->captureContextSession($this->client->postForBody(
             $this->captureContextEndpoint()->path(),
             CaptureContextPayload::build($request, $this->gatewayCredentials),
             'create checkout session',
         ));
+    }
 
+    /**
+     * Creates a Flex Microform capture context (server-to-server) and returns it as a CheckoutSession.
+     *
+     * Microform is CyberSource's low-level, PCI-friendly card-field tokenizer — distinct from the full
+     * Unified Checkout widget {@see createCheckoutSession()} drives. This posts a Microform capture-context
+     * request to `/microform/v2/sessions` and returns the signed JWT plus the embedded Microform
+     * client-library URL and integrity hash. Load Microform.js with the JWT to render the secure card
+     * fields; the browser mints a transient token that {@see charge()} (or {@see enrollPayerAuth()} /
+     * {@see vaultInstrument()}) then processes server-side — the same transient-token path Unified Checkout
+     * uses. Unlike a checkout session the Microform context carries no order amount or capture mandate; the
+     * amount is applied when the transient token is charged. This is a CyberSource-specific operation,
+     * outside the shared {@see PaymentGatewayInterface}.
+     */
+    public function createMicroformSession(CheckoutSessionRequest $request): CheckoutSession
+    {
+        return $this->captureContextSession($this->client->postForBody(
+            CybersourceEndpoint::MicroformSessions->path(),
+            MicroformCaptureContextPayload::build($request),
+            'create microform session',
+        ));
+    }
+
+    /**
+     * Decodes a CyberSource capture-context JWT (Unified Checkout or Microform) into a CheckoutSession.
+     *
+     * Both products return a bare, signed JWT whose claims embed the front-end client-library URL and
+     * subresource-integrity hash under `ctx[0].data`; this reads those bootstrap values and returns the
+     * JWT alongside them for the browser integration.
+     */
+    private function captureContextSession(string $jwt): CheckoutSession
+    {
+        $jwt = trim($jwt);
         $claims = $this->decodeJwtClaims($jwt) ?? [];
         $context = Value::array(data_get($claims, 'ctx.0.data'));
 
