@@ -58,6 +58,23 @@ final class PayPalClient
     }
 
     /**
+     * GET a collection endpoint with query parameters and return the decoded JSON response.
+     *
+     * @param  array<string, string>  $query
+     * @return array<string, mixed>
+     */
+    public function query(PayPalEndpoint $endpoint, array $query, string $context): array
+    {
+        $path = $endpoint->path();
+
+        if ($query !== []) {
+            $path .= '?'.http_build_query($query);
+        }
+
+        return $this->send('GET', $path, null, $context);
+    }
+
+    /**
      * Send a bearer-authenticated request and decode the JSON body.
      *
      * @param  array<string, string>  $extraHeaders

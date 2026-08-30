@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hyprpay\Payments\Infrastructure\Gateway\Mpgs\Concerns;
 
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
+use Hyprpay\Payments\Domain\Result\DccQuote;
 use Hyprpay\Payments\Domain\Result\PayerAuthResult;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
 use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
@@ -91,6 +92,133 @@ trait MapsMpgsResponses
             consumerAuthenticationInformation: $authentication,
             raw: $response,
         );
+    }
+
+    /**
+     * Map an MPGS `paymentOptionsInquiry` response into a DccQuote.
+     *
+     * MPGS returns the Dynamic Currency Conversion offer in a `currencyConversion` block; DCC is taken
+     * as offered when it carries a converted `payerAmount`, a `payerCurrency`, and an exchange rate.
+     * Unlike CyberSource, MPGS issues no rate id — the conversion is re-declared on the follow-on
+     * payment — so the quote's id stays null. The original amount is echoed from the request.
+     *
+     * @param  array<string, mixed>  $response  Decoded MPGS payment-options-inquiry response body.
+     * @param  Money  $original  The original amount and merchant currency the quote was requested for.
+     */
+    private function toDccQuote(array $response, Money $original): DccQuote
+    {
+        $conversion = Value::array(
+            data_get($response, 'currencyConversion') ?? data_get($response, 'paymentOptionsInquiry.currencyConversion'),
+        );
+
+        $payerAmount = Value::nullableString($conversion['payerAmount'] ?? null);
+        $payerCurrency = Value::nullableString($conversion['payerCurrency'] ?? null);
+        $exchangeRate = Value::nullableString(
+            $conversion['payerExchangeRate'] ?? $conversion['exchangeRate'] ?? $conversion['rate'] ?? null,
+        );
+
+        $offered = $payerAmount !== null
+            && $payerCurrency !== null
+            && preg_match('/^-?\d+(\.\d+)?$/', $payerAmount) === 1;
+
+        return new DccQuote(
+            offered: $offered,
+            exchangeRate: $exchangeRate,
+            originalAmount: $original,
+            convertedAmount: $offered ? Money::fromDecimalString((string) $payerAmount, (string) $payerCurrency) : null,
+            exchangeRateTimeStamp: Value::nullableString($conversion['timestamp'] ?? null),
+            raw: $response,
+        );
+    }
+
+    /**
+     * Map a retrieved MPGS order's `transaction[]` history into per-transaction snapshots, newest first.
+     *
+     * MPGS returns an order's transactions oldest-first, so the list is reversed to honour the SDK's
+     * newest-first contract. Each element's status is resolved from its own `result` and transaction
+     * type (an authorization, capture, refund, or void), falling back to the aggregate order status.
+     *
+     * @param  array<string, mixed>  $order  Decoded MPGS retrieved-order response body.
+     * @param  string  $orderId  The order id the history was retrieved for (used as the reference fallback).
+     * @return list<TransactionSnapshot>
+     */
+    private function orderTransactionSnapshots(array $order, string $orderId): array
+    {
+        $transactions = $order['transaction'] ?? data_get($order, 'order.transaction');
+
+        if (! is_array($transactions)) {
+            return [];
+        }
+
+        $orderStatus = $this->orderStatus($order);
+        $elements = array_values(array_filter($transactions, is_array(...)));
+
+        return array_values(array_map(
+            fn (mixed $element): TransactionSnapshot => $this->orderTransactionSnapshot(Value::array($element), $orderId, $orderStatus),
+            array_reverse($elements),
+        ));
+    }
+
+    /**
+     * Map a single element of an order's `transaction[]` history into a TransactionSnapshot.
+     *
+     * @param  array<string, mixed>  $element  One MPGS transaction-history element.
+     * @param  string  $orderId  The order id (reference/transaction-id fallback).
+     * @param  string|null  $orderStatus  The aggregate order status, used when the element's type is unknown.
+     */
+    private function orderTransactionSnapshot(array $element, string $orderId, ?string $orderStatus): TransactionSnapshot
+    {
+        $fallback = $orderStatus !== null ? MpgsOrderStatus::toPaymentStatusOrFailed($orderStatus) : PaymentStatus::Pending;
+        $type = Value::nullableString(data_get($element, 'transaction.type'));
+
+        return new TransactionSnapshot(
+            transactionId: Value::string(data_get($element, 'transaction.id') ?? $element['id'] ?? $orderId, $orderId),
+            status: $this->resolveStatus($element, $this->transactionTypeStatus($type, $fallback)),
+            money: $this->transactionMoney($element),
+            orderReference: Value::nullableString(data_get($element, 'order.id')) ?? $orderId,
+            raw: $element,
+        );
+    }
+
+    /**
+     * Resolve the success status implied by an MPGS transaction type, falling back to the order status
+     * when the type is absent or unrecognised.
+     *
+     * @param  string|null  $type  The MPGS `transaction.type` (e.g. AUTHORIZATION, PAYMENT, REFUND, VOID_*).
+     * @param  PaymentStatus  $fallback  Status used when the type is unknown.
+     */
+    private function transactionTypeStatus(?string $type, PaymentStatus $fallback): PaymentStatus
+    {
+        return match (strtoupper((string) $type)) {
+            'AUTHORIZATION', 'AUTHORIZE' => PaymentStatus::Authorized,
+            'PAY', 'PAYMENT', 'CAPTURE' => PaymentStatus::Captured,
+            'REFUND' => PaymentStatus::Refunded,
+            'VOID', 'VOID_AUTHORIZATION', 'VOID_CAPTURE', 'VOID_PAYMENT', 'VOID_REFUND' => PaymentStatus::Voided,
+            'VERIFICATION', 'VERIFY' => PaymentStatus::Pending,
+            default => $fallback,
+        };
+    }
+
+    /**
+     * Build the Money for a transaction-history element from its transaction, order, or top-level
+     * amount, or null when no valid decimal amount is present.
+     *
+     * @param  array<string, mixed>  $element  One MPGS transaction-history element.
+     */
+    private function transactionMoney(array $element): ?Money
+    {
+        $amount = Value::nullableString(
+            data_get($element, 'transaction.amount') ?? data_get($element, 'order.amount') ?? $element['amount'] ?? null,
+        );
+        $currency = Value::nullableString(
+            data_get($element, 'transaction.currency') ?? data_get($element, 'order.currency') ?? $element['currency'] ?? null,
+        );
+
+        if ($amount === null || $currency === null || preg_match('/^-?\d+(\.\d+)?$/', $amount) !== 1) {
+            return null;
+        }
+
+        return Money::fromDecimalString($amount, $currency);
     }
 
     /**

@@ -20,6 +20,7 @@ enum MpgsEndpoint: string
     case Transaction = '/order/{orderId}/transaction/{transactionId}';
     case Token = '/token';
     case TokenById = '/token/{tokenId}';
+    case PaymentOptionsInquiry = '/paymentOptionsInquiry';
 
     /**
      * Return the concrete request path, substituting each `{key}` placeholder with

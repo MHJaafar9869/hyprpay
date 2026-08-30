@@ -462,17 +462,18 @@ everywhere.
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | `createCheckoutSession` | ✅ capture context / orchestrated (autoProcessing) | ✅ hosted / card / wallet / pay-at-Fawry / MyFawry / instalment | ✅ iframe flow | ✅ invoice link / iframe | ✅ hosted / invoice / paylink / managed | ✅ order → approval redirect | ✅ hosted checkout session | — | ✅ PaymentIntent (client-side confirm) | ✅ hosted BNPL redirect |
 | `charge` (transient token) | ✅ | — | — | — | ✅ Own Form (payment token) | ✅ complete approved order² | ✅ session (PAY / AUTHORIZE)³ | ✅ Accept.js opaque data | ✅ create + confirm (PaymentMethod id) | — |
-| `chargeWallet` (Apple Pay / Google Pay) | ✅ tokenizedCard / fluidData | — | — | — | — | — | — | — | — | — |
+| `chargeWallet` (Apple Pay / Google Pay) | ✅ tokenizedCard / fluidData | — | — | — | — | — | ✅ merchant-decrypted (devicePayment) | — | — | — |
 | `confirmOrchestratedPayment` (verify result JWT) | ✅ RS256 (flx.jwk) | — | — | — | — | — | — | — | — | — |
 | `capture` | ✅ | ✅ (Auth/Capture) | ✅ | ✅ (settle) | ✅ | ✅ | ✅ | ✅ | ✅ (manual-capture intent) | ✅ (after `authorise`)⁵ |
 | `refund` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (simplified refund) |
 | `void` | ✅ | ✅ (cancel auth) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (cancel intent) | ✅ (cancel order) |
-| `reverseAuthorization` | ✅ | — | — | ✅ | ✅ (release) | — | ✅ (void of auth) | — | ✅ (cancel intent) | ✅ (cancel order) |
+| `reverseAuthorization` | ✅ | — | — | ✅ | ✅ (release) | ✅ (void of auth) | ✅ (void of auth) | — | ✅ (cancel intent) | ✅ (cancel order) |
 | `setupPayerAuth` (3-DS device data collection) | ✅ | — | — | — | — | — | — | — | — | — |
 | `enrollPayerAuth` / `validatePayerAuth` (3-DS) | ✅ | — | — | — | — | — | ✅ | — | — | — |
 | `vaultInstrument` / `chargeStoredCredential` | ✅ (TMS, MIT/CIT) | — | — | ✅ vault + charge + revoke⁴ | ✅ token (MIT/CIT)¹ | ✅ vault (MIT/CIT) | ✅ token (MIT/CIT) | ✅ CIM (opaque/card, MIT/CIT) | ✅ PaymentConsent (vault + charge) | — |
-| `requestDccRate` (Dynamic Currency Conversion) | ✅ | — | — | — | — | — | — | — | — | — |
+| `requestDccRate` (Dynamic Currency Conversion) | ✅ | — | — | — | — | — | ✅ payment-options inquiry | — | — | — |
 | `getTransaction` / `searchTransaction` | ✅ | ✅ | ✅ | ✅ | ✅ query | ✅ order lookup | ✅ order lookup | ✅ transaction details | ✅ intent lookup | ✅ order / reference lookup |
+| `listTransactions` / `listTransactionsByReference` / `findSuccessfulTransactionByReference` (reconcile) | ✅ TSS | — | — | — | — | ✅ Reporting (≈31-day window, invoice match) | ✅ order transaction history | — | ✅ by `merchant_order_id` | ✅ find only |
 | `verifyWebhook` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ API | ✅ notification secret | ✅ HMAC-SHA512 | ✅ HMAC-SHA256 | ✅ shared auth header |
 
 Provider-specific inputs (e.g. Fawry payment method, Paymob integration/iframe ids,

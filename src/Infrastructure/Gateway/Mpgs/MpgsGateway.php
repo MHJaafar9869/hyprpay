@@ -8,6 +8,7 @@ use Hyprpay\Payments\Domain\AbstractPaymentGateway;
 use Hyprpay\Payments\Domain\Command\CaptureRequest;
 use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
+use Hyprpay\Payments\Domain\Command\DccRateRequest;
 use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
 use Hyprpay\Payments\Domain\Command\ReversalRequest;
@@ -15,10 +16,12 @@ use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
 use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\ValidatePayerAuthRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
+use Hyprpay\Payments\Domain\Command\WalletChargeRequest;
 use Hyprpay\Payments\Domain\Contract\HttpClient;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\Result\CheckoutSession;
+use Hyprpay\Payments\Domain\Result\DccQuote;
 use Hyprpay\Payments\Domain\Result\PayerAuthResult;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
 use Hyprpay\Payments\Domain\Result\RefundResult;
@@ -36,22 +39,25 @@ use Hyprpay\Payments\Infrastructure\Gateway\Mpgs\Payloads\ChargePayload;
 use Hyprpay\Payments\Infrastructure\Gateway\Mpgs\Payloads\HostedCheckoutPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\Mpgs\Payloads\PayerAuthenticatePayload;
 use Hyprpay\Payments\Infrastructure\Gateway\Mpgs\Payloads\PayerAuthInitiatePayload;
+use Hyprpay\Payments\Infrastructure\Gateway\Mpgs\Payloads\PaymentOptionsInquiryPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\Mpgs\Payloads\RefundPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\Mpgs\Payloads\StoredCredentialPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\Mpgs\Payloads\TokenizePayload;
 use Hyprpay\Payments\Infrastructure\Gateway\Mpgs\Payloads\VoidPayload;
+use Hyprpay\Payments\Infrastructure\Gateway\Mpgs\Payloads\WalletPayload;
 use Hyprpay\Payments\Infrastructure\Support\Value;
 
 /**
  * Mastercard Payment Gateway Services (MPGS) payment gateway adapter.
  *
  * Implements every operation MPGS supports through this SDK: hosted checkout session
- * creation, session-based charge (PAY/AUTHORIZE), capture, refund, void, authorization
- * reversal, 3-D Secure payer-auth initiate/authenticate, card tokenisation and
- * stored-credential charges, order retrieval/search, and webhook verification. Requests
- * are built by the Payloads/* helpers, sent through MpgsClient, and mapped back into SDK
- * result DTOs by the MapsMpgsResponses concern; identifiers and webhook checks come from
- * the ResolvesMpgsIdentifiers and VerifiesMpgsWebhook concerns.
+ * creation, Dynamic Currency Conversion rate quotes (payment-options inquiry), session-based
+ * charge (PAY/AUTHORIZE), digital-wallet (Apple Pay / Google Pay) charge, capture, refund, void,
+ * authorization reversal, 3-D Secure payer-auth initiate/authenticate, card tokenisation and
+ * stored-credential charges, order retrieval/search and per-order transaction-history listing, and
+ * webhook verification. Requests are built by the Payloads/* helpers, sent through MpgsClient, and
+ * mapped back into SDK result DTOs by the MapsMpgsResponses concern; identifiers and webhook checks
+ * come from the ResolvesMpgsIdentifiers and VerifiesMpgsWebhook concerns.
  *
  * MPGS keys payments on a merchant-assigned order id plus a per-order transaction id, so
  * this driver adopts a fixed mapping from the SDK's single-id request DTOs: the order id
@@ -111,6 +117,27 @@ final class MpgsGateway extends AbstractPaymentGateway
             reference: Value::nullableString(data_get($response, 'session.id')),
             merchantReference: $orderId,
             raw: $response,
+        );
+    }
+
+    /**
+     * Request a Dynamic Currency Conversion rate quote via a payment-options inquiry, returning the
+     * mapped DccQuote.
+     *
+     * Posts the order amount (in the merchant's currency) and the card's BIN prefix to MPGS's
+     * `paymentOptionsInquiry` resource — a dedicated endpoint, not a transaction — and maps the
+     * returned `currencyConversion` offer. Thread the quote back into a charge (with `money` set to the
+     * converted amount) to bill the cardholder in their own currency.
+     */
+    public function requestDccRate(DccRateRequest $request): DccQuote
+    {
+        return $this->toDccQuote(
+            $this->client->post(
+                MpgsEndpoint::PaymentOptionsInquiry->path(),
+                PaymentOptionsInquiryPayload::dccRate($request),
+                'request dcc rate',
+            ),
+            $request->money,
         );
     }
 
@@ -267,6 +294,26 @@ final class MpgsGateway extends AbstractPaymentGateway
     }
 
     /**
+     * Charge a digital-wallet (Apple Pay / Google Pay) token via a PAY (capture) or AUTHORIZE
+     * transaction, returning the mapped PaymentResult.
+     *
+     * MPGS decrypts nothing itself, so the token must be a merchant-decrypted network token; the
+     * decrypted card and its device-payment cryptogram are sent inline and the wallet is flagged on the
+     * order via `order.walletProvider`.
+     */
+    public function chargeWallet(WalletChargeRequest $request): PaymentResult
+    {
+        return $this->toPaymentResult(
+            $this->client->put(
+                $this->transactionPath($this->orderId($request->orderReference), $this->newTransactionId($request->idempotencyKey)),
+                WalletPayload::build($request),
+                'charge wallet',
+            ),
+            $request->capture ? PaymentStatus::Captured : PaymentStatus::Authorized,
+        );
+    }
+
+    /**
      * Retrieve an order (the MPGS reconciliation unit) by its id and map it into a
      * TransactionSnapshot.
      *
@@ -295,6 +342,55 @@ final class MpgsGateway extends AbstractPaymentGateway
         }
 
         return $this->toSnapshot($response);
+    }
+
+    /**
+     * Find the most recent settled transaction under a merchant reference, to reconcile before retrying
+     * a charge whose response was lost.
+     *
+     * MPGS keys reconciliation on the order id, so the reference is the order id: the order is retrieved
+     * and its transaction history is scanned (newest first) for the first authorization or capture — so
+     * a charge that actually settled but whose response never arrived is adopted rather than repeated. A
+     * missing order or a history with no settled transaction returns null.
+     *
+     * @param  string  $reference  The merchant order id the original charge was sent with.
+     */
+    public function findSuccessfulTransactionByReference(string $reference): ?TransactionSnapshot
+    {
+        foreach ($this->orderTransactionSnapshots($this->retrieveOrderOrEmpty($reference), $reference) as $snapshot) {
+            if (in_array($snapshot->status, [PaymentStatus::Authorized, PaymentStatus::Captured], true)) {
+                return $snapshot;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * List every transaction recorded against an order, newest first.
+     *
+     * MPGS has no free-text transaction search — an order is its reconciliation unit — so the query is
+     * treated as the order id and the order's whole `transaction[]` history (each authorization,
+     * capture, refund, and void) is returned as snapshots. An unknown order yields an empty list.
+     *
+     * @param  string  $query  The MPGS order id whose transaction history to list.
+     * @return list<TransactionSnapshot>
+     */
+    public function listTransactions(string $query): array
+    {
+        return $this->orderTransactionSnapshots($this->retrieveOrderOrEmpty($query), $query);
+    }
+
+    /**
+     * List the full history of a payment by its merchant reference (the MPGS order id), newest first —
+     * every authorization, capture, reversal, refund, and retry recorded against the order.
+     *
+     * @param  string  $reference  The merchant order id the transactions were sent with.
+     * @return list<TransactionSnapshot>
+     */
+    public function listTransactionsByReference(string $reference): array
+    {
+        return $this->listTransactions($reference);
     }
 
     /**
@@ -332,5 +428,16 @@ final class MpgsGateway extends AbstractPaymentGateway
             'orderId' => $orderId,
             'transactionId' => $transactionId,
         ]);
+    }
+
+    /**
+     * Retrieve an order by id for reconciliation, returning an empty array when no such order exists so
+     * the listing operations yield an empty history rather than throwing.
+     *
+     * @return array<string, mixed>
+     */
+    private function retrieveOrderOrEmpty(string $orderId): array
+    {
+        return $this->client->tryGet(MpgsEndpoint::Order->path(['orderId' => $orderId])) ?? [];
     }
 }
