@@ -19,10 +19,12 @@ use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\ValidatePayerAuthRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
 use Hyprpay\Payments\Domain\Command\WalletChargeRequest;
+use Hyprpay\Payments\Domain\Contract\EventDispatcher;
 use Hyprpay\Payments\Domain\Contract\HttpClient;
 use Hyprpay\Payments\Domain\Contract\PaymentGatewayInterface;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
+use Hyprpay\Payments\Domain\Event\PayerAuthenticationEciRejected;
 use Hyprpay\Payments\Domain\Result\CheckoutSession;
 use Hyprpay\Payments\Domain\Result\DccQuote;
 use Hyprpay\Payments\Domain\Result\OrchestratedPaymentResult;
@@ -33,6 +35,7 @@ use Hyprpay\Payments\Domain\Result\RefundResult;
 use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
 use Hyprpay\Payments\Domain\Result\VaultedInstrument;
 use Hyprpay\Payments\Domain\Result\WebhookEvent;
+use Hyprpay\Payments\Domain\ValueObject\CybersourceEci;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Concerns\ParsesTransientToken;
@@ -80,9 +83,17 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
     /**
      * Constructs the gateway, wiring a CybersourceClient from the given credentials
      * and HTTP client port.
+     *
+     * An optional {@see EventDispatcher} lets the driver emit domain events for outcomes the
+     * decorator cannot model — currently a {@see PayerAuthenticationEciRejected} when a 3-D
+     * Secure result is rejected for a non-authenticated ECI. It is nullable so the driver can
+     * still be constructed directly (bypassing the factory) without event wiring.
      */
-    public function __construct(GatewayCredentials $credentials, HttpClient $http)
-    {
+    public function __construct(
+        GatewayCredentials $credentials,
+        HttpClient $http,
+        private readonly ?EventDispatcher $events = null,
+    ) {
         parent::__construct($credentials);
 
         $this->client = new CybersourceClient($http, $credentials);
@@ -652,6 +663,10 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
      * token, and authentication transaction id, and marks success unless the raw
      * status is AUTHENTICATION_FAILED, INVALID_REQUEST, or FAILED.
      *
+     * A completed authentication (no step-up pending) is additionally rejected when its ECI
+     * is not fully authenticated ({@see enforceAuthenticatedEci()}) so an attempted or
+     * not-authenticated 3DS result never carries a spurious liability shift into the charge.
+     *
      * @param  array<string, mixed>  $response  Decoded CyberSource authentication response.
      */
     private function toPayerAuthResult(array $response): PayerAuthResult
@@ -660,15 +675,55 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
 
         $status = Value::string($response['status'] ?? null);
 
+        $stepUpUrl = Value::nullableString($consumerAuth['stepUpUrl'] ?? null);
+
+        $success = filled($status) && ! in_array($status, ['AUTHENTICATION_FAILED', 'INVALID_REQUEST', 'FAILED'], true);
+
         return new PayerAuthResult(
-            success: filled($status) && ! in_array($status, ['AUTHENTICATION_FAILED', 'INVALID_REQUEST', 'FAILED'], true),
+            success: $success && $this->enforceAuthenticatedEci($success, $stepUpUrl, $consumerAuth),
             status: $status,
-            stepUpUrl: Value::nullableString($consumerAuth['stepUpUrl'] ?? null),
+            stepUpUrl: $stepUpUrl,
             accessToken: Value::nullableString($consumerAuth['accessToken'] ?? null),
             authenticationTransactionId: Value::nullableString($consumerAuth['authenticationTransactionId'] ?? null),
             consumerAuthenticationInformation: $consumerAuth,
             raw: $response,
         );
+    }
+
+    /**
+     * Whether a completed authentication's ECI clears the fully-authenticated bar.
+     *
+     * Only a completed authentication is checked: a pending step-up challenge (a step-up URL is
+     * present) carries no final ECI yet, and a response already marked unsuccessful needs no
+     * further scrutiny — both return true here so the caller's own success flag stands. When a
+     * completed result carries an ECI that is not fully authenticated (an attempted 01/06 or a
+     * not-authenticated 00/07), it is rejected: this returns false and a
+     * {@see PayerAuthenticationEciRejected} event is dispatched. An absent ECI is not rejected.
+     *
+     * @param  array<string, mixed>  $consumerAuth  The response's consumerAuthenticationInformation block.
+     */
+    private function enforceAuthenticatedEci(bool $success, ?string $stepUpUrl, array $consumerAuth): bool
+    {
+        if (! $success || $stepUpUrl !== null) {
+            return true;
+        }
+
+        $eci = CybersourceEci::fromConsumerAuthentication($consumerAuth);
+
+        if (! $eci instanceof CybersourceEci || $eci->isFullyAuthenticated()) {
+            return true;
+        }
+
+        $this->events?->dispatch(new PayerAuthenticationEciRejected(
+            gateway: $this->name(),
+            eci: $eci->value,
+            acceptedEci: CybersourceEci::FULLY_AUTHENTICATED,
+            outcome: $eci->outcome(),
+            authenticationTransactionId: Value::nullableString($consumerAuth['authenticationTransactionId'] ?? null),
+            status: PaymentStatus::Declined,
+        ));
+
+        return false;
     }
 
     /**

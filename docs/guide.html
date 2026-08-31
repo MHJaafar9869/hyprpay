@@ -284,8 +284,10 @@
          context here, load <code>Microform.js</code> with the returned JWT to render the secure
          card/expiry/CVV fields, and the browser mints a transient token you charge through the
          same <code>charge</code> path. The context carries no order amount or capture mandate —
-         the amount is applied at charge time. Like <code>confirmOrchestratedPayment</code> it is a
-         CyberSource-specific method outside the shared <code>PaymentGatewayInterface</code>.</p>
+         the amount is applied at charge time. Supply an optional <code>billTo</code> billing
+         address and it is added to the context (<code>orderInformation.billTo</code>) for AVS and
+         risk screening. Like <code>confirmOrchestratedPayment</code> it is a CyberSource-specific
+         method outside the shared <code>PaymentGatewayInterface</code>.</p>
       <div class="gw-variant" data-gw="cyber">
         <div class="code">
 <pre><code><span class="c">// 1. Mint a Microform capture context for the secure card fields.</span>
@@ -293,6 +295,7 @@
     <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'EGP'</span>), <span class="c">// currency only; the amount is applied at charge</span>
     <span class="a">targetOrigins:</span> [<span class="s">'https://shop.test'</span>],       <span class="c">// origins allowed to launch Microform</span>
     <span class="a">allowedCardNetworks:</span> [<span class="s">'VISA'</span>, <span class="s">'MASTERCARD'</span>],
+    <span class="a">billTo:</span> <span class="k">new</span> <span class="t">BillingAddress</span>(<span class="a">firstName:</span> <span class="s">'Jane'</span>, <span class="a">lastName:</span> <span class="s">'Doe'</span>, <span class="a">country:</span> <span class="s">'EG'</span>), <span class="c">// optional — captured for AVS / risk</span>
 ));
 
 <span class="c">// hand $session->jwt (+ $session->clientLibrary) to Microform.js; it mints a transient token.</span>
@@ -991,6 +994,12 @@
          <code>PayerAuthEnrollRequest.device</code>. The SDK maps it onto CyberSource's
          <code>deviceInformation</code> and marks the device channel as <code>Browser</code>, so the issuer
          can risk-assess the browser and grant a frictionless (no-challenge) authentication more often.</p>
+      <p><em>CyberSource — ECI enforcement:</em> a completed authentication (a frictionless enroll, or
+         validate after a challenge) whose resolved ECI is not fully authenticated — <code>02</code>
+         (Mastercard) or <code>05</code> (Visa, American Express, JCB, Diners Club, Discover) — is marked
+         unsuccessful, and a <code>PayerAuthenticationEciRejected</code> event is dispatched. This stops an
+         attempted or unauthenticated result from carrying a spurious liability shift into the charge; a
+         pending step-up challenge and a response with no ECI are unaffected.</p>
     </section>
 
     <section id="validate-payer-auth" class="doc-section" data-gws="cyber mpgs">

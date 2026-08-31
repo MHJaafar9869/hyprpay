@@ -64,7 +64,7 @@ final readonly class PaymentGatewayFactory
         $resolved = $credentials ?? $this->credentialResolver->resolve($gateway);
 
         $driver = match ($gateway) {
-            GatewayName::CybersourceUnifiedCheckout => new CybersourceUnifiedCheckoutGateway($resolved, $this->http),
+            GatewayName::CybersourceUnifiedCheckout => new CybersourceUnifiedCheckoutGateway($resolved, $this->http, $this->events),
             GatewayName::Fawry => new FawryGateway($resolved, $this->http),
             GatewayName::Paymob => new PaymobGateway($resolved, $this->http),
             GatewayName::Paylink => new PaylinkGateway($resolved, $this->http),

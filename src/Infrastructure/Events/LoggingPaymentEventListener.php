@@ -7,6 +7,7 @@ namespace Hyprpay\Payments\Infrastructure\Events;
 use Hyprpay\Payments\Domain\Event\AuthorizationReversed;
 use Hyprpay\Payments\Domain\Event\CheckoutSessionCreated;
 use Hyprpay\Payments\Domain\Event\InstrumentVaulted;
+use Hyprpay\Payments\Domain\Event\PayerAuthenticationEciRejected;
 use Hyprpay\Payments\Domain\Event\PaymentCaptured;
 use Hyprpay\Payments\Domain\Event\PaymentCharged;
 use Hyprpay\Payments\Domain\Event\PaymentEvent;
@@ -65,6 +66,7 @@ final readonly class LoggingPaymentEventListener
             $event instanceof WalletCharged => ['wallet' => $event->wallet->value, 'order' => $event->orderReference, ...$this->outcome($event->result)],
             $event instanceof InstrumentVaulted => ['customer' => $event->customerReference, 'instrument' => $event->result->paymentInstrumentId, 'success' => $event->result->success],
             $event instanceof WebhookReceived => ['transaction' => $event->webhook->transactionId, 'verified' => $event->webhook->verified, 'status' => $event->webhook->status?->value, 'type' => $event->webhook->eventType],
+            $event instanceof PayerAuthenticationEciRejected => ['authentication' => $event->authenticationTransactionId, 'eci' => $event->eci, 'accepted' => $event->acceptedEci, 'outcome' => $event->outcome, 'status' => $event->status->value, 'success' => false],
             default => [],
         };
     }

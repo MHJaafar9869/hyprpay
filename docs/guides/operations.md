@@ -200,6 +200,17 @@ authentication more often. Every `BrowserDeviceData` field is optional — only 
 sent. `enrollPayerAuth` also accepts a `deviceFingerprintId` for Decision Manager (see
 above); its fingerprint and browser device blocks are merged into one `deviceInformation`.
 
+**ECI enforcement.** A *completed* authentication — a frictionless `enrollPayerAuth`, or
+`validatePayerAuth` after a challenge — is only treated as successful when its resolved ECI is
+fully authenticated: `02` (Mastercard) or `05` (Visa, American Express, JCB, Diners Club,
+Discover). The SDK reads the network-normalised `eciRaw` (falling back to `eci`), so a
+Mastercard `02` is honoured where the `eci` field alone would not carry it. When the ECI is
+merely *attempted* (`01`/`06`) or *not authenticated* (`00`/`07`), the `PayerAuthResult.success`
+flag is set to `false` and a `PayerAuthenticationEciRejected` event is dispatched (see
+[Events & operation logging](observability.md)) — so an attempted or unauthenticated result
+never carries a spurious liability shift into the charge. A pending step-up challenge (no final
+ECI yet) and a response with no ECI at all are left untouched.
+
 ## Installments
 
 Split a charge into issuer-funded installments (common across MENA, LATAM, and Turkey) by

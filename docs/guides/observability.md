@@ -68,6 +68,15 @@ The events and the payload each carries:
 | `WalletCharged` | `wallet`, `orderReference`, `money`, `result` |
 | `InstrumentVaulted` | `customerReference`, `result` |
 | `WebhookReceived` | `webhook` |
+| `PayerAuthenticationEciRejected` | `eci`, `acceptedEci`, `outcome`, `authenticationTransactionId`, `status` |
+
+Most events fire from the driver wrapper after an operation. `PayerAuthenticationEciRejected`
+is the exception: the **CyberSource** driver emits it during 3-D Secure (`enrollPayerAuth` /
+`validatePayerAuth`) when a completed authentication's ECI is not fully authenticated (`02`/`05`)
+— the result is marked unsuccessful and this event lets you alert on, record, or review the
+rejection. Its `status` is the normalized `PaymentStatus::Declined`; it carries the offending
+`eci` and the accepted set, never the cryptogram. The driver takes an optional `EventDispatcher`
+(wired by the factory) so it can dispatch even when constructed directly.
 
 Events are **queue-safe**: they carry only the gateway, correlation ids, amount, and the
 normalized result — never the raw request, which can hold a PAN — so a queued listener never

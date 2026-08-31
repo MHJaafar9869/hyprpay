@@ -16,14 +16,18 @@ use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\ValidatePayerAuthRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
 use Hyprpay\Payments\Domain\Command\WalletChargeRequest;
+use Hyprpay\Payments\Domain\Contract\EventDispatcher;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\Enum\WalletType;
+use Hyprpay\Payments\Domain\Event\PayerAuthenticationEciRejected;
+use Hyprpay\Payments\Domain\Event\PaymentEvent;
 use Hyprpay\Payments\Domain\Exception\GatewayRequestException;
 use Hyprpay\Payments\Domain\Exception\UnsupportedOperationException;
 use Hyprpay\Payments\Domain\Result\DccQuote;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
 use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
+use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
 use Hyprpay\Payments\Domain\ValueObject\BrowserDeviceData;
 use Hyprpay\Payments\Domain\ValueObject\DecryptedWalletToken;
 use Hyprpay\Payments\Domain\ValueObject\EncryptedWalletToken;
@@ -96,6 +100,121 @@ it('creates a Flex Microform capture-context session for secure card fields', fu
         ->and($body)->not->toHaveKey('orderInformation')
         ->and($body)->not->toHaveKey('captureMandate')
         ->and($body)->not->toHaveKey('clientVersion');
+});
+
+it('includes the billing address in a Flex Microform session when supplied', function (): void {
+    [$gateway, $http] = gatewayWithFakeHttp();
+    $http->queueBody(fakeJwt(['ctx' => [['data' => ['clientLibrary' => 'https://lib.test/microform.js']]]]));
+
+    $gateway->createMicroformSession(new CheckoutSessionRequest(
+        money: Money::minor(10000, 'EGP'),
+        targetOrigins: ['https://shop.test'],
+        billTo: new BillingAddress(
+            firstName: 'Jane',
+            lastName: 'Doe',
+            email: 'jane@example.test',
+            address1: '1 Market St',
+            locality: 'Cairo',
+            administrativeArea: 'C',
+            postalCode: '11511',
+            country: 'EG',
+        ),
+    ));
+
+    $body = recordedBody($http);
+
+    expect($body['orderInformation']['billTo']['firstName'])->toBe('Jane')
+        ->and($body['orderInformation']['billTo']['lastName'])->toBe('Doe')
+        ->and($body['orderInformation']['billTo']['email'])->toBe('jane@example.test')
+        ->and($body['orderInformation']['billTo']['address1'])->toBe('1 Market St')
+        ->and($body['orderInformation']['billTo']['country'])->toBe('EG')
+        ->and($body['allowedPaymentTypes'])->toBe(['CARD']);
+});
+
+it('rejects a validated authentication whose eci is not fully authenticated and dispatches an event', function (): void {
+    $http = new FakeHttpClient;
+    $events = new class implements EventDispatcher
+    {
+        /** @var list<PaymentEvent> */
+        public array $recorded = [];
+
+        public function dispatch(PaymentEvent $event): void
+        {
+            $this->recorded[] = $event;
+        }
+    };
+    $gateway = new CybersourceUnifiedCheckoutGateway(testCredentials(), $http, $events);
+
+    $http->queueJson([
+        'status' => 'AUTHENTICATION_SUCCESSFUL',
+        'consumerAuthenticationInformation' => ['cavv' => 'abc', 'eciRaw' => '06', 'authenticationTransactionId' => 'auth_9'],
+    ]);
+
+    $result = $gateway->validatePayerAuth(new ValidatePayerAuthRequest(authenticationTransactionId: 'auth_9', money: Money::minor(2599, 'USD')));
+
+    expect($result->success)->toBeFalse()
+        ->and($events->recorded)->toHaveCount(1)
+        ->and($events->recorded[0])->toBeInstanceOf(PayerAuthenticationEciRejected::class);
+
+    $event = $events->recorded[0];
+
+    expect($event->eci)->toBe('06')
+        ->and($event->outcome)->toBe('attempted')
+        ->and($event->acceptedEci)->toBe(['02', '05'])
+        ->and($event->authenticationTransactionId)->toBe('auth_9')
+        ->and($event->status)->toBe(PaymentStatus::Declined)
+        ->and($event->gateway())->toBe(GatewayName::CybersourceUnifiedCheckout);
+});
+
+it('accepts a fully authenticated mastercard eci (02) without dispatching a rejection', function (): void {
+    $http = new FakeHttpClient;
+    $events = new class implements EventDispatcher
+    {
+        /** @var list<PaymentEvent> */
+        public array $recorded = [];
+
+        public function dispatch(PaymentEvent $event): void
+        {
+            $this->recorded[] = $event;
+        }
+    };
+    $gateway = new CybersourceUnifiedCheckoutGateway(testCredentials(), $http, $events);
+
+    $http->queueJson([
+        'status' => 'AUTHENTICATION_SUCCESSFUL',
+        'consumerAuthenticationInformation' => ['cavv' => 'abc', 'eciRaw' => '02'],
+    ]);
+
+    $result = $gateway->validatePayerAuth(new ValidatePayerAuthRequest(authenticationTransactionId: 'auth_1', money: Money::minor(2599, 'USD')));
+
+    expect($result->success)->toBeTrue()
+        ->and($events->recorded)->toBeEmpty();
+});
+
+it('does not reject a pending step-up challenge even when an interim eci is present', function (): void {
+    $http = new FakeHttpClient;
+    $events = new class implements EventDispatcher
+    {
+        /** @var list<PaymentEvent> */
+        public array $recorded = [];
+
+        public function dispatch(PaymentEvent $event): void
+        {
+            $this->recorded[] = $event;
+        }
+    };
+    $gateway = new CybersourceUnifiedCheckoutGateway(testCredentials(), $http, $events);
+
+    $http->queueJson([
+        'status' => 'PENDING_AUTHENTICATION',
+        'consumerAuthenticationInformation' => ['stepUpUrl' => 'https://acs.test/step-up', 'accessToken' => 'jwt', 'eciRaw' => '06'],
+    ]);
+
+    $result = $gateway->enrollPayerAuth(new PayerAuthEnrollRequest(transientToken: 'tok', money: Money::minor(2599, 'USD')));
+
+    expect($result->success)->toBeTrue()
+        ->and($result->requiresChallenge())->toBeTrue()
+        ->and($events->recorded)->toBeEmpty();
 });
 
 it('charges a transient token and maps an authorized response', function (): void {
