@@ -245,7 +245,7 @@ it('adds a completeMandate block to the capture context when orchestration is re
 
     $body = json_decode((string) $http->lastRequest()?->body, true);
 
-    expect($body['completeMandate'])->toBe(['type' => 'CAPTURE', 'decisionManager' => true]);
+    expect($body['completeMandate'])->toBe(['type' => 'CAPTURE', 'decisionManager' => true, 'consumerAuthentication' => true]);
 });
 
 it('adds a tms token-creation block to the mandate when token creation is requested', function (): void {
@@ -264,6 +264,7 @@ it('adds a tms token-creation block to the mandate when token creation is reques
     expect($body['completeMandate'])->toBe([
         'type' => 'CAPTURE',
         'decisionManager' => true,
+        'consumerAuthentication' => true,
         'tms' => [
             'tokenCreate' => true,
             'tokenTypes' => ['customer', 'paymentInstrument', 'instrumentIdentifier'],

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Hyprpay\Payments\Domain\Command;
 
+use Hyprpay\Payments\Domain\Enum\CybersourceCardNetwork;
 use Hyprpay\Payments\Domain\Enum\CybersourcePaymentType;
 use Hyprpay\Payments\Domain\Enum\MandateCompletionType;
 use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
@@ -25,12 +26,12 @@ final readonly class CheckoutSessionRequest
     /**
      * @param  Money  $money  Amount and currency for the checkout session
      * @param  array<int, string>  $targetOrigins  UC: scheme + host of the page embedding the widget
-     * @param  array<int, string>  $allowedCardNetworks  UC: card brands to accept (e.g. VISA, MASTERCARD)
+     * @param  array<int, CybersourceCardNetwork>  $allowedCardNetworks  UC/Microform: card networks to accept (e.g. Visa, Mastercard)
      * @param  array<int, CybersourcePaymentType>  $allowedPaymentTypes  UC: payment types the widget may offer (e.g. PanEntry, GooglePay, ApplePay)
      * @param  string|null  $country  Optional two-letter ISO country code for the transaction
      * @param  string|null  $locale  Optional locale for the widget/hosted UI (e.g. en_US, en-gb)
      * @param  string|null  $orderReference  Merchant order/reference number used for reconciliation
-     * @param  bool  $enable3ds  UC: whether to enable 3-D Secure payer authentication
+     * @param  bool  $enable3ds  UC v1 orchestrated flow only: whether the widget runs 3-D Secure payer authentication. Emitted as completeMandate.consumerAuthentication; ignored unless completeMandate is set (the manual flow runs 3DS via enrollPayerAuth/validatePayerAuth). Defaults to true.
      * @param  BillingAddress|null  $billTo  Optional billing address to prefill
      * @param  string  $clientVersion  UC: version of the Unified Checkout client library to load
      * @param  string|null  $returnUrl  Redirect gateways (Fawry): URL to return the customer to after payment
@@ -46,7 +47,7 @@ final readonly class CheckoutSessionRequest
     public function __construct(
         public Money $money,
         public array $targetOrigins = [],
-        public array $allowedCardNetworks = ['VISA', 'MASTERCARD'],
+        public array $allowedCardNetworks = [CybersourceCardNetwork::Visa, CybersourceCardNetwork::Mastercard],
         public array $allowedPaymentTypes = [CybersourcePaymentType::PanEntry],
         public ?string $country = null,
         public ?string $locale = null,

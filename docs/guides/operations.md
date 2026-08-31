@@ -134,11 +134,21 @@ $session = $cybersource->createCheckoutSession(new CheckoutSessionRequest(
     targetOrigins: ['https://shop.test'],
     completeMandate: MandateCompletionType::Capture, // orchestrate the whole payment
     // decisionManager defaults to true — pass false to skip Decision Manager
+    // enable3ds defaults to true  — pass false to skip 3-D Secure
 ));
 ```
 
 `decisionManager` defaults to `true`, so orchestrated sales are fraud-screened out of the
-box; set it to `false` to opt out. It is ignored unless `completeMandate` is set.
+box; set it to `false` to opt out. `enable3ds` (default `true`) is emitted as
+`completeMandate.consumerAuthentication`, so the orchestrated widget runs 3-D Secure; set it to
+`false` to skip it. Both are ignored unless `completeMandate` is set — the manual flow runs 3DS
+through `enrollPayerAuth`/`validatePayerAuth`.
+
+The fields the widget collects — `billingType` (`FULL`/`PARTIAL`/`NONE`), `requestEmail`,
+`requestPhone`, `requestShipping`, `showAcceptedNetworkIcons` — come from a
+`CybersourceCheckoutOptions` passed on `CheckoutSessionRequest::options`; its defaults reproduce
+the SDK's previous fixed capture mandate (full billing + email). `allowedCardNetworks` takes
+`CybersourceCardNetwork` enum cases (e.g. `CybersourceCardNetwork::Visa`).
 
 ## 3-D Secure (manual payer authentication)
 
@@ -199,6 +209,17 @@ risk-assesses the browser; richer device data earns a frictionless (no-challenge
 authentication more often. Every `BrowserDeviceData` field is optional — only those set are
 sent. `enrollPayerAuth` also accepts a `deviceFingerprintId` for Decision Manager (see
 above); its fingerprint and browser device blocks are merged into one `deviceInformation`.
+
+**ECI enforcement.** A *completed* authentication — a frictionless `enrollPayerAuth`, or
+`validatePayerAuth` after a challenge — is only treated as successful when its resolved ECI is
+fully authenticated: `02` (Mastercard) or `05` (Visa, American Express, JCB, Diners Club,
+Discover). The SDK reads the network-normalised `eciRaw` (falling back to `eci`), so a
+Mastercard `02` is honoured where the `eci` field alone would not carry it. When the ECI is
+merely *attempted* (`01`/`06`) or *not authenticated* (`00`/`07`), the `PayerAuthResult.success`
+flag is set to `false` and a `PayerAuthenticationEciRejected` event is dispatched (see
+[Events & operation logging](observability.md)) — so an attempted or unauthenticated result
+never carries a spurious liability shift into the charge. A pending step-up challenge (no final
+ECI yet) and a response with no ECI at all are left untouched.
 
 ## Installments
 

@@ -57,7 +57,7 @@
   <!-- ─────────────────────────  HERO  ───────────────────────── -->
   <section class="hero">
     <div class="hero-grid" aria-hidden="true"></div>
-    <p class="kicker reveal" data-d="0">Laravel&nbsp;10–13&nbsp;·&nbsp;Payment SDK&nbsp;·&nbsp;v0.13.0&nbsp;·&nbsp;MIT</p>
+    <p class="kicker reveal" data-d="0">Laravel&nbsp;10–13&nbsp;·&nbsp;Payment SDK&nbsp;·&nbsp;v0.14.0&nbsp;·&nbsp;MIT</p>
     <h1 class="hero-title">
       <span class="reveal" data-d="1">One clean interface.</span>
       <span class="reveal" data-d="2">Every payment <em>gateway</em>.</span>
@@ -147,7 +147,7 @@
       <article class="card reveal">
         <span class="card-no">/07</span>
         <h3>Events &amp; listeners</h3>
-        <p>Each driver emits a typed domain event after every operation — charge, capture, refund, void, vault, checkout, webhook. One listener on the <code>PaymentEvent</code> interface receives them all, or target a single event. Payloads are <b>queue-safe</b>: ids, amount and result — never the raw request or card data.</p>
+        <p>Each driver emits a typed domain event after every operation — charge, capture, refund, void, vault, checkout, webhook — plus a 3-D Secure ECI-rejection event on CyberSource. One listener on the <code>PaymentEvent</code> interface receives them all, or target a single event. Payloads are <b>queue-safe</b>: ids, amount and result — never the raw request or card data.</p>
       </article>
     </div>
   </section>

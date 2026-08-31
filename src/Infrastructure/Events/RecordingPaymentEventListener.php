@@ -8,6 +8,7 @@ use Hyprpay\Payments\Domain\Contract\RecordsPaymentActivity;
 use Hyprpay\Payments\Domain\Event\AuthorizationReversed;
 use Hyprpay\Payments\Domain\Event\CheckoutSessionCreated;
 use Hyprpay\Payments\Domain\Event\InstrumentVaulted;
+use Hyprpay\Payments\Domain\Event\PayerAuthenticationEciRejected;
 use Hyprpay\Payments\Domain\Event\PaymentCaptured;
 use Hyprpay\Payments\Domain\Event\PaymentCharged;
 use Hyprpay\Payments\Domain\Event\PaymentEvent;
@@ -63,6 +64,7 @@ final readonly class RecordingPaymentEventListener
             $event instanceof CheckoutSessionCreated => PaymentActivityRecord::make($operation, $gateway, null, null, $event->orderReference, $event->session->reference, null, $event->money, $when),
             $event instanceof InstrumentVaulted => PaymentActivityRecord::make($operation, $gateway, null, $event->result->success, null, $event->result->paymentInstrumentId, $event->customerReference, null, $when),
             $event instanceof WebhookReceived => PaymentActivityRecord::make($operation, $gateway, $event->webhook->status, $event->webhook->verified, null, $event->webhook->transactionId, $event->webhook->eventType, null, $when),
+            $event instanceof PayerAuthenticationEciRejected => PaymentActivityRecord::make($operation, $gateway, $event->status, false, null, $event->authenticationTransactionId, $event->eci, null, $when),
             default => PaymentActivityRecord::make($operation, $gateway, null, null, null, null, null, null, $when),
         };
     }

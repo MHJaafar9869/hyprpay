@@ -1,6 +1,12 @@
 {
   "releases": [
     {
+      "version": "0.14.0",
+      "date": "2026-08-31",
+      "title": "CyberSource Flex Microform billing address and 3-D Secure ECI enforcement",
+      "file": "v0.14.0.md"
+    },
+    {
       "version": "0.13.0",
       "date": "2026-08-30",
       "title": "Airwallex/PayPal/MPGS operation coverage and CyberSource Flex Microform",
