@@ -8,10 +8,12 @@ use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
 use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
 use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
 use Hyprpay\Payments\Domain\Enum\CredentialInitiator;
+use Hyprpay\Payments\Domain\Enum\CybersourceCardNetwork;
 use Hyprpay\Payments\Domain\Enum\CybersourcePaymentType;
 use Hyprpay\Payments\Domain\Enum\MandateCompletionType;
 use Hyprpay\Payments\Domain\ValueObject\BillingAddress;
 use Hyprpay\Payments\Domain\ValueObject\Money;
+use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\CybersourceCheckoutOptions;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CaptureContextPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CapturePayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\PayerAuthEnrollPayload;
@@ -22,7 +24,7 @@ it('builds a capture-context payload with amount, mandate and optional billTo', 
     $request = new CheckoutSessionRequest(
         money: Money::minor(10000, 'EGP'),
         targetOrigins: ['https://shop.test'],
-        allowedCardNetworks: ['VISA', 'MASTERCARD'],
+        allowedCardNetworks: [CybersourceCardNetwork::Visa, CybersourceCardNetwork::Mastercard],
         allowedPaymentTypes: [CybersourcePaymentType::PanEntry, CybersourcePaymentType::ApplePay],
         billTo: new BillingAddress(firstName: 'Ada', country: 'EG'),
     );
@@ -31,8 +33,15 @@ it('builds a capture-context payload with amount, mandate and optional billTo', 
 
     expect($payload['orderInformation']['amountDetails'])->toBe(['totalAmount' => '100.00', 'currency' => 'EGP'])
         ->and($payload['targetOrigins'])->toBe(['https://shop.test'])
+        ->and($payload['allowedCardNetworks'])->toBe(['VISA', 'MASTERCARD'])
         ->and($payload['allowedPaymentTypes'])->toBe(['PANENTRY', 'APPLEPAY'])
-        ->and($payload['captureMandate']['billingType'])->toBe('FULL')
+        ->and($payload['captureMandate'])->toBe([
+            'billingType' => 'FULL',
+            'requestEmail' => true,
+            'requestPhone' => false,
+            'requestShipping' => false,
+            'showAcceptedNetworkIcons' => false,
+        ])
         ->and($payload['orderInformation']['billTo'])->toBe(['firstName' => 'Ada', 'country' => 'EG'])
         ->and($payload['country'])->toBe('EG');
 });
@@ -44,7 +53,7 @@ it('runs Decision Manager by default in the orchestrated completeMandate block',
         completeMandate: MandateCompletionType::Capture,
     ), testCredentials());
 
-    expect($payload['completeMandate'])->toBe(['type' => 'CAPTURE', 'decisionManager' => true]);
+    expect($payload['completeMandate'])->toBe(['type' => 'CAPTURE', 'decisionManager' => true, 'consumerAuthentication' => true]);
 });
 
 it('lets the orchestrated flow opt out of Decision Manager', function (): void {
@@ -55,7 +64,40 @@ it('lets the orchestrated flow opt out of Decision Manager', function (): void {
         decisionManager: false,
     ), testCredentials());
 
-    expect($payload['completeMandate'])->toBe(['type' => 'CAPTURE', 'decisionManager' => false]);
+    expect($payload['completeMandate'])->toBe(['type' => 'CAPTURE', 'decisionManager' => false, 'consumerAuthentication' => true]);
+});
+
+it('lets the orchestrated flow opt out of 3-D Secure via enable3ds', function (): void {
+    $payload = CaptureContextPayload::build(new CheckoutSessionRequest(
+        money: Money::minor(10000, 'EGP'),
+        targetOrigins: ['https://shop.test'],
+        enable3ds: false,
+        completeMandate: MandateCompletionType::Capture,
+    ), testCredentials());
+
+    expect($payload['completeMandate'])->toBe(['type' => 'CAPTURE', 'decisionManager' => true, 'consumerAuthentication' => false]);
+});
+
+it('builds the capture mandate from CybersourceCheckoutOptions', function (): void {
+    $payload = CaptureContextPayload::build(new CheckoutSessionRequest(
+        money: Money::minor(10000, 'EGP'),
+        targetOrigins: ['https://shop.test'],
+        options: new CybersourceCheckoutOptions(
+            billingType: 'PARTIAL',
+            requestEmail: false,
+            requestPhone: true,
+            requestShipping: true,
+            showAcceptedNetworkIcons: true,
+        ),
+    ), testCredentials());
+
+    expect($payload['captureMandate'])->toBe([
+        'billingType' => 'PARTIAL',
+        'requestEmail' => false,
+        'requestPhone' => true,
+        'requestShipping' => true,
+        'showAcceptedNetworkIcons' => true,
+    ]);
 });
 
 it('omits completeMandate for the manual transient-token flow', function (): void {

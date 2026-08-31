@@ -110,7 +110,10 @@
     <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'EGP'</span>),
     <span class="a">targetOrigins:</span> [<span class="s">'https://shop.test'</span>],       <span class="c">// origin(s) that embed the widget</span>
     <span class="a">orderReference:</span> <span class="s">'ORDER-123'</span>,                <span class="c">// reconcile — and default the charge idempotency key — off this</span>
+    <span class="a">allowedCardNetworks:</span> [<span class="t">CybersourceCardNetwork</span>::<span class="cn">Visa</span>, <span class="t">CybersourceCardNetwork</span>::<span class="cn">Mastercard</span>], <span class="c">// defaults to [Visa, Mastercard]</span>
     <span class="a">allowedPaymentTypes:</span> [<span class="t">CybersourcePaymentType</span>::<span class="cn">PanEntry</span>, <span class="t">CybersourcePaymentType</span>::<span class="cn">GooglePay</span>], <span class="c">// cards + wallets (defaults to [PanEntry])</span>
+    <span class="a">enable3ds:</span> <span class="k">true</span>,                          <span class="c">// orchestrated flow → completeMandate.consumerAuthentication</span>
+    <span class="a">options:</span> <span class="k">new</span> <span class="t">CybersourceCheckoutOptions</span>(<span class="a">billingType:</span> <span class="s">'FULL'</span>, <span class="a">requestPhone:</span> <span class="k">true</span>), <span class="c">// captureMandate — what the widget collects</span>
 ));
 
 <span class="c">// load the widget script from $session->clientLibrary (pin it with</span>
@@ -294,7 +297,7 @@
 <span class="v">$session</span> = <span class="v">$gateway</span>-&gt;<span class="fn">createMicroformSession</span>(<span class="k">new</span> <span class="t">CheckoutSessionRequest</span>(
     <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'EGP'</span>), <span class="c">// currency only; the amount is applied at charge</span>
     <span class="a">targetOrigins:</span> [<span class="s">'https://shop.test'</span>],       <span class="c">// origins allowed to launch Microform</span>
-    <span class="a">allowedCardNetworks:</span> [<span class="s">'VISA'</span>, <span class="s">'MASTERCARD'</span>],
+    <span class="a">allowedCardNetworks:</span> [<span class="t">CybersourceCardNetwork</span>::<span class="cn">Visa</span>, <span class="t">CybersourceCardNetwork</span>::<span class="cn">Mastercard</span>],
     <span class="a">billTo:</span> <span class="k">new</span> <span class="t">BillingAddress</span>(<span class="a">firstName:</span> <span class="s">'Jane'</span>, <span class="a">lastName:</span> <span class="s">'Doe'</span>, <span class="a">country:</span> <span class="s">'EG'</span>), <span class="c">// optional — captured for AVS / risk</span>
 ));
 
@@ -485,7 +488,13 @@
          <code>createCheckoutSession</code>) there is no <code>fingerprintSessionId</code> to send — the
          widget runs Decision Manager itself. Toggle it with <code>decisionManager</code> on
          <code>CheckoutSessionRequest</code> (default <code>true</code>), emitted as
-         <code>completeMandate.decisionManager</code>.</p>
+         <code>completeMandate.decisionManager</code>. Likewise <code>enable3ds</code> (default
+         <code>true</code>) is emitted as <code>completeMandate.consumerAuthentication</code> so the
+         widget runs 3-D Secure as part of the mandate — it applies to the orchestrated flow only;
+         the manual transient-token flow runs 3DS through <code>enrollPayerAuth</code> /
+         <code>validatePayerAuth</code>. The widget's collected fields (billing/email/phone/shipping,
+         accepted-network icons) come from a <code>CybersourceCheckoutOptions</code> on
+         <code>options</code>, which maps to the capture context's <code>captureMandate</code>.</p>
     </section>
 
     <section id="capture" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara">

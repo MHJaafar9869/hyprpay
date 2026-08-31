@@ -17,6 +17,7 @@ use Hyprpay\Payments\Domain\Command\ValidatePayerAuthRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
 use Hyprpay\Payments\Domain\Command\WalletChargeRequest;
 use Hyprpay\Payments\Domain\Contract\EventDispatcher;
+use Hyprpay\Payments\Domain\Enum\CybersourceCardNetwork;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\Enum\WalletType;
@@ -82,7 +83,7 @@ it('creates a Flex Microform capture-context session for secure card fields', fu
     $session = $gateway->createMicroformSession(new CheckoutSessionRequest(
         money: Money::minor(10000, 'EGP'),
         targetOrigins: ['https://shop.test'],
-        allowedCardNetworks: ['VISA', 'AMEX'],
+        allowedCardNetworks: [CybersourceCardNetwork::Visa, CybersourceCardNetwork::Amex],
     ));
 
     $request = $http->lastRequest();

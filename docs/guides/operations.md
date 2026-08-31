@@ -134,11 +134,21 @@ $session = $cybersource->createCheckoutSession(new CheckoutSessionRequest(
     targetOrigins: ['https://shop.test'],
     completeMandate: MandateCompletionType::Capture, // orchestrate the whole payment
     // decisionManager defaults to true — pass false to skip Decision Manager
+    // enable3ds defaults to true  — pass false to skip 3-D Secure
 ));
 ```
 
 `decisionManager` defaults to `true`, so orchestrated sales are fraud-screened out of the
-box; set it to `false` to opt out. It is ignored unless `completeMandate` is set.
+box; set it to `false` to opt out. `enable3ds` (default `true`) is emitted as
+`completeMandate.consumerAuthentication`, so the orchestrated widget runs 3-D Secure; set it to
+`false` to skip it. Both are ignored unless `completeMandate` is set — the manual flow runs 3DS
+through `enrollPayerAuth`/`validatePayerAuth`.
+
+The fields the widget collects — `billingType` (`FULL`/`PARTIAL`/`NONE`), `requestEmail`,
+`requestPhone`, `requestShipping`, `showAcceptedNetworkIcons` — come from a
+`CybersourceCheckoutOptions` passed on `CheckoutSessionRequest::options`; its defaults reproduce
+the SDK's previous fixed capture mandate (full billing + email). `allowedCardNetworks` takes
+`CybersourceCardNetwork` enum cases (e.g. `CybersourceCardNetwork::Visa`).
 
 ## 3-D Secure (manual payer authentication)
 

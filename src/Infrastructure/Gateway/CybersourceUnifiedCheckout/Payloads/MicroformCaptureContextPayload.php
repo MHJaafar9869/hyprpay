@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads;
 
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
+use Hyprpay\Payments\Domain\Enum\CybersourceCardNetwork;
 
 /**
  * Builds the CyberSource Flex Microform v2 capture-context request body.
@@ -35,7 +36,10 @@ final class MicroformCaptureContextPayload
     {
         $payload = array_filter([
             'targetOrigins' => $request->targetOrigins,
-            'allowedCardNetworks' => $request->allowedCardNetworks,
+            'allowedCardNetworks' => array_values(array_map(
+                static fn (CybersourceCardNetwork $network): string => $network->value,
+                $request->allowedCardNetworks,
+            )),
             'allowedPaymentTypes' => ['CARD'],
         ], static fn (array $value): bool => $value !== []);
 
