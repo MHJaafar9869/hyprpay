@@ -33,6 +33,7 @@ final readonly class ChargeRequest
      * @param  DccQuote|null  $dcc  Optional DCC quote to bill the cardholder in their currency; set `money` to the quote's converted amount so the quoted rate is applied
      * @param  bool  $useRawFingerprintSessionId  When true, CyberSource uses the device fingerprint session id exactly as sent instead of the default merchant-prefixed lookup
      * @param  Installment|null  $installment  Optional issuer-funded installment plan to split the charge across (maps to processingInformation.installment)
+     * @param  string|null  $merchantTransactionId  Unique id you assign to this request; required on the original call if you may later need a timeout void or reversal
      */
     public function __construct(
         public string $transientToken,
@@ -48,5 +49,6 @@ final readonly class ChargeRequest
         public ?DccQuote $dcc = null,
         public bool $useRawFingerprintSessionId = false,
         public ?Installment $installment = null,
+        public ?string $merchantTransactionId = null,
     ) {}
 }

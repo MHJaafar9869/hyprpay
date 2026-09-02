@@ -715,6 +715,179 @@ match (true) {
 Routing and account numbers are sensitive banking credentials. This operation sits outside
 `PaymentGatewayInterface`, so the logging decorator never sees them.
 
+### Corrections: voiding, crediting, and undoing a timeout
+
+Three tiers, distinguished by **what the id addresses**.
+
+`void`, `refund`, and `reverseAuthorization` are payment-scoped — CyberSource documents the first
+as being for authorization and capture requested *together*. Once you capture separately the
+capture becomes its own resource with its own id, and the payment path cannot reach it:
+
+```php
+$cybersource->voidCapture(new VoidRequest(transactionId: $captureId));
+$cybersource->refundCapture(new RefundRequest(transactionId: $captureId, money: $money));
+$cybersource->voidRefund(new VoidRequest(transactionId: $refundId));   // cancel a refund pre-settlement
+$cybersource->voidCredit(new VoidRequest(transactionId: $creditId));   // the only way to undo a credit
+```
+
+| You did | Undo with |
+| --- | --- |
+| `charge()` (auth + capture together) | `void()` |
+| `charge(capture: false)` then `capture()` | `voidCapture()` |
+| `refund()` | `voidRefund()` |
+| `creditPayment()` | `voidCredit()` |
+| anything that **timed out** | `timeoutVoid()` / `timeoutReversal()` |
+
+**`incrementAuthorization` raises an existing hold rather than placing a second one** — for hotels,
+car rental, and any open-ended stay where the final bill is unknown when the card is presented.
+The amount is the one to *add*, not the new total; passing the running total silently over-holds,
+and authorizing again would withhold the funds twice.
+
+```php
+$cybersource->incrementAuthorization(new IncrementAuthorizationRequest(
+    transactionId: $paymentId,
+    additionalAmount: Money::minor(5000, 'USD'),   // adds $50 to the existing hold
+));
+```
+
+**`creditPayment` is not a refund.** A refund returns part of a specific captured payment and is
+bounded by it; a credit pushes money to a card with no originating transaction, no amount cap, and
+nothing to tie it to. Processors watch credits — gate it behind the authorisation you would put on
+a payout, not on a refund, and wire up `voidCredit` alongside it.
+
+#### Undoing a request whose reply never arrived
+
+When a call times out you cannot know whether it landed, and you have no transaction id to void
+with. `timeoutVoid` and `timeoutReversal` take no resource id at all — they match on the merchant
+transaction id from the **original** request.
+
+```php
+// On the original call. Without this, the timeout void below is impossible.
+$cybersource->charge(new ChargeRequest(
+    transientToken: $token,
+    money: $money,
+    merchantTransactionId: 'mtid-charge-1',
+));
+
+// … the request times out; you never receive a transaction id …
+
+$cybersource->timeoutVoid(new TimeoutVoidRequest(merchantTransactionId: 'mtid-charge-1'));
+```
+
+`merchantTransactionId` is available on `ChargeRequest`, `CaptureRequest`, `RefundRequest`, and
+`CreditRequest`, and **cannot be supplied retrospectively** — set it on anything you may need to
+undo blind. Without a timeout *reversal*, a timed-out authorization strands a hold on the
+cardholder's card until the issuer expires it, which can take days.
+
+This complements rather than replaces reconciling by reference:
+`findSuccessfulTransactionByReference` tells you *whether* a lost request settled and is eventually
+consistent; a timeout void *undoes* it, and acts immediately.
+
+Finally, `refreshPaymentStatus` asks CyberSource to re-check with the **processor**, for the
+alternative payment methods that settle asynchronously — unlike `getTransaction`, which reads
+CyberSource's own record. Reach for it when the record looks stale rather than merely unfinished.
+
+### Managing webhook subscriptions
+
+`verifyWebhook` verifies what arrives; these decide what is sent and where, so onboarding a
+merchant's webhooks no longer needs the Business Center.
+
+**Create the signing key first.** CyberSource signs every notification with it, and it is the
+same secret `verifyWebhook` checks — a subscription created before the key exists has nothing to
+sign with. The key is returned **once** and cannot be read back: store it as the
+`webhook_secret` credential immediately.
+
+```php
+use Hyprpay\Payments\Domain\Command\CreateWebhookRequest;
+use Hyprpay\Payments\Domain\Enum\WebhookSecurityType;
+use Hyprpay\Payments\Domain\Enum\WebhookStatus;
+use Hyprpay\Payments\Domain\ValueObject\WebhookProduct;
+
+$key = $cybersource->createWebhookSecurityKey([
+    'provider' => 'nrtd', 'tenant' => 'pxsecurity', 'keyType' => 'sharedSecret',
+]);
+$key->key;   // shown once — this is the webhook_secret credential
+
+$cybersource->listWebhookProducts();   // what this account may subscribe to
+
+$webhook = $cybersource->createWebhook(new CreateWebhookRequest(
+    name: 'Payments',
+    webhookUrl: 'https://shop.test/webhook',
+    products: [new WebhookProduct('payments', ['payments.payments.accept'])],
+    healthCheckUrl: 'https://shop.test/health',   // lets CyberSource resume it on its own
+    securityType: WebhookSecurityType::Key,       // the signed scheme verifyWebhook() checks
+    securityConfig: ['keyId' => $key->keyId],
+));
+
+$cybersource->testWebhook($webhook->webhookId);   // prove the wiring before it matters
+$cybersource->setWebhookStatus($webhook->webhookId, WebhookStatus::Inactive);  // pause, keep config
+```
+
+Two things worth knowing. `isSignatureVerifiable()` is false for the oAuth security types — those
+notifications are authenticated with a bearer token rather than a signature, so `verifyWebhook`
+cannot check them. And a silent integration is often a subscription CyberSource quietly suspended
+after repeated delivery failures, so `listWebhooks()` and `isDelivering()` are worth monitoring.
+
+The retry policy's algorithm is easy to misread: with `firstRetry: 10` and `interval: 30`,
+`Arithmetic` retries at 10, 40, and 70 minutes while `Geometric` retries at 10, 300, and 9,000 —
+the difference between "later today" and "in six days".
+
+### Card offers — knowing what the card is before you charge it
+
+Offers keyed on card type — a Visa promotion, a premium-tier perk, an installment plan only some
+issuers support — have to be decided **before** the authorization, and they carry real money, so
+the answer has to be one the shopper cannot forge. `lookupBin` is that answer: it asks the
+networks what the credential actually is.
+
+```php
+use Hyprpay\Payments\Domain\Command\BinLookupRequest;
+use Hyprpay\Payments\Domain\Enum\CybersourceCardNetwork;
+
+// Look the card up from the token the browser just minted — no PAN reaches your server.
+$bin = $cybersource->lookupBin(BinLookupRequest::forTransientToken($transientToken));
+
+if (! $bin->isResolved()) {
+    // MULTIPLE or NO MATCH: the attributes cannot be trusted. Charge normally —
+    // "unknown card" is never a reason to refuse a payment.
+    return $this->chargeWithoutOffer();
+}
+
+$offer = match ($bin->network()) {
+    CybersourceCardNetwork::Visa       => $this->visaPromotion(),
+    CybersourceCardNetwork::Mastercard => $this->mastercardPromotion(),
+    CybersourceCardNetwork::Amex       => $this->amexPromotion(),
+    default                            => null,
+};
+```
+
+`network()` returns a typed `CybersourceCardNetwork`, and deliberately so: the brand reaches the
+SDK in three different shapes depending on where it came from — a numeric code (`001`) from BIN
+lookup and the vault, a lowercase name (`visa`) from a verified orchestrated result, and an
+uppercase name (`VISA`) from BIN lookup's brand field. `network()` collapses all of them, so the
+same `match` works on a BIN lookup, a saved card, and a completed payment:
+
+```php
+$bin->network();          // from lookupBin()
+$instrument->network();   // from a vaulted card
+$result->network();       // from a verified orchestrated payment
+```
+
+Brand is often the *least* useful attribute for an offer, though. BIN lookup also tells you:
+
+```php
+$bin->fundingSource;                    // CardFundingSource::Credit | Debit | Prepaid …
+$bin->platform?->isCommercial();        // consumer vs business/corporate/government
+$bin->cardProduct;                      // "Visa Infinite" — premium-tier offers key on this
+$bin->issuerCountry;                    // "US" — geo-gated promotions
+$bin->supportsInstallments();           // only offer EMI where the issuer supports it
+$bin->supports3ds();
+$bin->fundingSource?->canPartiallyApprove();  // prepaid: expect partial approvals
+```
+
+**Do not use the transient token's own claims for this.** `ParsesTransientToken` decodes the JWT
+payload without verifying its signature — the SDK's own docblock says as much — so a shopper could
+edit it and claim an offer they are not entitled to. Ask the gateway instead.
+
 ### Vault lifecycle
 
 `vaultInstrument` creates tokens; the rest of their life is managed separately. Reading a stored

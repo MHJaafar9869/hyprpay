@@ -357,3 +357,88 @@ Public methods:
 | `$raw` | `array<string,mixed>` | `[]` | Raw gateway attribute payload |
 
 No public methods.
+
+## BinLookupResult
+`Hyprpay\Payments\Domain\Result\BinLookupResult` — what a card actually is, known **before** authorizing. Read `$status` first: a lookup that did not resolve to a single range leaves the attributes untrustworthy, and "unknown" is never grounds for refusing a payment.
+
+| field | type | default | meaning |
+|---|---|---|---|
+| `$status` | `?BinLookupStatus` | `null` | Whether the lookup resolved to one card range |
+| `$cardType` | `?string` | `null` | CyberSource three-digit network code (`001` Visa) |
+| `$brandName` | `?string` | `null` | Brand as the networks name it (`VISA`) |
+| `$currency` | `?string` | `null` | Currency the card bills in |
+| `$maxLength` | `?int` | `null` | Maximum account-number length |
+| `$credentialType` | `?string` | `null` | Whether a `PAN` or a `TOKEN` was inspected |
+| `$fundingSource` | `?CardFundingSource` | `null` | Credit, debit, prepaid… |
+| `$fundingSubType` | `?string` | `null` | For prepaid, whether reloadable |
+| `$platform` | `?CardPlatform` | `null` | Consumer vs business/corporate/government |
+| `$cardProduct` | `?string` | `null` | Issuer product (`Visa Infinite`) |
+| `$issuerName` / `$issuerCountry` / `$accountPrefix` / `$issuerPhone` | `?string` | `null` | Issuer details |
+| `$features` | `array<string,mixed>` | `[]` | The full BIN feature block, verbatim |
+| `$raw` | `array<string,mixed>` | `[]` | Raw gateway response payload |
+
+Public methods:
+- `isResolved(): bool` — true only for a `COMPLETED` lookup.
+- `network(): ?CybersourceCardNetwork` — the typed network, from the code, falling back to the brand name.
+- `feature(string $name, mixed $default = null): mixed` / `hasFeature(string $name): bool` — read any BIN attribute, including ones not modelled. The networks publish more than is worth typing and the set grows, so an unmodelled attribute needs no SDK change.
+- `supports3ds()`, `supportsRecurring()`, `supportsInstallments()`, `supportsEcommerce()`, `qualifiesForCommercialRates()` — typed helpers over the decision-relevant flags.
+
+## WebhookSubscription
+`Hyprpay\Payments\Domain\Result\WebhookSubscription` — where the gateway delivers notifications, which events it sends, and whether it is delivering at all. `$status` is the field to watch: a silent integration is often a subscription the gateway quietly suspended.
+
+| field | type | default | meaning |
+|---|---|---|---|
+| `$webhookId` | `?string` | `null` | Gateway identifier |
+| `$name` / `$description` | `?string` | `null` | Human-readable name and description |
+| `$webhookUrl` / `$healthCheckUrl` | `?string` | `null` | Delivery and health-check endpoints |
+| `$status` | `?WebhookStatus` | `null` | Whether notifications are being delivered |
+| `$securityType` | `?WebhookSecurityType` | `null` | How the gateway authenticates to your endpoint |
+| `$products` | `list<WebhookProduct>` | `[]` | Products and events received |
+| `$notificationScope` | `?string` | `null` | This organization only, or its descendants too |
+| `$organizationId` | `?string` | `null` | Organization the subscription belongs to |
+| `$raw` | `array<string,mixed>` | `[]` | Raw gateway response payload |
+
+Public methods:
+- `isDelivering(): bool` — false once the gateway suspends it.
+- `isSignatureVerifiable(): bool` — false for the oAuth types, whose notifications `verifyWebhook()` cannot check.
+- `eventTypes(): list<string>` — every event, flattened across products.
+
+## WebhookSecurityKey
+`Hyprpay\Payments\Domain\Result\WebhookSecurityKey` — the key the gateway signs notifications with, and the value the `webhook_secret` credential holds. Returned **once, at creation**, and not readable afterwards: store it before discarding the response. Treat it as a credential — never log it, never return it from an endpoint.
+
+| field | type | default | meaning |
+|---|---|---|---|
+| `$keyId` | `?string` | `null` | Key serial number, referenced from a subscription's security config |
+| `$key` | `?string` | `null` | The key value — shown once |
+| `$status` / `$keyType` / `$organizationId` / `$expiryDuration` | `?string` | `null` | Key metadata |
+| `$raw` | `array<string,mixed>` | `[]` | Raw gateway response payload |
+
+Public method: `hasKey(): bool` — whether a key value was actually returned to store.
+
+## WebhookProductCatalog
+`Hyprpay\Payments\Domain\Result\WebhookProductCatalog` — one product an account may subscribe to, with the events available under it. Entitlement-scoped and nested per product, which is why neither product ids nor event names are enums in this SDK.
+
+| field | type | default | meaning |
+|---|---|---|---|
+| `$productId` / `$productName` | `?string` | `null` | Product identifier and name |
+| `$eventTypes` | `list<WebhookEventType>` | `[]` | Events available under this product |
+| `$raw` | `array<string,mixed>` | `[]` | Raw gateway payload |
+
+Public methods:
+- `eventNames(): list<string>` — every event name, ready for a subscription.
+- `toSubscription(?array $only = null): WebhookProduct` — turn the entry straight into a subscription entry, optionally narrowed to named events.
+- `timeSensitiveEvents()` / `encryptedEvents(): list<WebhookEventType>` — the events a queueing retry policy would spoil, and the ones needing message-level encryption before they can be read.
+
+## WebhookEventType
+`Hyprpay\Payments\Domain\Result\WebhookEventType` — one event a product can notify on.
+
+| field | type | default | meaning |
+|---|---|---|---|
+| `$eventName` | `?string` | `null` | Name, as passed in a subscription |
+| `$displayName` | `?string` | `null` | Human-readable name |
+| `$frequency` | `?int` | `null` | How often the gateway expects to emit it |
+| `$isTimeSensitive` | `bool` | `false` | Loses value if a retry queue delays it |
+| `$isEncrypted` | `bool` | `false` | Payload arrives encrypted; needs MLE configured |
+| `$raw` | `array<string,mixed>` | `[]` | Raw gateway payload |
+
+No public methods.

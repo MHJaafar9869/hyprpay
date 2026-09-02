@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Hyprpay\Payments\Domain\Result;
 
+use Hyprpay\Payments\Domain\Enum\CybersourceCardNetwork;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 
 /**
@@ -52,4 +53,15 @@ final readonly class OrchestratedPaymentResult
         public ?string $cardExpiryYear = null,
         public array $raw = [],
     ) {}
+
+    /**
+     * The card network as a typed enum, resolved from the verified result's brand name — the
+     * same enum a BIN lookup or a vaulted instrument resolves to, so one match covers all three.
+     *
+     * Null for a wallet payment, which carries no card brand, or a network this SDK does not model.
+     */
+    public function network(): ?CybersourceCardNetwork
+    {
+        return CybersourceCardNetwork::resolve($this->cardBrand);
+    }
 }

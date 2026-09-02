@@ -59,7 +59,7 @@ final class PaymentPayload
         ];
 
         if (filled($request->orderReference)) {
-            $payload['clientReferenceInformation'] = ['code' => ClientReference::code($request->orderReference)];
+            $payload['clientReferenceInformation'] = ClientReference::block($request->orderReference, $request->merchantTransactionId);
         }
 
         if (filled($request->consumerAuthentication)) {

@@ -1,6 +1,12 @@
 {
   "releases": [
     {
+      "version": "0.16.0",
+      "date": "2026-09-02",
+      "title": "CyberSource BIN lookup, webhook management, and payment corrections",
+      "file": "v0.16.0.md"
+    },
+    {
       "version": "0.15.0",
       "date": "2026-09-02",
       "title": "CyberSource subscriptions, plans, vault lifecycle, Account Updater, and reporting",
