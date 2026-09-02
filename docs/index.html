@@ -87,70 +87,67 @@
     </ul>
   </section>
 
-  <!-- ─────────────────────────  MARQUEE  ───────────────────────── -->
-  <div class="ticker" aria-hidden="true">
-    <div class="ticker-track">
-      <span>DETERMINISTIC BODIES</span><span class="dot">¤</span>
-      <span>IDEMPOTENT WRITES</span><span class="dot">¤</span>
-      <span>EXACT MINOR UNITS</span><span class="dot">¤</span>
-      <span>PORTS &amp; ADAPTERS</span><span class="dot">¤</span>
-      <span>RAW REST · NO VENDOR SDKS</span><span class="dot">¤</span>
-      <span>FRAMEWORK-AGNOSTIC CORE</span><span class="dot">¤</span>
-      <span>DETERMINISTIC BODIES</span><span class="dot">¤</span>
-      <span>IDEMPOTENT WRITES</span><span class="dot">¤</span>
-      <span>EXACT MINOR UNITS</span><span class="dot">¤</span>
-      <span>PORTS &amp; ADAPTERS</span><span class="dot">¤</span>
-      <span>RAW REST · NO VENDOR SDKS</span><span class="dot">¤</span>
-      <span>FRAMEWORK-AGNOSTIC CORE</span><span class="dot">¤</span>
+  <!-- ─────────────────────────  COMBINATIONS BAND  ───────────────────────── -->
+  <section id="features" class="band">
+    <div class="band-head">
+      <div class="section-head reveal">
+        <span class="section-no">01</span>
+        <h2>Built like infrastructure,<br />not a <em>wrapper</em>.</h2>
+        <p>Domain-driven layers keep the business rules clean and the network at arm&rsquo;s length. Here is what that buys you.</p>
+      </div>
     </div>
-  </div>
-
-  <!-- ─────────────────────────  FEATURES  ───────────────────────── -->
-  <section id="features" class="section">
-    <div class="section-head reveal">
-      <span class="section-no">01</span>
-      <h2>Built like infrastructure,<br />not a wrapper.</h2>
-      <p>Domain-driven layers keep the business rules clean and the network at arm's length.</p>
-    </div>
-
-    <div class="cards">
-      <article class="card reveal">
-        <span class="card-no">/01</span>
-        <h3>Domain-driven layering</h3>
-        <p>A pure <code>Domain</code> of contracts, commands, results, value objects and enums; a thin <code>Application</code> factory; and an <code>Infrastructure</code> layer for drivers &amp; Laravel adapters. Dependencies point inward — the core never touches the framework.</p>
-      </article>
-      <article class="card reveal">
-        <span class="card-no">/02</span>
-        <h3>Factory + one interface</h3>
-        <p>Resolve any gateway through <code>PaymentGatewayFactory</code> and program against a single <code>PaymentGatewayInterface</code>. Unsupported operations throw <code>UnsupportedOperationException</code>, so the surface is identical everywhere.</p>
-      </article>
-      <article class="card reveal">
-        <span class="card-no">/03</span>
-        <h3>Ports &amp; adapters</h3>
-        <p>The <code>HttpClient</code> and <code>CredentialResolver</code> ports live in the Domain; adapters live in Infrastructure. Ship the retrying Laravel transport in production, swap the in-memory fake in tests — bind only the port you want to replace.</p>
-      </article>
-      <article class="card reveal">
-        <span class="card-no">/04</span>
-        <h3>Raw REST, no vendor SDKs</h3>
-        <p>Every driver speaks the gateway's REST API directly and signs its own requests — CyberSource HMAC HTTP-Signature, Fawry SHA-256, Paymob HMAC-SHA512, PayLink HMAC-SHA256, PayTabs server-key auth with HMAC-SHA256 callbacks, PayPal OAuth 2.0 client credentials, Mastercard MPGS HTTP Basic auth, Authorize.Net name/transaction-key auth, Airwallex API-access login token, Tamara Bearer API token. No heavy third-party gateway dependencies.</p>
-      </article>
-      <article class="card reveal">
-        <span class="card-no">/05</span>
-        <h3>Deterministic &amp; idempotent</h3>
-        <p>Request bodies are built without hidden <code>uniqid()</code>/<code>time()</code>, so identical inputs produce byte-for-byte identical requests. Every write carries an idempotency key routed to the gateway's native dedup — retries are safe.</p>
-      </article>
-      <article class="card reveal">
-        <span class="card-no">/06</span>
-        <h3>Exact money, strict types</h3>
-        <p>Amounts are carried as minor units and never rounded. PHPStan runs at <b>level max with a zero baseline</b>, formatted with Pint, refactor-checked with Rector, and covered by 360+ database-free Pest tests.</p>
-      </article>
-      <article class="card reveal">
-        <span class="card-no">/07</span>
-        <h3>Events &amp; listeners</h3>
-        <p>Each driver emits a typed domain event after every operation — charge, capture, refund, void, vault, checkout, webhook — plus a 3-D Secure ECI-rejection event on CyberSource. One listener on the <code>PaymentEvent</code> interface receives them all, or target a single event. Payloads are <b>queue-safe</b>: ids, amount and result — never the raw request or card data.</p>
-      </article>
+    <div class="band-rows">
+      <div class="band-row">
+        <div class="band-track">
+          <div class="band-set">
+          <article class="band-card"><p class="band-kicker">Domain + application + infrastructure</p><h3>Dependencies point inward, always.</h3><p>A pure domain of contracts and value objects; drivers and Laravel adapters at the edge.</p></article>
+          <article class="band-card"><p class="band-kicker">Factory + one interface</p><h3>Swap a driver without touching a call site.</h3><p>Program against one contract. What a driver can&rsquo;t do throws — it never silently no-ops.</p></article>
+          <article class="band-card"><p class="band-kicker">Ports &amp; adapters</p><h3>Bind only the port you want to replace.</h3><p>Ship the retrying Laravel transport in production, swap the in-memory fake in tests.</p></article>
+          <article class="band-card"><p class="band-kicker">Raw REST + own signing</p><h3>No vendor SDKs in your lockfile.</h3><p>Every driver speaks the gateway&rsquo;s REST API directly and signs its own requests.</p></article>
+          <article class="band-card"><p class="band-kicker">Minor units + strict types</p><h3>Money that never rounds.</h3><p>Amounts stay in minor units end to end, under PHPStan level max with a zero baseline.</p></article>
+          <article class="band-card"><p class="band-kicker">Idempotency + retries</p><h3>A retried write never double-charges.</h3><p>Every write carries a key routed to the gateway&rsquo;s own dedup, so retries are safe.</p></article>
+          <article class="band-card"><p class="band-kicker">Typed events + one listener</p><h3>Every operation announces itself.</h3><p>Charge, capture, refund, vault and webhook each emit a queue-safe typed event.</p></article>
+          </div>
+          <div class="band-set band-dup" aria-hidden="true">
+          <article class="band-card"><p class="band-kicker">Domain + application + infrastructure</p><h3>Dependencies point inward, always.</h3><p>A pure domain of contracts and value objects; drivers and Laravel adapters at the edge.</p></article>
+          <article class="band-card"><p class="band-kicker">Factory + one interface</p><h3>Swap a driver without touching a call site.</h3><p>Program against one contract. What a driver can&rsquo;t do throws — it never silently no-ops.</p></article>
+          <article class="band-card"><p class="band-kicker">Ports &amp; adapters</p><h3>Bind only the port you want to replace.</h3><p>Ship the retrying Laravel transport in production, swap the in-memory fake in tests.</p></article>
+          <article class="band-card"><p class="band-kicker">Raw REST + own signing</p><h3>No vendor SDKs in your lockfile.</h3><p>Every driver speaks the gateway&rsquo;s REST API directly and signs its own requests.</p></article>
+          <article class="band-card"><p class="band-kicker">Minor units + strict types</p><h3>Money that never rounds.</h3><p>Amounts stay in minor units end to end, under PHPStan level max with a zero baseline.</p></article>
+          <article class="band-card"><p class="band-kicker">Idempotency + retries</p><h3>A retried write never double-charges.</h3><p>Every write carries a key routed to the gateway&rsquo;s own dedup, so retries are safe.</p></article>
+          <article class="band-card"><p class="band-kicker">Typed events + one listener</p><h3>Every operation announces itself.</h3><p>Charge, capture, refund, vault and webhook each emit a queue-safe typed event.</p></article>
+          </div>
+        </div>
+      </div>
+      <div class="band-row">
+        <div class="band-track rev">
+          <div class="band-set">
+          <article class="band-card"><p class="band-kicker">3-D Secure + charge</p><h3>ECI rejections surface before you settle.</h3><p>A resolved ECI that isn&rsquo;t fully authenticated raises its own typed event.</p></article>
+          <article class="band-card"><p class="band-kicker">Vault + MIT/CIT</p><h3>Cards on file that stay chargeable.</h3><p>Tokenize once, charge as a stored credential, and let Account Updater refresh expiries.</p></article>
+          <article class="band-card"><p class="band-kicker">Microform + 3-D Secure</p><h3>No PAN ever reaches your server.</h3><p>Flex Microform hosts the card fields; you get back a transient token and an ECI.</p></article>
+          <article class="band-card"><p class="band-kicker">Wallets + merchant decrypt</p><h3>Apple Pay and Google Pay on one path.</h3><p><code>chargeWallet</code> takes tokenizedCard or fluidData and tags the payment solution.</p></article>
+          <article class="band-card"><p class="band-kicker">BIN lookup + DCC</p><h3>Price the card before you charge it.</h3><p>Read the BIN&rsquo;s offers, quote a conversion rate, and present installment plans.</p></article>
+          <article class="band-card"><p class="band-kicker">Webhooks + signature verify</p><h3>Callbacks you can trust, typed on arrival.</h3><p>Verify per driver, then handle one <code>PaymentEvent</code> instead of ten payload shapes.</p></article>
+          <article class="band-card"><p class="band-kicker">Money transfer</p><h3>Pull from one card, push to another.</h3><p>Fund with an AFT, credit with an OCT, and declare the purpose the networks price it by.</p></article>
+          <article class="band-card"><p class="band-kicker">Reporting + reconcile</p><h3>Settlement that matches your ledger.</h3><p>Pull a report, reconcile by order reference, and search when a reference goes missing.</p></article>
+          <article class="band-card"><p class="band-kicker">Split payout + recurring</p><h3>Marketplace money movement.</h3><p>PayTabs splits settled funds across beneficiaries and auto-bills your agreement.</p></article>
+          </div>
+          <div class="band-set band-dup" aria-hidden="true">
+          <article class="band-card"><p class="band-kicker">3-D Secure + charge</p><h3>ECI rejections surface before you settle.</h3><p>A resolved ECI that isn&rsquo;t fully authenticated raises its own typed event.</p></article>
+          <article class="band-card"><p class="band-kicker">Vault + MIT/CIT</p><h3>Cards on file that stay chargeable.</h3><p>Tokenize once, charge as a stored credential, and let Account Updater refresh expiries.</p></article>
+          <article class="band-card"><p class="band-kicker">Microform + 3-D Secure</p><h3>No PAN ever reaches your server.</h3><p>Flex Microform hosts the card fields; you get back a transient token and an ECI.</p></article>
+          <article class="band-card"><p class="band-kicker">Wallets + merchant decrypt</p><h3>Apple Pay and Google Pay on one path.</h3><p><code>chargeWallet</code> takes tokenizedCard or fluidData and tags the payment solution.</p></article>
+          <article class="band-card"><p class="band-kicker">BIN lookup + DCC</p><h3>Price the card before you charge it.</h3><p>Read the BIN&rsquo;s offers, quote a conversion rate, and present installment plans.</p></article>
+          <article class="band-card"><p class="band-kicker">Webhooks + signature verify</p><h3>Callbacks you can trust, typed on arrival.</h3><p>Verify per driver, then handle one <code>PaymentEvent</code> instead of ten payload shapes.</p></article>
+          <article class="band-card"><p class="band-kicker">Money transfer</p><h3>Pull from one card, push to another.</h3><p>Fund with an AFT, credit with an OCT, and declare the purpose the networks price it by.</p></article>
+          <article class="band-card"><p class="band-kicker">Reporting + reconcile</p><h3>Settlement that matches your ledger.</h3><p>Pull a report, reconcile by order reference, and search when a reference goes missing.</p></article>
+          <article class="band-card"><p class="band-kicker">Split payout + recurring</p><h3>Marketplace money movement.</h3><p>PayTabs splits settled funds across beneficiaries and auto-bills your agreement.</p></article>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
+
 
   <!-- ─────────────────────────  GATEWAYS  ───────────────────────── -->
   <section id="gateways" class="section">
@@ -160,282 +157,385 @@
       <p>Each driver extends <code>AbstractPaymentGateway</code> and implements the same fat contract.</p>
     </div>
 
-    <div class="gateways">
-      <article class="gw reveal" style="--gw:var(--cyber)">
-        <header><span class="gw-tag">CyberSource</span><span class="gw-sig">HMAC HTTP-Signature</span></header>
-        <h3>Unified Checkout</h3>
-        <p>Mint a capture context for the widget, charge the transient token or run the orchestrated flow and verify the signed result JWT, run 3-DS payer-auth, and vault instruments for MIT/CIT stored credentials.</p>
-        <footer>capture context · charge · orchestrated confirm · 3-DS · TMS vault</footer>
+    <div class="pt">
+      <article class="pt-row reveal" style="--g:var(--cyber)">
+        <div class="pt-text">
+          <div class="pt-kicker">
+            <span class="gw-tag" style="--gw:var(--cyber)">CyberSource UC</span>
+            <span class="gw-sig">HMAC HTTP-Signature</span>
+          </div>
+          <h3>Unified Checkout</h3>
+          <p>Mint a capture context for the widget, charge the transient token or run the orchestrated flow and verify the signed result JWT, run 3-DS payer-auth, and vault instruments for MIT/CIT stored credentials.</p>
+          <div class="pt-chips">
+            <span class="pt-chip">capture context</span>
+            <span class="pt-chip">charge</span>
+            <span class="pt-chip">orchestrated confirm</span>
+            <span class="pt-chip">3-DS</span>
+            <span class="pt-chip">TMS vault</span>
+          </div>
+          <a class="pt-link" href="./guide.html">Read the actions <span aria-hidden="true">&rarr;</span></a>
+        </div>
+        <figure class="code big">
+          <figcaption><span class="win" aria-hidden="true"><i></i><i></i><i></i></span><span class="file">cyber.php</span></figcaption>
+<pre><code><span class="v">$request</span> = <span class="k">new</span> <span class="t">CheckoutSessionRequest</span>(
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'EGP'</span>),
+    <span class="a">targetOrigins:</span> [<span class="s">'https://shop.test'</span>],
+    <span class="a">orderReference:</span> <span class="s">'ORDER-123'</span>,
+    <span class="a">enable3ds:</span> <span class="k">true</span>,
+);
+
+<span class="v">$session</span> = <span class="v">$gateway</span>-&gt;<span class="fn">createCheckoutSession</span>(<span class="v">$request</span>);
+
+<span class="c">// mount the widget with $session-&gt;jwt</span></code></pre>
+        </figure>
       </article>
-      <article class="gw reveal" style="--gw:var(--fawry)">
-        <header><span class="gw-tag">Fawry</span><span class="gw-sig">SHA-256</span></header>
-        <h3>Hosted &amp; reference</h3>
-        <p>Start a hosted checkout — card, wallet, pay-at-Fawry, MyFawry or instalment — and redirect the payer or hand back a reference code.</p>
-        <footer>hosted · card · wallet · pay-at-Fawry</footer>
+      <article class="pt-row reveal" style="--g:var(--paytabs)">
+        <div class="pt-text">
+          <div class="pt-kicker">
+            <span class="gw-tag" style="--gw:var(--paytabs)">PayTabs</span>
+            <span class="gw-sig">Server key</span>
+          </div>
+          <h3>Every integration</h3>
+          <p>Hosted page, emailable Invoice, reusable PayLink, iframe Managed Form, or an Own Form charge of a payment token. Saves tokens for recurring charges, splits settled funds across beneficiaries, and verifies the signed IPN callback.</p>
+          <div class="pt-chips">
+            <span class="pt-chip">hosted</span>
+            <span class="pt-chip">invoice</span>
+            <span class="pt-chip">paylink</span>
+            <span class="pt-chip">managed</span>
+            <span class="pt-chip">own form</span>
+            <span class="pt-chip">tokens</span>
+            <span class="pt-chip">recurring</span>
+            <span class="pt-chip">split</span>
+          </div>
+          <a class="pt-link" href="./guide.html">Read the actions <span aria-hidden="true">&rarr;</span></a>
+        </div>
+        <figure class="code big">
+          <figcaption><span class="win" aria-hidden="true"><i></i><i></i><i></i></span><span class="file">paytabs.php</span></figcaption>
+<pre><code><span class="v">$request</span> = <span class="k">new</span> <span class="t">CheckoutSessionRequest</span>(
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">12030</span>, <span class="s">'SAR'</span>),
+    <span class="a">orderReference:</span> <span class="s">'ORDER-127'</span>,
+    <span class="a">paymentMethod:</span> <span class="s">'invoice'</span>,
+    <span class="a">options:</span> <span class="k">new</span> <span class="t">PaytabsCheckoutOptions</span>(<span class="a">tokenise:</span> <span class="n">2</span>),
+);
+
+<span class="v">$session</span> = <span class="v">$gateway</span>-&gt;<span class="fn">createCheckoutSession</span>(<span class="v">$request</span>);
+
+<span class="c">// $session-&gt;reference is the tran_ref</span></code></pre>
+        </figure>
       </article>
-      <article class="gw reveal" style="--gw:var(--paymob)">
-        <header><span class="gw-tag">Paymob</span><span class="gw-sig">HMAC-SHA512</span></header>
-        <h3>Iframe flow</h3>
-        <p>Runs the auth → order → payment-key handshake in one call and returns the iframe URL. Integration &amp; iframe ids come from credentials or per-call options.</p>
-        <footer>auth → order → payment key → iframe</footer>
+      <article class="pt-row reveal" style="--g:var(--paypal)">
+        <div class="pt-text">
+          <div class="pt-kicker">
+            <span class="gw-tag" style="--gw:var(--paypal)">PayPal</span>
+            <span class="gw-sig">OAuth 2.0</span>
+          </div>
+          <h3>Orders v2 checkout</h3>
+          <p>Create an order and redirect the buyer to approve it, then capture or authorize the approved order. Cards vault through the setup-token → payment-token flow, reconciliation runs on Transaction Search, and webhooks verify through PayPal.</p>
+          <div class="pt-chips">
+            <span class="pt-chip">order</span>
+            <span class="pt-chip">approval redirect</span>
+            <span class="pt-chip">capture</span>
+            <span class="pt-chip">authorize</span>
+            <span class="pt-chip">reverse</span>
+            <span class="pt-chip">vault</span>
+            <span class="pt-chip">MIT/CIT</span>
+            <span class="pt-chip">reporting</span>
+          </div>
+          <a class="pt-link" href="./guide.html">Read the actions <span aria-hidden="true">&rarr;</span></a>
+        </div>
+        <figure class="code big">
+          <figcaption><span class="win" aria-hidden="true"><i></i><i></i><i></i></span><span class="file">paypal.php</span></figcaption>
+<pre><code><span class="v">$request</span> = <span class="k">new</span> <span class="t">CheckoutSessionRequest</span>(
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'USD'</span>),
+    <span class="a">orderReference:</span> <span class="s">'ORDER-128'</span>,
+    <span class="a">returnUrl:</span> <span class="s">'https://shop.test/return'</span>,
+    <span class="a">paymentMethod:</span> <span class="s">'authorize'</span>,
+);
+
+<span class="v">$session</span> = <span class="v">$gateway</span>-&gt;<span class="fn">createCheckoutSession</span>(<span class="v">$request</span>);
+
+<span class="c">// redirect to $session-&gt;redirectUrl</span></code></pre>
+        </figure>
       </article>
-      <article class="gw reveal" style="--gw:var(--paylink)">
-        <header><span class="gw-tag">PayLink</span><span class="gw-sig">HMAC-SHA256</span></header>
-        <h3>Invoice link</h3>
-        <p>Create an invoice, then redirect to the hosted checkout or embed it in an iframe, and reconcile later by invoice id. Supports settle, refund, void, reverse-authorization, and card tokenization — store a card in the TMS-backed vault, charge it as a stored credential, and revoke it.</p>
-        <footer>invoice · iframe · settle · refund · reverse · vault · charge</footer>
-      </article>
-      <article class="gw reveal" style="--gw:var(--paytabs)">
-        <header><span class="gw-tag">PayTabs</span><span class="gw-sig">Server key</span></header>
-        <h3>Every integration</h3>
-        <p>Hosted page, emailable Invoice, reusable PayLink, iframe Managed Form, or an Own Form charge of a payment token. Saves card tokens for recurring / customer-initiated charges, starts repeat-billing agreements, splits settled funds across beneficiaries, and verifies the signed IPN callback.</p>
-        <footer>hosted · invoice · paylink · managed · own form · tokens · recurring · split</footer>
-      </article>
-      <article class="gw reveal" style="--gw:var(--paypal)">
-        <header><span class="gw-tag">PayPal</span><span class="gw-sig">OAuth 2.0</span></header>
-        <h3>Orders v2 checkout</h3>
-        <p>Create an order and redirect the buyer to approve it, then capture or authorize the approved order with <code>charge</code>. Captures, voids, reversals and refunds act on the payment resources; cards vault via the setup-token → payment-token flow for card-on-file charges, reconciliation runs through the Transaction Search (Reporting) API, and webhooks verify through PayPal's signature API.</p>
-        <footer>order · approval redirect · capture · authorize · reverse · vault · MIT/CIT · reporting</footer>
-      </article>
-      <article class="gw reveal" style="--gw:var(--mpgs)">
-        <header><span class="gw-tag">Mastercard MPGS</span><span class="gw-sig">HTTP Basic</span></header>
-        <h3>Order &amp; transaction</h3>
-        <p>Initiate a Hosted Checkout session, then PAY or AUTHORIZE it against the merchant-assigned order and transaction ids. Quote a DCC rate via a payment-options inquiry and charge merchant-decrypted Apple Pay / Google Pay wallets. Captures, refunds, voids and reversals settle against the order; cards tokenize for stored-credential charges, 3-D Secure runs through the authentication operations, the order's transaction history reconciles by reference, and webhooks verify with the notification secret.</p>
-        <footer>hosted checkout · DCC · pay/authorize · wallet · capture · refund · void · 3-DS · token · MIT/CIT · history</footer>
-      </article>
-      <article class="gw reveal" style="--gw:var(--authorizenet)">
-        <header><span class="gw-tag">Authorize.Net</span><span class="gw-sig">Name / Transaction Key</span></header>
-        <h3>Accept.js charge</h3>
-        <p>Charge an Accept.js opaque-data token — the card is tokenised in the browser, so no PAN reaches your server — then capture, refund or void by transaction id. Vault the same token into a CIM profile for MIT/CIT stored-credential charges, look up a transaction for reconciliation, and verify the HMAC-SHA512 webhook signature.</p>
-        <footer>Accept.js charge · capture · refund · void · CIM vault · getTransaction · webhook</footer>
-      </article>
-      <article class="gw reveal" style="--gw:var(--airwallex)">
-        <header><span class="gw-tag">Airwallex</span><span class="gw-sig">API-access login</span></header>
-        <h3>PaymentIntents</h3>
-        <p>Create a PaymentIntent and hand its id + client secret to the Airwallex element, which collects the card and confirms in the browser. Capture a manual-capture hold, refund a captured intent, charge a saved card against a stored PaymentConsent, reconcile by intent id or merchant order id with full transaction history, and verify the HMAC-SHA256 webhook signature.</p>
-        <footer>PaymentIntent · client secret · capture · refund · consent charge · getTransaction · history · webhook</footer>
-      </article>
-      <article class="gw reveal" style="--gw:var(--tamara)">
-        <header><span class="gw-tag">Tamara</span><span class="gw-sig">Bearer API token</span></header>
-        <h3>Buy now, pay later</h3>
-        <p>Start a hosted BNPL checkout and redirect the customer; after they approve, authorise the order, then capture on fulfilment. Cancel or reverse before capture, refund after, look up an order by id or merchant reference, and verify the webhook's shared authorization header.</p>
-        <footer>hosted redirect · authorise · capture · cancel · reverse · refund · lookup · webhook</footer>
-      </article>
+    </div>
+
+    <div class="pt-rest reveal">
+      <p class="pt-rest-label">Also shipping</p>
+      <div class="pt-rest-grid">
+        <a class="pt-rest-item" href="./guide.html" style="--g:var(--fawry)"><strong><i aria-hidden="true"></i>Fawry</strong><em>SHA-256</em></a>
+        <a class="pt-rest-item" href="./guide.html" style="--g:var(--paymob)"><strong><i aria-hidden="true"></i>Paymob</strong><em>HMAC-SHA512</em></a>
+        <a class="pt-rest-item" href="./guide.html" style="--g:var(--paylink)"><strong><i aria-hidden="true"></i>PayLink</strong><em>HMAC-SHA256</em></a>
+        <a class="pt-rest-item" href="./guide.html" style="--g:var(--mpgs)"><strong><i aria-hidden="true"></i>Mastercard MPGS</strong><em>HTTP Basic</em></a>
+        <a class="pt-rest-item" href="./guide.html" style="--g:var(--authorizenet)"><strong><i aria-hidden="true"></i>Authorize.Net</strong><em>Name / Transaction Key</em></a>
+        <a class="pt-rest-item" href="./guide.html" style="--g:var(--airwallex)"><strong><i aria-hidden="true"></i>Airwallex</strong><em>API-access login</em></a>
+        <a class="pt-rest-item" href="./guide.html" style="--g:var(--tamara)"><strong><i aria-hidden="true"></i>Tamara</strong><em>Bearer API token</em></a>
+      </div>
     </div>
   </section>
 
+
   <!-- ─────────────────────────  MATRIX  ───────────────────────── -->
   <section id="matrix" class="section">
-    <div class="matrix-layout">
     <div class="section-head reveal">
       <span class="section-no">03</span>
       <h2>The operation matrix.</h2>
       <p>What each driver supports. Anything unsupported throws — the surface never lies.</p>
     </div>
 
-    <div class="matrix-col">
-    <div class="matrix-wrap reveal">
-      <table class="matrix">
-        <thead>
-          <tr>
-            <th scope="col">Operation</th>
-            <th scope="col">CyberSource&nbsp;UC</th>
-            <th scope="col">Fawry</th>
-            <th scope="col">Paymob</th>
-            <th scope="col">PayLink</th>
-            <th scope="col">PayTabs</th>
-            <th scope="col">PayPal</th>
-            <th scope="col">Mastercard&nbsp;MPGS</th>
-            <th scope="col">Authorize.Net</th>
-            <th scope="col">Airwallex</th>
-            <th scope="col">Tamara</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><th scope="row"><code>createCheckoutSession</code></th><td class="y">capture context / orchestrated</td><td class="y">hosted / card / wallet</td><td class="y">iframe flow</td><td class="y">invoice / iframe</td><td class="y">hosted / invoice / paylink / managed</td><td class="y">order → approval</td><td class="y">hosted checkout</td><td class="n">—</td><td class="y">PaymentIntent</td><td class="y">hosted BNPL redirect</td></tr>
-          <tr><th scope="row"><code>requestDccRate</code> <small>(Dynamic Currency Conversion)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">payment-options inquiry</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
-          <tr><th scope="row"><code>charge</code> <small>(transient token)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">Own Form</td><td class="y">approved order</td><td class="y">session</td><td class="y">Accept.js</td><td class="y">confirm</td><td class="n">—</td></tr>
-          <tr><th scope="row"><code>chargeWallet</code> <small>(Apple Pay / Google Pay)</small></th><td class="y">tokenizedCard / fluidData</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">merchant-decrypted</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
-          <tr><th scope="row"><code>confirmOrchestratedPayment</code> <small>(verify result JWT)</small></th><td class="y">RS256 · flx.jwk</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
-          <tr><th scope="row"><code>createMicroformSession</code> <small>(Flex Microform card fields)</small></th><td class="y">/microform/v2/sessions</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
-          <tr><th scope="row"><code>capture</code></th><td class="y">✓</td><td class="y">Auth/Capture</td><td class="y">✓</td><td class="y">settle</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">after authorise</td></tr>
-          <tr><th scope="row"><code>refund</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
-          <tr><th scope="row"><code>void</code></th><td class="y">✓</td><td class="y">cancel auth</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">cancel</td><td class="y">cancel</td></tr>
-          <tr><th scope="row"><code>reverseAuthorization</code></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="y">release</td><td class="y">void of auth</td><td class="y">✓</td><td class="n">—</td><td class="y">cancel</td><td class="y">cancel</td></tr>
-          <tr><th scope="row"><code>setupPayerAuth</code> <small>(3-DS device data collection)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
-          <tr><th scope="row"><code>enroll</code> / <code>validatePayerAuth</code> <small>(3-DS)</small></th><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
-          <tr><th scope="row"><code>vault</code> / <code>chargeStoredCredential</code></th><td class="y">TMS · MIT/CIT</td><td class="n">—</td><td class="n">—</td><td class="y">vault · charge · revoke</td><td class="y">token · MIT/CIT</td><td class="y">vault · MIT/CIT</td><td class="y">token · MIT/CIT</td><td class="y">CIM · MIT/CIT</td><td class="y">consent charge</td><td class="n">—</td></tr>
-          <tr><th scope="row"><code>getTransaction</code> / <code>searchTransaction</code> <small>(+ full history)</small></th><td class="y">✓ &middot; history</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">query</td><td class="y">order &middot; reporting history</td><td class="y">order &middot; history</td><td class="y">transaction details</td><td class="y">intent &middot; history</td><td class="y">order / reference</td></tr>
-          <tr><th scope="row"><code>verifyWebhook</code></th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">API</td><td class="y">secret</td><td class="y">HMAC-SHA512</td><td class="y">HMAC-SHA256</td><td class="y">shared header</td></tr>
-        </tbody>
-      </table>
+    <div class="of-legend reveal">
+      <span style="--g:var(--cyber)"><i aria-hidden="true"></i>CyberSource UC</span>
+      <span style="--g:var(--fawry)"><i aria-hidden="true"></i>Fawry</span>
+      <span style="--g:var(--paymob)"><i aria-hidden="true"></i>Paymob</span>
+      <span style="--g:var(--paylink)"><i aria-hidden="true"></i>PayLink</span>
+      <span style="--g:var(--paytabs)"><i aria-hidden="true"></i>PayTabs</span>
+      <span style="--g:var(--paypal)"><i aria-hidden="true"></i>PayPal</span>
+      <span style="--g:var(--mpgs)"><i aria-hidden="true"></i>Mastercard MPGS</span>
+      <span style="--g:var(--authorizenet)"><i aria-hidden="true"></i>Authorize.Net</span>
+      <span style="--g:var(--airwallex)"><i aria-hidden="true"></i>Airwallex</span>
+      <span style="--g:var(--tamara)"><i aria-hidden="true"></i>Tamara</span>
     </div>
 
-    <div class="deck reveal" data-deck>
-      <div class="deck-bar">
-        <span class="deck-count"><b data-deck-cur>1</b> / 10</span>
-        <span class="deck-hint">tap a card to cycle</span>
+    <div class="of reveal">
+      <div class="of-row">
+        <div class="of-name"><code>createCheckoutSession</code></div>
+        <div class="of-dots">
+          <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — capture context / orchestrated">CyberSource</span>
+          <span class="of-dot" style="--g:var(--fawry)" title="Fawry — hosted / card / wallet">Fawry</span>
+          <span class="of-dot" style="--g:var(--paymob)" title="Paymob — iframe flow">Paymob</span>
+          <span class="of-dot" style="--g:var(--paylink)" title="PayLink — invoice / iframe">PayLink</span>
+          <span class="of-dot" style="--g:var(--paytabs)" title="PayTabs — hosted / invoice / paylink / managed">PayTabs</span>
+          <span class="of-dot" style="--g:var(--paypal)" title="PayPal — order → approval">PayPal</span>
+          <span class="of-dot" style="--g:var(--mpgs)" title="Mastercard MPGS — hosted checkout">MPGS</span>
+          <span class="of-dot off" style="--g:var(--authorizenet)" title="Authorize.Net — not implemented">Auth.Net<span class="vh"> — not implemented</span></span>
+          <span class="of-dot" style="--g:var(--airwallex)" title="Airwallex — PaymentIntent">Airwallex</span>
+          <span class="of-dot" style="--g:var(--tamara)" title="Tamara — hosted BNPL redirect">Tamara</span>
+        </div>
       </div>
-      <div class="deck-stack">
-        <article class="deck-card" data-pos="0" style="--gw:var(--cyber)">
-          <header class="deck-card-head"><span class="gw-tag">CyberSource UC</span><span class="gw-sig">HMAC HTTP-Signature</span></header>
-          <dl class="deck-ops">
-            <div class="op"><dt>createCheckoutSession</dt><dd>capture context</dd></div>
-            <div class="op"><dt>charge</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>chargeWallet</dt><dd>tokenizedCard / fluidData</dd></div>
-            <div class="op"><dt>confirmOrchestratedPayment</dt><dd>verify result JWT</dd></div>
-            <div class="op"><dt>createMicroformSession</dt><dd>Flex Microform card fields</dd></div>
-            <div class="op"><dt>capture</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>refund</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>void</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>reverseAuthorization</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>setupPayerAuth</dt><dd>device data collection</dd></div>
-            <div class="op"><dt>enroll / validatePayerAuth</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>vault / chargeStoredCredential</dt><dd>TMS &middot; MIT/CIT</dd></div>
-            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>&#10003; &middot; full history</dd></div>
-            <div class="op"><dt>verifyWebhook</dt><dd>&#10003;</dd></div>
-          </dl>
-        </article>
-        <article class="deck-card" data-pos="1" style="--gw:var(--fawry)">
-          <header class="deck-card-head"><span class="gw-tag">Fawry</span><span class="gw-sig">SHA-256</span></header>
-          <dl class="deck-ops">
-            <div class="op"><dt>createCheckoutSession</dt><dd>hosted / card / wallet</dd></div>
-            <div class="op off"><dt>charge</dt><dd>&mdash;</dd></div>
-            <div class="op"><dt>capture</dt><dd>Auth/Capture</dd></div>
-            <div class="op"><dt>refund</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>void</dt><dd>cancel auth</dd></div>
-            <div class="op off"><dt>reverseAuthorization</dt><dd>&mdash;</dd></div>
-            <div class="op off"><dt>enroll / validatePayerAuth</dt><dd>&mdash;</dd></div>
-            <div class="op off"><dt>vault / chargeStoredCredential</dt><dd>&mdash;</dd></div>
-            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>verifyWebhook</dt><dd>&#10003;</dd></div>
-          </dl>
-        </article>
-        <article class="deck-card" data-pos="2" style="--gw:var(--paymob)">
-          <header class="deck-card-head"><span class="gw-tag">Paymob</span><span class="gw-sig">HMAC-SHA512</span></header>
-          <dl class="deck-ops">
-            <div class="op"><dt>createCheckoutSession</dt><dd>iframe flow</dd></div>
-            <div class="op off"><dt>charge</dt><dd>&mdash;</dd></div>
-            <div class="op"><dt>capture</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>refund</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>void</dt><dd>&#10003;</dd></div>
-            <div class="op off"><dt>reverseAuthorization</dt><dd>&mdash;</dd></div>
-            <div class="op off"><dt>enroll / validatePayerAuth</dt><dd>&mdash;</dd></div>
-            <div class="op off"><dt>vault / chargeStoredCredential</dt><dd>&mdash;</dd></div>
-            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>verifyWebhook</dt><dd>&#10003;</dd></div>
-          </dl>
-        </article>
-        <article class="deck-card" data-pos="3" style="--gw:var(--paylink)">
-          <header class="deck-card-head"><span class="gw-tag">PayLink</span><span class="gw-sig">HMAC-SHA256</span></header>
-          <dl class="deck-ops">
-            <div class="op"><dt>createCheckoutSession</dt><dd>invoice / iframe</dd></div>
-            <div class="op off"><dt>charge</dt><dd>&mdash;</dd></div>
-            <div class="op"><dt>capture</dt><dd>settle</dd></div>
-            <div class="op"><dt>refund</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>void</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>reverseAuthorization</dt><dd>&#10003;</dd></div>
-            <div class="op off"><dt>enroll / validatePayerAuth</dt><dd>&mdash;</dd></div>
-            <div class="op"><dt>vault / chargeStoredCredential</dt><dd>vault &middot; charge &middot; revoke</dd></div>
-            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>verifyWebhook</dt><dd>&#10003;</dd></div>
-          </dl>
-        </article>
-        <article class="deck-card" data-pos="4" style="--gw:var(--paytabs)">
-          <header class="deck-card-head"><span class="gw-tag">PayTabs</span><span class="gw-sig">Server key</span></header>
-          <dl class="deck-ops">
-            <div class="op"><dt>createCheckoutSession</dt><dd>hosted / invoice / paylink / managed</dd></div>
-            <div class="op"><dt>charge</dt><dd>Own Form</dd></div>
-            <div class="op"><dt>capture</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>refund</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>void</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>reverseAuthorization</dt><dd>release</dd></div>
-            <div class="op off"><dt>enroll / validatePayerAuth</dt><dd>&mdash;</dd></div>
-            <div class="op"><dt>vault / chargeStoredCredential</dt><dd>token &middot; MIT/CIT</dd></div>
-            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>query</dd></div>
-            <div class="op"><dt>verifyWebhook</dt><dd>&#10003;</dd></div>
-          </dl>
-        </article>
-        <article class="deck-card" data-pos="5" style="--gw:var(--paypal)">
-          <header class="deck-card-head"><span class="gw-tag">PayPal</span><span class="gw-sig">OAuth 2.0</span></header>
-          <dl class="deck-ops">
-            <div class="op"><dt>createCheckoutSession</dt><dd>order &rarr; approval</dd></div>
-            <div class="op"><dt>charge</dt><dd>approved order</dd></div>
-            <div class="op"><dt>capture</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>refund</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>void</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>reverseAuthorization</dt><dd>void of auth</dd></div>
-            <div class="op off"><dt>enroll / validatePayerAuth</dt><dd>&mdash;</dd></div>
-            <div class="op"><dt>vault / chargeStoredCredential</dt><dd>vault &middot; MIT/CIT</dd></div>
-            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>order &middot; reporting history</dd></div>
-            <div class="op"><dt>verifyWebhook</dt><dd>&#10003;</dd></div>
-          </dl>
-        </article>
-        <article class="deck-card" data-pos="6" style="--gw:var(--mpgs)">
-          <header class="deck-card-head"><span class="gw-tag">Mastercard MPGS</span><span class="gw-sig">HTTP Basic</span></header>
-          <dl class="deck-ops">
-            <div class="op"><dt>createCheckoutSession</dt><dd>hosted checkout</dd></div>
-            <div class="op"><dt>requestDccRate</dt><dd>payment-options inquiry</dd></div>
-            <div class="op"><dt>charge</dt><dd>session</dd></div>
-            <div class="op"><dt>chargeWallet</dt><dd>merchant-decrypted</dd></div>
-            <div class="op"><dt>capture</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>refund</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>void</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>reverseAuthorization</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>enroll / validatePayerAuth</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>vault / chargeStoredCredential</dt><dd>token &middot; MIT/CIT</dd></div>
-            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>order &middot; history</dd></div>
-            <div class="op"><dt>verifyWebhook</dt><dd>secret</dd></div>
-          </dl>
-        </article>
-        <article class="deck-card" data-pos="7" style="--gw:var(--authorizenet)">
-          <header class="deck-card-head"><span class="gw-tag">Authorize.Net</span><span class="gw-sig">Name / Transaction Key</span></header>
-          <dl class="deck-ops">
-            <div class="op off"><dt>createCheckoutSession</dt><dd>&mdash;</dd></div>
-            <div class="op"><dt>charge</dt><dd>Accept.js</dd></div>
-            <div class="op"><dt>capture</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>refund</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>void</dt><dd>&#10003;</dd></div>
-            <div class="op off"><dt>reverseAuthorization</dt><dd>&mdash;</dd></div>
-            <div class="op off"><dt>enroll / validatePayerAuth</dt><dd>&mdash;</dd></div>
-            <div class="op"><dt>vault / chargeStoredCredential</dt><dd>CIM &middot; MIT/CIT</dd></div>
-            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>transaction details</dd></div>
-            <div class="op"><dt>verifyWebhook</dt><dd>HMAC-SHA512</dd></div>
-          </dl>
-        </article>
-        <article class="deck-card" data-pos="8" style="--gw:var(--airwallex)">
-          <header class="deck-card-head"><span class="gw-tag">Airwallex</span><span class="gw-sig">API-access login</span></header>
-          <dl class="deck-ops">
-            <div class="op"><dt>createCheckoutSession</dt><dd>PaymentIntent</dd></div>
-            <div class="op"><dt>charge</dt><dd>confirm</dd></div>
-            <div class="op"><dt>capture</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>refund</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>void</dt><dd>cancel</dd></div>
-            <div class="op"><dt>reverseAuthorization</dt><dd>cancel</dd></div>
-            <div class="op off"><dt>enroll / validatePayerAuth</dt><dd>&mdash;</dd></div>
-            <div class="op"><dt>vault / chargeStoredCredential</dt><dd>PaymentConsent</dd></div>
-            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>intent &middot; history</dd></div>
-            <div class="op"><dt>verifyWebhook</dt><dd>HMAC-SHA256</dd></div>
-          </dl>
-        </article>
-        <article class="deck-card" data-pos="9" style="--gw:var(--tamara)">
-          <header class="deck-card-head"><span class="gw-tag">Tamara</span><span class="gw-sig">Bearer API token</span></header>
-          <dl class="deck-ops">
-            <div class="op"><dt>createCheckoutSession</dt><dd>hosted BNPL redirect</dd></div>
-            <div class="op off"><dt>charge</dt><dd>&mdash;</dd></div>
-            <div class="op"><dt>capture</dt><dd>after authorise</dd></div>
-            <div class="op"><dt>refund</dt><dd>&#10003;</dd></div>
-            <div class="op"><dt>void</dt><dd>cancel</dd></div>
-            <div class="op"><dt>reverseAuthorization</dt><dd>cancel</dd></div>
-            <div class="op off"><dt>enroll / validatePayerAuth</dt><dd>&mdash;</dd></div>
-            <div class="op off"><dt>vault / chargeStoredCredential</dt><dd>&mdash;</dd></div>
-            <div class="op"><dt>getTransaction / searchTransaction</dt><dd>order / reference</dd></div>
-            <div class="op"><dt>verifyWebhook</dt><dd>shared header</dd></div>
-          </dl>
-        </article>
+      <div class="of-row">
+        <div class="of-name"><code>requestDccRate</code><small>Dynamic Currency Conversion</small></div>
+        <div class="of-dots">
+          <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — ✓">CyberSource</span>
+          <span class="of-dot off" style="--g:var(--fawry)" title="Fawry — not implemented">Fawry<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paymob)" title="Paymob — not implemented">Paymob<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paylink)" title="PayLink — not implemented">PayLink<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paytabs)" title="PayTabs — not implemented">PayTabs<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paypal)" title="PayPal — not implemented">PayPal<span class="vh"> — not implemented</span></span>
+          <span class="of-dot" style="--g:var(--mpgs)" title="Mastercard MPGS — payment-options inquiry">MPGS</span>
+          <span class="of-dot off" style="--g:var(--authorizenet)" title="Authorize.Net — not implemented">Auth.Net<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--airwallex)" title="Airwallex — not implemented">Airwallex<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--tamara)" title="Tamara — not implemented">Tamara<span class="vh"> — not implemented</span></span>
+        </div>
       </div>
-    </div>
-    </div>
+      <div class="of-row">
+        <div class="of-name"><code>charge</code><small>transient token</small></div>
+        <div class="of-dots">
+          <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — ✓">CyberSource</span>
+          <span class="of-dot off" style="--g:var(--fawry)" title="Fawry — not implemented">Fawry<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paymob)" title="Paymob — not implemented">Paymob<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paylink)" title="PayLink — not implemented">PayLink<span class="vh"> — not implemented</span></span>
+          <span class="of-dot" style="--g:var(--paytabs)" title="PayTabs — Own Form">PayTabs</span>
+          <span class="of-dot" style="--g:var(--paypal)" title="PayPal — approved order">PayPal</span>
+          <span class="of-dot" style="--g:var(--mpgs)" title="Mastercard MPGS — session">MPGS</span>
+          <span class="of-dot" style="--g:var(--authorizenet)" title="Authorize.Net — Accept.js">Auth.Net</span>
+          <span class="of-dot" style="--g:var(--airwallex)" title="Airwallex — confirm">Airwallex</span>
+          <span class="of-dot off" style="--g:var(--tamara)" title="Tamara — not implemented">Tamara<span class="vh"> — not implemented</span></span>
+        </div>
+      </div>
+      <div class="of-row">
+        <div class="of-name"><code>chargeWallet</code><small>Apple Pay / Google Pay</small></div>
+        <div class="of-dots">
+          <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — tokenizedCard / fluidData">CyberSource</span>
+          <span class="of-dot off" style="--g:var(--fawry)" title="Fawry — not implemented">Fawry<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paymob)" title="Paymob — not implemented">Paymob<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paylink)" title="PayLink — not implemented">PayLink<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paytabs)" title="PayTabs — not implemented">PayTabs<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paypal)" title="PayPal — not implemented">PayPal<span class="vh"> — not implemented</span></span>
+          <span class="of-dot" style="--g:var(--mpgs)" title="Mastercard MPGS — merchant-decrypted">MPGS</span>
+          <span class="of-dot off" style="--g:var(--authorizenet)" title="Authorize.Net — not implemented">Auth.Net<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--airwallex)" title="Airwallex — not implemented">Airwallex<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--tamara)" title="Tamara — not implemented">Tamara<span class="vh"> — not implemented</span></span>
+        </div>
+      </div>
+      <div class="of-row">
+        <div class="of-name"><code>confirmOrchestratedPayment</code><small>verify result JWT</small></div>
+        <div class="of-dots">
+          <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — RS256 · flx.jwk">CyberSource</span>
+          <span class="of-dot off" style="--g:var(--fawry)" title="Fawry — not implemented">Fawry<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paymob)" title="Paymob — not implemented">Paymob<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paylink)" title="PayLink — not implemented">PayLink<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paytabs)" title="PayTabs — not implemented">PayTabs<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paypal)" title="PayPal — not implemented">PayPal<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--mpgs)" title="Mastercard MPGS — not implemented">MPGS<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--authorizenet)" title="Authorize.Net — not implemented">Auth.Net<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--airwallex)" title="Airwallex — not implemented">Airwallex<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--tamara)" title="Tamara — not implemented">Tamara<span class="vh"> — not implemented</span></span>
+        </div>
+      </div>
+      <div class="of-row">
+        <div class="of-name"><code>createMicroformSession</code><small>Flex Microform card fields</small></div>
+        <div class="of-dots">
+          <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — /microform/v2/sessions">CyberSource</span>
+          <span class="of-dot off" style="--g:var(--fawry)" title="Fawry — not implemented">Fawry<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paymob)" title="Paymob — not implemented">Paymob<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paylink)" title="PayLink — not implemented">PayLink<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paytabs)" title="PayTabs — not implemented">PayTabs<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paypal)" title="PayPal — not implemented">PayPal<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--mpgs)" title="Mastercard MPGS — not implemented">MPGS<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--authorizenet)" title="Authorize.Net — not implemented">Auth.Net<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--airwallex)" title="Airwallex — not implemented">Airwallex<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--tamara)" title="Tamara — not implemented">Tamara<span class="vh"> — not implemented</span></span>
+        </div>
+      </div>
+      <div class="of-row">
+        <div class="of-name"><code>capture</code></div>
+        <div class="of-dots">
+          <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — ✓">CyberSource</span>
+          <span class="of-dot" style="--g:var(--fawry)" title="Fawry — Auth/Capture">Fawry</span>
+          <span class="of-dot" style="--g:var(--paymob)" title="Paymob — ✓">Paymob</span>
+          <span class="of-dot" style="--g:var(--paylink)" title="PayLink — settle">PayLink</span>
+          <span class="of-dot" style="--g:var(--paytabs)" title="PayTabs — ✓">PayTabs</span>
+          <span class="of-dot" style="--g:var(--paypal)" title="PayPal — ✓">PayPal</span>
+          <span class="of-dot" style="--g:var(--mpgs)" title="Mastercard MPGS — ✓">MPGS</span>
+          <span class="of-dot" style="--g:var(--authorizenet)" title="Authorize.Net — ✓">Auth.Net</span>
+          <span class="of-dot" style="--g:var(--airwallex)" title="Airwallex — ✓">Airwallex</span>
+          <span class="of-dot" style="--g:var(--tamara)" title="Tamara — after authorise">Tamara</span>
+        </div>
+      </div>
+      <div class="of-row">
+        <div class="of-name"><code>refund</code></div>
+        <div class="of-dots">
+          <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — ✓">CyberSource</span>
+          <span class="of-dot" style="--g:var(--fawry)" title="Fawry — ✓">Fawry</span>
+          <span class="of-dot" style="--g:var(--paymob)" title="Paymob — ✓">Paymob</span>
+          <span class="of-dot" style="--g:var(--paylink)" title="PayLink — ✓">PayLink</span>
+          <span class="of-dot" style="--g:var(--paytabs)" title="PayTabs — ✓">PayTabs</span>
+          <span class="of-dot" style="--g:var(--paypal)" title="PayPal — ✓">PayPal</span>
+          <span class="of-dot" style="--g:var(--mpgs)" title="Mastercard MPGS — ✓">MPGS</span>
+          <span class="of-dot" style="--g:var(--authorizenet)" title="Authorize.Net — ✓">Auth.Net</span>
+          <span class="of-dot" style="--g:var(--airwallex)" title="Airwallex — ✓">Airwallex</span>
+          <span class="of-dot" style="--g:var(--tamara)" title="Tamara — ✓">Tamara</span>
+        </div>
+      </div>
+      <div class="of-row">
+        <div class="of-name"><code>void</code></div>
+        <div class="of-dots">
+          <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — ✓">CyberSource</span>
+          <span class="of-dot" style="--g:var(--fawry)" title="Fawry — cancel auth">Fawry</span>
+          <span class="of-dot" style="--g:var(--paymob)" title="Paymob — ✓">Paymob</span>
+          <span class="of-dot" style="--g:var(--paylink)" title="PayLink — ✓">PayLink</span>
+          <span class="of-dot" style="--g:var(--paytabs)" title="PayTabs — ✓">PayTabs</span>
+          <span class="of-dot" style="--g:var(--paypal)" title="PayPal — ✓">PayPal</span>
+          <span class="of-dot" style="--g:var(--mpgs)" title="Mastercard MPGS — ✓">MPGS</span>
+          <span class="of-dot" style="--g:var(--authorizenet)" title="Authorize.Net — ✓">Auth.Net</span>
+          <span class="of-dot" style="--g:var(--airwallex)" title="Airwallex — cancel">Airwallex</span>
+          <span class="of-dot" style="--g:var(--tamara)" title="Tamara — cancel">Tamara</span>
+        </div>
+      </div>
+      <div class="of-row">
+        <div class="of-name"><code>reverseAuthorization</code></div>
+        <div class="of-dots">
+          <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — ✓">CyberSource</span>
+          <span class="of-dot off" style="--g:var(--fawry)" title="Fawry — not implemented">Fawry<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paymob)" title="Paymob — not implemented">Paymob<span class="vh"> — not implemented</span></span>
+          <span class="of-dot" style="--g:var(--paylink)" title="PayLink — ✓">PayLink</span>
+          <span class="of-dot" style="--g:var(--paytabs)" title="PayTabs — release">PayTabs</span>
+          <span class="of-dot" style="--g:var(--paypal)" title="PayPal — void of auth">PayPal</span>
+          <span class="of-dot" style="--g:var(--mpgs)" title="Mastercard MPGS — ✓">MPGS</span>
+          <span class="of-dot off" style="--g:var(--authorizenet)" title="Authorize.Net — not implemented">Auth.Net<span class="vh"> — not implemented</span></span>
+          <span class="of-dot" style="--g:var(--airwallex)" title="Airwallex — cancel">Airwallex</span>
+          <span class="of-dot" style="--g:var(--tamara)" title="Tamara — cancel">Tamara</span>
+        </div>
+      </div>
+      <div class="of-row">
+        <div class="of-name"><code>setupPayerAuth</code><small>3-DS device data collection</small></div>
+        <div class="of-dots">
+          <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — ✓">CyberSource</span>
+          <span class="of-dot off" style="--g:var(--fawry)" title="Fawry — not implemented">Fawry<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paymob)" title="Paymob — not implemented">Paymob<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paylink)" title="PayLink — not implemented">PayLink<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paytabs)" title="PayTabs — not implemented">PayTabs<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paypal)" title="PayPal — not implemented">PayPal<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--mpgs)" title="Mastercard MPGS — not implemented">MPGS<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--authorizenet)" title="Authorize.Net — not implemented">Auth.Net<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--airwallex)" title="Airwallex — not implemented">Airwallex<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--tamara)" title="Tamara — not implemented">Tamara<span class="vh"> — not implemented</span></span>
+        </div>
+      </div>
+      <div class="of-row">
+        <div class="of-name"><code>enroll / validatePayerAuth</code><small>3-DS</small></div>
+        <div class="of-dots">
+          <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — ✓">CyberSource</span>
+          <span class="of-dot off" style="--g:var(--fawry)" title="Fawry — not implemented">Fawry<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paymob)" title="Paymob — not implemented">Paymob<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paylink)" title="PayLink — not implemented">PayLink<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paytabs)" title="PayTabs — not implemented">PayTabs<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paypal)" title="PayPal — not implemented">PayPal<span class="vh"> — not implemented</span></span>
+          <span class="of-dot" style="--g:var(--mpgs)" title="Mastercard MPGS — ✓">MPGS</span>
+          <span class="of-dot off" style="--g:var(--authorizenet)" title="Authorize.Net — not implemented">Auth.Net<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--airwallex)" title="Airwallex — not implemented">Airwallex<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--tamara)" title="Tamara — not implemented">Tamara<span class="vh"> — not implemented</span></span>
+        </div>
+      </div>
+      <div class="of-row">
+        <div class="of-name"><code>vault / chargeStoredCredential</code></div>
+        <div class="of-dots">
+          <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — TMS · MIT/CIT">CyberSource</span>
+          <span class="of-dot off" style="--g:var(--fawry)" title="Fawry — not implemented">Fawry<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paymob)" title="Paymob — not implemented">Paymob<span class="vh"> — not implemented</span></span>
+          <span class="of-dot" style="--g:var(--paylink)" title="PayLink — vault · charge · revoke">PayLink</span>
+          <span class="of-dot" style="--g:var(--paytabs)" title="PayTabs — token · MIT/CIT">PayTabs</span>
+          <span class="of-dot" style="--g:var(--paypal)" title="PayPal — vault · MIT/CIT">PayPal</span>
+          <span class="of-dot" style="--g:var(--mpgs)" title="Mastercard MPGS — token · MIT/CIT">MPGS</span>
+          <span class="of-dot" style="--g:var(--authorizenet)" title="Authorize.Net — CIM · MIT/CIT">Auth.Net</span>
+          <span class="of-dot" style="--g:var(--airwallex)" title="Airwallex — consent charge">Airwallex</span>
+          <span class="of-dot off" style="--g:var(--tamara)" title="Tamara — not implemented">Tamara<span class="vh"> — not implemented</span></span>
+        </div>
+      </div>
+      <div class="of-row">
+        <div class="of-name"><code>getTransaction / searchTransaction</code><small>+ full history</small></div>
+        <div class="of-dots">
+          <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — ✓ · history">CyberSource</span>
+          <span class="of-dot" style="--g:var(--fawry)" title="Fawry — ✓">Fawry</span>
+          <span class="of-dot" style="--g:var(--paymob)" title="Paymob — ✓">Paymob</span>
+          <span class="of-dot" style="--g:var(--paylink)" title="PayLink — ✓">PayLink</span>
+          <span class="of-dot" style="--g:var(--paytabs)" title="PayTabs — query">PayTabs</span>
+          <span class="of-dot" style="--g:var(--paypal)" title="PayPal — order · reporting history">PayPal</span>
+          <span class="of-dot" style="--g:var(--mpgs)" title="Mastercard MPGS — order · history">MPGS</span>
+          <span class="of-dot" style="--g:var(--authorizenet)" title="Authorize.Net — transaction details">Auth.Net</span>
+          <span class="of-dot" style="--g:var(--airwallex)" title="Airwallex — intent · history">Airwallex</span>
+          <span class="of-dot" style="--g:var(--tamara)" title="Tamara — order / reference">Tamara</span>
+        </div>
+      </div>
+      <div class="of-row">
+        <div class="of-name"><code>pushFunds / pullFunds</code><small>OCT + AFT money transfer</small></div>
+        <div class="of-dots">
+          <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — /pts/v1/push-funds-transfer · /pts/v1/pull-funds-transfer">CyberSource</span>
+          <span class="of-dot off" style="--g:var(--fawry)" title="Fawry — not implemented">Fawry<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paymob)" title="Paymob — not implemented">Paymob<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paylink)" title="PayLink — not implemented">PayLink<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paytabs)" title="PayTabs — not implemented">PayTabs<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--paypal)" title="PayPal — not implemented">PayPal<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--mpgs)" title="Mastercard MPGS — not implemented">MPGS<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--authorizenet)" title="Authorize.Net — not implemented">Auth.Net<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--airwallex)" title="Airwallex — not implemented">Airwallex<span class="vh"> — not implemented</span></span>
+          <span class="of-dot off" style="--g:var(--tamara)" title="Tamara — not implemented">Tamara<span class="vh"> — not implemented</span></span>
+        </div>
+      </div>
+      <div class="of-row">
+        <div class="of-name"><code>verifyWebhook</code></div>
+        <div class="of-dots">
+          <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — ✓">CyberSource</span>
+          <span class="of-dot" style="--g:var(--fawry)" title="Fawry — ✓">Fawry</span>
+          <span class="of-dot" style="--g:var(--paymob)" title="Paymob — ✓">Paymob</span>
+          <span class="of-dot" style="--g:var(--paylink)" title="PayLink — ✓">PayLink</span>
+          <span class="of-dot" style="--g:var(--paytabs)" title="PayTabs — ✓">PayTabs</span>
+          <span class="of-dot" style="--g:var(--paypal)" title="PayPal — API">PayPal</span>
+          <span class="of-dot" style="--g:var(--mpgs)" title="Mastercard MPGS — secret">MPGS</span>
+          <span class="of-dot" style="--g:var(--authorizenet)" title="Authorize.Net — HMAC-SHA512">Auth.Net</span>
+          <span class="of-dot" style="--g:var(--airwallex)" title="Airwallex — HMAC-SHA256">Airwallex</span>
+          <span class="of-dot" style="--g:var(--tamara)" title="Tamara — shared header">Tamara</span>
+        </div>
+      </div>
     </div>
   </section>
 
