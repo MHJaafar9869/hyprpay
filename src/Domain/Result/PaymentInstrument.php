@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Hyprpay\Payments\Domain\Result;
 
+use Hyprpay\Payments\Domain\Enum\CybersourceCardNetwork;
 use Hyprpay\Payments\Domain\Enum\PaymentInstrumentState;
 
 /**
@@ -45,6 +46,16 @@ final readonly class PaymentInstrument
         public array $billTo = [],
         public array $raw = [],
     ) {}
+
+    /**
+     * The card network as a typed enum, resolved from the stored numeric type code.
+     *
+     * Null for a network this SDK does not model, which is not an error.
+     */
+    public function network(): ?CybersourceCardNetwork
+    {
+        return CybersourceCardNetwork::resolve($this->cardType);
+    }
 
     /**
      * The stored expiry as `MM/YYYY`, or null when the vault reported neither part.

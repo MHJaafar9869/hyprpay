@@ -715,6 +715,62 @@ match (true) {
 Routing and account numbers are sensitive banking credentials. This operation sits outside
 `PaymentGatewayInterface`, so the logging decorator never sees them.
 
+### Card offers — knowing what the card is before you charge it
+
+Offers keyed on card type — a Visa promotion, a premium-tier perk, an installment plan only some
+issuers support — have to be decided **before** the authorization, and they carry real money, so
+the answer has to be one the shopper cannot forge. `lookupBin` is that answer: it asks the
+networks what the credential actually is.
+
+```php
+use Hyprpay\Payments\Domain\Command\BinLookupRequest;
+use Hyprpay\Payments\Domain\Enum\CybersourceCardNetwork;
+
+// Look the card up from the token the browser just minted — no PAN reaches your server.
+$bin = $cybersource->lookupBin(BinLookupRequest::forTransientToken($transientToken));
+
+if (! $bin->isResolved()) {
+    // MULTIPLE or NO MATCH: the attributes cannot be trusted. Charge normally —
+    // "unknown card" is never a reason to refuse a payment.
+    return $this->chargeWithoutOffer();
+}
+
+$offer = match ($bin->network()) {
+    CybersourceCardNetwork::Visa       => $this->visaPromotion(),
+    CybersourceCardNetwork::Mastercard => $this->mastercardPromotion(),
+    CybersourceCardNetwork::Amex       => $this->amexPromotion(),
+    default                            => null,
+};
+```
+
+`network()` returns a typed `CybersourceCardNetwork`, and deliberately so: the brand reaches the
+SDK in three different shapes depending on where it came from — a numeric code (`001`) from BIN
+lookup and the vault, a lowercase name (`visa`) from a verified orchestrated result, and an
+uppercase name (`VISA`) from BIN lookup's brand field. `network()` collapses all of them, so the
+same `match` works on a BIN lookup, a saved card, and a completed payment:
+
+```php
+$bin->network();          // from lookupBin()
+$instrument->network();   // from a vaulted card
+$result->network();       // from a verified orchestrated payment
+```
+
+Brand is often the *least* useful attribute for an offer, though. BIN lookup also tells you:
+
+```php
+$bin->fundingSource;                    // CardFundingSource::Credit | Debit | Prepaid …
+$bin->platform?->isCommercial();        // consumer vs business/corporate/government
+$bin->cardProduct;                      // "Visa Infinite" — premium-tier offers key on this
+$bin->issuerCountry;                    // "US" — geo-gated promotions
+$bin->supportsInstallments();           // only offer EMI where the issuer supports it
+$bin->supports3ds();
+$bin->fundingSource?->canPartiallyApprove();  // prepaid: expect partial approvals
+```
+
+**Do not use the transient token's own claims for this.** `ParsesTransientToken` decodes the JWT
+payload without verifying its signature — the SDK's own docblock says as much — so a shopper could
+edit it and claim an offer they are not entitled to. Ask the gateway instead.
+
 ### Vault lifecycle
 
 `vaultInstrument` creates tokens; the rest of their life is managed separately. Reading a stored

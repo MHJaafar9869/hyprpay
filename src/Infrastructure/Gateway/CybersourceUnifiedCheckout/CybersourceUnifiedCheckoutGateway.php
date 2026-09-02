@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout;
 
 use Hyprpay\Payments\Domain\AbstractPaymentGateway;
+use Hyprpay\Payments\Domain\Command\BinLookupRequest;
 use Hyprpay\Payments\Domain\Command\CaptureRequest;
 use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
@@ -36,6 +37,9 @@ use Hyprpay\Payments\Domain\Contract\HttpClient;
 use Hyprpay\Payments\Domain\Contract\PaymentGatewayInterface;
 use Hyprpay\Payments\Domain\Enum\AccountUpdaterBatchStatus;
 use Hyprpay\Payments\Domain\Enum\BillingPeriodUnit;
+use Hyprpay\Payments\Domain\Enum\BinLookupStatus;
+use Hyprpay\Payments\Domain\Enum\CardFundingSource;
+use Hyprpay\Payments\Domain\Enum\CardPlatform;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentInstrumentState;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
@@ -49,6 +53,7 @@ use Hyprpay\Payments\Domain\Enum\SubscriptionStatus;
 use Hyprpay\Payments\Domain\Event\PayerAuthenticationEciRejected;
 use Hyprpay\Payments\Domain\Result\AccountUpdaterBatch;
 use Hyprpay\Payments\Domain\Result\BankAccountValidationResult;
+use Hyprpay\Payments\Domain\Result\BinLookupResult;
 use Hyprpay\Payments\Domain\Result\CheckoutSession;
 use Hyprpay\Payments\Domain\Result\DccQuote;
 use Hyprpay\Payments\Domain\Result\OrchestratedPaymentResult;
@@ -81,6 +86,7 @@ use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Enums\Cyb
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Enums\CybersourceTransactionStatus;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\AccountUpdaterPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\AccountValidationPayload;
+use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\BinLookupPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CaptureContextPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CapturePayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CurrencyConversionPayload;
@@ -978,6 +984,52 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
             fn (mixed $batch): AccountUpdaterBatch => $this->toAccountUpdaterBatch(Value::array($batch)),
             $batches,
         ));
+    }
+
+    /**
+     * Looks up what a card actually is, before charging it (BIN Lookup).
+     *
+     * Asks the networks for the credential's brand, funding source, issuer country, platform, and
+     * capabilities, so the decisions that must be made *before* an authorization are made on fact:
+     * how to route, whether to surcharge, whether to offer installments, whether 3-D Secure is even
+     * supported. Accepts a raw PAN or — preferably — a transient token or vault reference, in which
+     * case no card number leaves the vault.
+     *
+     * Read {@see BinLookupResult::isResolved()} before trusting the attributes: a lookup that
+     * matched multiple ranges or none leaves them untrustworthy, and "unknown" is never grounds for
+     * refusing a payment on its own. This is a CyberSource-specific operation, outside the shared
+     * {@see PaymentGatewayInterface}, so a raw PAN passed here is never seen by the logging decorator.
+     */
+    public function lookupBin(BinLookupRequest $request): BinLookupResult
+    {
+        $response = $this->client->post(
+            CybersourceEndpoint::BinLookups->path(),
+            BinLookupPayload::build($request),
+            'bin lookup',
+        );
+
+        $card = Value::array(data_get($response, 'paymentAccountInformation.card'));
+        $features = Value::array(data_get($response, 'paymentAccountInformation.features'));
+        $issuer = Value::array($response['issuerInformation'] ?? null);
+
+        return new BinLookupResult(
+            status: BinLookupStatus::tryFrom(strtoupper(Value::string($response['status'] ?? null))),
+            cardType: Value::nullableString($card['type'] ?? null),
+            brandName: Value::nullableString($card['brandName'] ?? null),
+            currency: Value::nullableString($card['currency'] ?? null),
+            maxLength: isset($card['maxLength']) ? Value::int($card['maxLength']) : null,
+            credentialType: Value::nullableString($card['credentialType'] ?? null),
+            fundingSource: CardFundingSource::tryFrom(strtoupper(Value::string($features['accountFundingSource'] ?? null))),
+            fundingSubType: Value::nullableString($features['accountFundingSourceSubType'] ?? null),
+            platform: CardPlatform::tryFrom(strtoupper(Value::string($features['cardPlatform'] ?? null))),
+            cardProduct: Value::nullableString($features['cardProduct'] ?? null),
+            issuerName: Value::nullableString($issuer['name'] ?? null),
+            issuerCountry: Value::nullableString($issuer['country'] ?? null),
+            accountPrefix: Value::nullableString($issuer['accountPrefix'] ?? null),
+            issuerPhone: Value::nullableString($issuer['phoneNumber'] ?? null),
+            features: $features,
+            raw: $response,
+        );
     }
 
     /**

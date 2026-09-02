@@ -10,8 +10,8 @@ namespace Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Enu
  * Each case is the URL path (relative to the credential host) for a CyberSource
  * service — Unified Checkout capture contexts, payment processing, token
  * management (TMS), payer authentication (risk), recurring billing (RBS), transaction
- * search (TSS), reporting, Account Updater, and Visa Bank Account Validation (BAVS). Cases
- * with an `{id}` placeholder are resolved via path().
+ * search (TSS), reporting, Account Updater, BIN lookup, and Visa Bank Account Validation
+ * (BAVS). Cases with an `{id}` placeholder are resolved via path().
  */
 enum CybersourceEndpoint: string
 {
@@ -55,6 +55,7 @@ enum CybersourceEndpoint: string
     case ReportSubscriptions = '/reporting/v3/report-subscriptions';
     case ReportSubscription = '/reporting/v3/report-subscriptions/{id}';
     case AccountValidations = '/bavs/v1/account-validations';
+    case BinLookups = '/bin/v1/binlookup';
     case AccountUpdaterBatches = '/accountupdater/v1/batches';
     case AccountUpdaterBatchStatus = '/accountupdater/v1/batches/{id}/status';
     case AccountUpdaterBatchReport = '/accountupdater/v1/batches/{id}/report';
