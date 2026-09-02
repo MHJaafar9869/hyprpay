@@ -98,7 +98,7 @@
     </section>
 
     <section id="create-checkout" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs airwallex tamara">
-      <p class="doc-eyebrow">Payment flow</p>
+      <p class="doc-eyebrow">Checkout</p>
       <h2>Create checkout</h2>
       <p class="doc-sig"><span class="fn">createCheckoutSession</span>(CheckoutSessionRequest): <span class="rt">CheckoutSession</span></p>
       <p>Starts a payment. The result carries what this gateway needs next — a <code>jwt</code>,
@@ -243,7 +243,7 @@
     </section>
 
     <section id="confirm-orchestrated" class="doc-section" data-gws="cyber">
-      <p class="doc-eyebrow">Payment flow</p>
+      <p class="doc-eyebrow">Checkout</p>
       <h2>Confirm orchestrated payment</h2>
       <p class="doc-sig"><span class="fn">confirmOrchestratedPayment</span>(ConfirmOrchestratedPaymentRequest): <span class="rt">OrchestratedPaymentResult</span></p>
       <p>The orchestrated (autoProcessing) alternative to <code>charge</code>: pass a
@@ -279,7 +279,7 @@
     </section>
 
     <section id="microform-session" class="doc-section" data-gws="cyber">
-      <p class="doc-eyebrow">Payment flow</p>
+      <p class="doc-eyebrow">Checkout</p>
       <h2>Microform session</h2>
       <p class="doc-sig"><span class="fn">createMicroformSession</span>(CheckoutSessionRequest): <span class="rt">CheckoutSession</span></p>
       <p>Flex Microform is CyberSource's low-level, PCI-friendly card-field tokenizer — a
@@ -313,50 +313,8 @@
       </div>
     </section>
 
-    <section id="dcc-rate" class="doc-section" data-gws="cyber">
-      <p class="doc-eyebrow">Payment flow</p>
-      <h2>DCC rate</h2>
-      <p class="doc-sig"><span class="fn">requestDccRate</span>(DccRateRequest): <span class="rt">DccQuote</span></p>
-      <p>Quote a Dynamic Currency Conversion rate so a foreign cardholder pays in their own
-         currency. Thread the returned <code>DccQuote</code> into <code>charge</code> — and
-         <code>capture</code> / <code>refund</code> / <code>reverseAuthorization</code> — so the
-         same quoted rate is echoed across the lifecycle. Set <code>money</code> to the quote's
-         <code>convertedAmount</code>.</p>
-      <div class="code">
-<pre><code><span class="v">$quote</span> = <span class="v">$gateway</span>-&gt;<span class="fn">requestDccRate</span>(<span class="k">new</span> <span class="t">DccRateRequest</span>(
-    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">48000</span>, <span class="s">'EGP'</span>), <span class="c">// 480.00 EGP</span>
-    <span class="a">cardNumber:</span> <span class="s">'4111111111111111'</span>,
-));
-
-<span class="k">if</span> (<span class="v">$quote</span>-&gt;offered) {
-    <span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="k">new</span> <span class="t">ChargeRequest</span>(
-        <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>,
-        <span class="a">money:</span> <span class="v">$quote</span>-&gt;convertedAmount, <span class="c">// billing currency, quoted rate</span>
-        <span class="a">dcc:</span> <span class="v">$quote</span>,
-    ));
-}</code></pre>
-      </div>
-    </section>
-
-    <section id="installments" class="doc-section" data-gws="cyber">
-      <p class="doc-eyebrow">Payment flow</p>
-      <h2>Installments</h2>
-      <p class="doc-sig"><span class="fn">charge</span>(ChargeRequest + Installment): <span class="rt">PaymentResult</span></p>
-      <p>Split a charge into issuer-funded installments — common across MENA, LATAM, and Turkey — by
-         attaching an <code>Installment</code> to the <code>ChargeRequest</code>. The issuer funds and
-         splits the plan, so you authorise once instead of charging the card yourself. Only
-         <code>totalCount</code> is required; it maps to <code>processingInformation.installment</code>.</p>
-      <div class="code">
-<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="k">new</span> <span class="t">ChargeRequest</span>(
-    <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>,
-    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">48000</span>, <span class="s">'EGP'</span>),
-    <span class="a">installment:</span> <span class="k">new</span> <span class="t">Installment</span>(<span class="a">totalCount:</span> <span class="n">6</span>), <span class="c">// six issuer installments</span>
-));</code></pre>
-      </div>
-    </section>
-
     <section id="bin-lookup" class="doc-section" data-gws="cyber">
-      <p class="doc-eyebrow">Payment flow</p>
+      <p class="doc-eyebrow">Before charging</p>
       <h2>Card offers (BIN lookup)</h2>
       <p class="doc-sig"><span class="fn">lookupBin</span>(BinLookupRequest): <span class="rt">BinLookupResult</span></p>
       <p>Offers keyed on card type — a Visa promotion, a premium-tier perk, an installment plan
@@ -396,9 +354,168 @@
       </div>
     </section>
 
+    <section id="dcc-rate" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Before charging</p>
+      <h2>DCC rate</h2>
+      <p class="doc-sig"><span class="fn">requestDccRate</span>(DccRateRequest): <span class="rt">DccQuote</span></p>
+      <p>Quote a Dynamic Currency Conversion rate so a foreign cardholder pays in their own
+         currency. Thread the returned <code>DccQuote</code> into <code>charge</code> — and
+         <code>capture</code> / <code>refund</code> / <code>reverseAuthorization</code> — so the
+         same quoted rate is echoed across the lifecycle. Set <code>money</code> to the quote's
+         <code>convertedAmount</code>.</p>
+      <div class="code">
+<pre><code><span class="v">$quote</span> = <span class="v">$gateway</span>-&gt;<span class="fn">requestDccRate</span>(<span class="k">new</span> <span class="t">DccRateRequest</span>(
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">48000</span>, <span class="s">'EGP'</span>), <span class="c">// 480.00 EGP</span>
+    <span class="a">cardNumber:</span> <span class="s">'4111111111111111'</span>,
+));
+
+<span class="k">if</span> (<span class="v">$quote</span>-&gt;offered) {
+    <span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="k">new</span> <span class="t">ChargeRequest</span>(
+        <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>,
+        <span class="a">money:</span> <span class="v">$quote</span>-&gt;convertedAmount, <span class="c">// billing currency, quoted rate</span>
+        <span class="a">dcc:</span> <span class="v">$quote</span>,
+    ));
+}</code></pre>
+      </div>
+    </section>
+
+    <section id="installments" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Before charging</p>
+      <h2>Installments</h2>
+      <p class="doc-sig"><span class="fn">charge</span>(ChargeRequest + Installment): <span class="rt">PaymentResult</span></p>
+      <p>Split a charge into issuer-funded installments — common across MENA, LATAM, and Turkey — by
+         attaching an <code>Installment</code> to the <code>ChargeRequest</code>. The issuer funds and
+         splits the plan, so you authorise once instead of charging the card yourself. Only
+         <code>totalCount</code> is required; it maps to <code>processingInformation.installment</code>.</p>
+      <div class="code">
+<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="k">new</span> <span class="t">ChargeRequest</span>(
+    <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>,
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">48000</span>, <span class="s">'EGP'</span>),
+    <span class="a">installment:</span> <span class="k">new</span> <span class="t">Installment</span>(<span class="a">totalCount:</span> <span class="n">6</span>), <span class="c">// six issuer installments</span>
+));</code></pre>
+      </div>
+    </section>
+
+    <section id="device-fingerprint" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Fraud screening</p>
+      <h2>Device fingerprinting</h2>
+      <p>Decision Manager profiles the shopper's device so a charge can be fraud-screened. It has two
+         halves: a profiling tag you embed on the checkout page, and a session id you send on the request.
+         The browser tag is yours to embed — this package never renders HTML.</p>
+      <p><code>org_id</code> is CyberSource's standard Decision Manager profiling org id (shared, not a
+         per-merchant secret): <code>1snn5n9w</code> in test, <code>k8vif92e</code> in production.
+         <code>session_id</code> is your merchant id concatenated with a fresh per-page-load
+         <code>crypto.randomUUID()</code> (max 88 chars, <code>[A-Za-z0-9_-]</code>). Add it above
+         <code>&lt;/body&gt;</code> — <code>tags.js</code> supersedes the legacy <code>check.js</code>:</p>
+      <div class="code">
+<pre><code><span class="k">const</span> <span class="v">orgId</span>      = <span class="v">isTestMode</span> ? <span class="s">'1snn5n9w'</span> : <span class="s">'k8vif92e'</span>;
+<span class="k">const</span> <span class="v">sessionId</span>  = <span class="v">crypto</span>.<span class="fn">randomUUID</span>();               <span class="c">// the &lt;session id&gt;; send THIS to the API</span>
+<span class="k">const</span> <span class="v">tag</span>        = <span class="v">document</span>.<span class="fn">createElement</span>(<span class="s">'script'</span>);
+<span class="v">tag</span>.src = <span class="s">'https://h.online-metrix.net/fp/tags.js?org_id='</span> + <span class="v">orgId</span> +
+          <span class="s">'&amp;session_id='</span> + <span class="fn">encodeURIComponent</span>(<span class="v">merchantId</span> + <span class="v">sessionId</span>);
+<span class="v">document</span>.head.<span class="fn">appendChild</span>(<span class="v">tag</span>);</code></pre>
+      </div>
+      <p>On the request, send <code>only</code> the <code>&lt;session id&gt;</code> part as
+         <code>deviceFingerprintId</code> — it maps to <code>deviceInformation.fingerprintSessionId</code>.
+         It is accepted on <code>charge</code>, <code>chargeStoredCredential</code>,
+         <code>chargeWallet</code>, and <code>enrollPayerAuth</code>:</p>
+      <div class="code">
+<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="k">new</span> <span class="t">ChargeRequest</span>(
+    <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>,
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'EGP'</span>),
+    <span class="a">deviceFingerprintId:</span> <span class="v">$sessionId</span>, <span class="c">// the UUID from the tag (the &lt;session id&gt; part), NOT merchantId + UUID</span>
+));</code></pre>
+      </div>
+      <p>Set <code>useRawFingerprintSessionId: true</code> only when you sent the session id to the tag
+         <em>without</em> the merchant-id prefix; for the standard tag above, leave it <code>false</code>.</p>
+      <p>In the <em>orchestrated</em> flow (a <code>completeMandate</code> on
+         <code>createCheckoutSession</code>) there is no <code>fingerprintSessionId</code> to send — the
+         widget runs Decision Manager itself. Toggle it with <code>decisionManager</code> on
+         <code>CheckoutSessionRequest</code> (default <code>true</code>), emitted as
+         <code>completeMandate.decisionManager</code>. Likewise <code>enable3ds</code> (default
+         <code>true</code>) is emitted as <code>completeMandate.consumerAuthentication</code> so the
+         widget runs 3-D Secure as part of the mandate — it applies to the orchestrated flow only;
+         the manual transient-token flow runs 3DS through <code>enrollPayerAuth</code> /
+         <code>validatePayerAuth</code>. The widget's collected fields (billing/email/phone/shipping,
+         accepted-network icons) come from a <code>CybersourceCheckoutOptions</code> on
+         <code>options</code>, which maps to the capture context's <code>captureMandate</code>.</p>
+    </section>
+
+    <section id="setup-payer-auth" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">3-D Secure</p>
+      <h2>Setup payer auth</h2>
+      <p class="doc-sig"><span class="fn">setupPayerAuth</span>(PayerAuthSetupRequest): <span class="rt">PayerAuthSetupResult</span></p>
+      <p>Primes 3-D Secure device data collection before enrollment — returns the device-data-collection
+         URL to load in a hidden iframe, plus the reference id to carry into <code>enrollPayerAuth</code>.</p>
+      <div class="code">
+<pre><code><span class="v">$setup</span> = <span class="v">$gateway</span>-&gt;<span class="fn">setupPayerAuth</span>(<span class="k">new</span> <span class="t">PayerAuthSetupRequest</span>(
+    <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>,
+    <span class="a">orderReference:</span> <span class="s">'ORDER-123'</span>,
+));
+<span class="c">// Load $setup->deviceDataCollectionUrl in a hidden iframe, then enroll with $setup->referenceId</span></code></pre>
+      </div>
+    </section>
+
+    <section id="enroll-payer-auth" class="doc-section" data-gws="cyber mpgs">
+      <p class="doc-eyebrow">3-D Secure</p>
+      <h2>Enroll payer auth</h2>
+      <p class="doc-sig"><span class="fn">enrollPayerAuth</span>(PayerAuthEnrollRequest): <span class="rt">PayerAuthResult</span></p>
+      <p>Starts the 3-D Secure challenge for a transient token before you charge it.</p>
+      <div class="code">
+<pre><code><span class="v">$auth</span> = <span class="v">$gateway</span>-&gt;<span class="fn">enrollPayerAuth</span>(<span class="k">new</span> <span class="t">PayerAuthEnrollRequest</span>(<span class="c">/* … */</span>));
+<span class="c">// $auth->status drives the challenge on the front end</span></code></pre>
+      </div>
+      <p><em>CyberSource:</em> pass the <code>referenceId</code> from <code>setupPayerAuth</code> and the
+         collected browser device data via a <code>BrowserDeviceData</code> on
+         <code>PayerAuthEnrollRequest.device</code>. The SDK maps it onto CyberSource's
+         <code>deviceInformation</code> and marks the device channel as <code>Browser</code>, so the issuer
+         can risk-assess the browser and grant a frictionless (no-challenge) authentication more often.</p>
+      <p><em>CyberSource — ECI enforcement:</em> a completed authentication (a frictionless enroll, or
+         validate after a challenge) whose resolved ECI is not fully authenticated — <code>02</code>
+         (Mastercard) or <code>05</code> (Visa, American Express, JCB, Diners Club, Discover) — is marked
+         unsuccessful, and a <code>PayerAuthenticationEciRejected</code> event is dispatched. This stops an
+         attempted or unauthenticated result from carrying a spurious liability shift into the charge; a
+         pending step-up challenge and a response with no ECI are unaffected.</p>
+    </section>
+
+    <section id="validate-payer-auth" class="doc-section" data-gws="cyber mpgs">
+      <p class="doc-eyebrow">3-D Secure</p>
+      <h2>Validate payer auth</h2>
+      <p class="doc-sig"><span class="fn">validatePayerAuth</span>(ValidatePayerAuthRequest): <span class="rt">PayerAuthResult</span></p>
+      <p>Confirms the challenge result once the payer completes it — check it before charging.</p>
+      <div class="code">
+<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">validatePayerAuth</span>(<span class="k">new</span> <span class="t">ValidatePayerAuthRequest</span>(
+    <span class="a">authenticationTransactionId:</span> <span class="v">$auth</span>-&gt;authenticationTransactionId,
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'USD'</span>),
+    <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>, <span class="c">// CyberSource references the card by the token's jti</span>
+));
+<span class="c">// $result->consumerAuthenticationInformation carries the CAVV/ECI for the charge</span></code></pre>
+      </div>
+      <p><em>MPGS:</em> pass 3-D Secure browser device data via a <code>BrowserDeviceData</code> on
+         <code>ValidatePayerAuthRequest.device</code> — the user agent, <code>browserDetails</code>
+         (screen size, colour depth, language, time zone, challenge window size), and client IP. MPGS
+         forwards it as <code>device</code> on the <code>AUTHENTICATE_PAYER</code> call so the issuer can
+         risk-assess and grant a frictionless (no-challenge) authentication more often.</p>
+      <div class="gw-variant" data-gw="mpgs">
+        <div class="code">
+<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">validatePayerAuth</span>(<span class="k">new</span> <span class="t">ValidatePayerAuthRequest</span>(
+    <span class="a">authenticationTransactionId:</span> <span class="v">$authTxnId</span>,
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'USD'</span>),
+    <span class="a">device:</span> <span class="k">new</span> <span class="t">BrowserDeviceData</span>(
+        <span class="a">ipAddress:</span> <span class="v">$request</span>-&gt;<span class="fn">ip</span>(),
+        <span class="a">userAgent:</span> <span class="v">$request</span>-&gt;<span class="fn">userAgent</span>(),
+        <span class="a">colorDepth:</span> <span class="n">24</span>, <span class="a">screenHeight:</span> <span class="n">640</span>, <span class="a">screenWidth:</span> <span class="n">480</span>,
+        <span class="a">language:</span> <span class="s">'en-US'</span>, <span class="a">timeZone:</span> <span class="n">273</span>, <span class="a">javaScriptEnabled:</span> <span class="k">true</span>,
+        <span class="a">challengeWindowSize:</span> <span class="s">'FULL_SCREEN'</span>,
+    ),
+));</code></pre>
+        </div>
+      </div>
+    </section>
+
     <section id="charge" class="doc-section" data-gws="cyber paytabs paypal mpgs authorizenet airwallex">
-      <p class="doc-eyebrow">Payment flow</p>
-      <h2>Charge</h2>
+      <p class="doc-eyebrow">Charging</p>
+      <h2>Normal Charge</h2>
       <p class="doc-sig"><span class="fn">charge</span>(ChargeRequest): <span class="rt">PaymentResult</span></p>
       <p>Charge server-to-server against the one-time reference the checkout step returned — the token or
          approved-order id captured up front. The idempotency key defaults to the order reference, so a
@@ -475,27 +592,40 @@
       </div>
     </section>
 
-    <section id="declines" class="doc-section" data-gws="cyber">
-      <p class="doc-eyebrow">Payment flow</p>
-      <h2>Declines &amp; messages</h2>
-      <p class="doc-sig"><span class="t">DeclineClassifier</span>::<span class="fn">fromResult</span>(PaymentResult): <span class="rt">DeclineOutcome</span></p>
-      <p>Turn a declined charge into a retry decision and a safe, specific message for the cardholder —
-         without leaking a raw processor code. Pair <code>customerMessage()</code> with the stable
-         <code>reason</code> code to localise your own copy.</p>
-      <div class="code">
-<pre><code><span class="k">if</span> (! <span class="v">$result</span>-&gt;success) {
-    <span class="v">$decline</span> = <span class="t">DeclineClassifier</span>::<span class="fn">fromResult</span>(<span class="v">$result</span>);
+    <section id="charge-wallet" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Charging</p>
+      <h2>Wallet Charge</h2>
+      <p class="doc-sig"><span class="fn">chargeWallet</span>(WalletChargeRequest): <span class="rt">PaymentResult</span></p>
+      <p>Charges a native Apple Pay / Google Pay token from your own wallet button. Pass a
+         <code>WalletToken</code> in either shape — the SDK never decrypts it or handles the cleartext
+         PAN. CyberSource tags the charge with <code>paymentSolution</code> <code>001</code> (Apple Pay)
+         or <code>012</code> (Google Pay).</p>
 
-    <span class="v">$message</span> = <span class="v">$decline</span>-&gt;<span class="fn">customerMessage</span>(); <span class="c">// "Your card was declined for insufficient funds…"</span>
-    <span class="v">$retry</span>   = <span class="v">$decline</span>-&gt;<span class="fn">isRetryable</span>();     <span class="c">// false for expired / blocked / invalid cards</span>
-    <span class="v">$reason</span>  = <span class="v">$decline</span>-&gt;reason;              <span class="c">// stable code to localise your own copy</span>
-}</code></pre>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="c">// Canonical: decrypt the wallet payload in your app, send the network-token fields</span>
+<span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">chargeWallet</span>(<span class="k">new</span> <span class="t">WalletChargeRequest</span>(
+    <span class="a">token:</span> <span class="k">new</span> <span class="t">DecryptedWalletToken</span>(
+        <span class="a">number:</span> <span class="v">$dpan</span>,           <span class="c">// decrypted device PAN</span>
+        <span class="a">cryptogram:</span> <span class="v">$cryptogram</span>,
+        <span class="a">expiryMonth:</span> <span class="s">'12'</span>,
+        <span class="a">expiryYear:</span> <span class="s">'2031'</span>,
+        <span class="a">eci:</span> <span class="s">'05'</span>,             <span class="c">// optional</span>
+        <span class="a">cardType:</span> <span class="s">'001'</span>,        <span class="c">// optional network code (001 Visa, 002 Mastercard, …)</span>
+    ),
+    <span class="a">wallet:</span> <span class="t">WalletType</span>::<span class="cn">ApplePay</span>,
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">2599</span>, <span class="s">'USD'</span>),
+));
+
+<span class="c">// Or forward the raw encrypted token for CyberSource to decrypt (fluidData):</span>
+<span class="c">// token: new EncryptedWalletToken($applePayPaymentDataJson)</span></code></pre>
+        </div>
       </div>
     </section>
 
     <section id="capture" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara">
-      <p class="doc-eyebrow">Payment flow</p>
-      <h2>Capture</h2>
+      <p class="doc-eyebrow">Charging</p>
+      <h2>Authorization Charge</h2>
       <p class="doc-sig"><span class="fn">capture</span>(CaptureRequest): <span class="rt">PaymentResult</span></p>
       <p>Settles a prior authorization. Pass a key unique to the operation; partial captures each need
          their own.</p>
@@ -508,8 +638,44 @@
       </div>
     </section>
 
+    <section id="declines" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Charging</p>
+      <h2>Declines &amp; messages</h2>
+      <p class="doc-sig"><span class="t">DeclineClassifier</span>::<span class="fn">fromResult</span>(PaymentResult): <span class="rt">DeclineOutcome</span></p>
+      <p>Turn a declined charge into a retry decision and a safe, specific message for the cardholder —
+         without leaking a raw processor code. Pair <code>customerMessage()</code> with the stable
+         <code>reason</code> code to localise your own copy, and keep the bank&#39;s own response for
+         your logs and for support to quote back.</p>
+      <div class="code">
+<pre><code><span class="k">if</span> (! <span class="v">$result</span>-&gt;success) {
+    <span class="v">$decline</span> = <span class="t">DeclineClassifier</span>::<span class="fn">fromResult</span>(<span class="v">$result</span>);
+
+    <span class="c">// What to show and what to do</span>
+    <span class="v">$message</span> = <span class="v">$decline</span>-&gt;<span class="fn">customerMessage</span>(); <span class="c">// "Your card was declined for insufficient funds…"</span>
+    <span class="v">$retry</span>   = <span class="v">$decline</span>-&gt;<span class="fn">isRetryable</span>();     <span class="c">// false for expired / blocked / invalid cards</span>
+    <span class="v">$reason</span>  = <span class="v">$decline</span>-&gt;reason;              <span class="c">// stable code to localise your own copy</span>
+    <span class="v">$status</span>  = <span class="v">$decline</span>-&gt;status;              <span class="c">// raw transaction status, e.g. DECLINED</span>
+
+    <span class="c">// What the bank actually said — log this, never show it</span>
+    <span class="v">$result</span>-&gt;code;      <span class="c">// errorInformation.reason, else the processor response code</span>
+    <span class="v">$result</span>-&gt;message;   <span class="c">// the gateway's own message for that code</span>
+
+    <span class="c">// Straight from the issuer, for support and for retry policy</span>
+    <span class="fn">data_get</span>(<span class="v">$result</span>-&gt;raw, <span class="s">'processorInformation.responseCode'</span>);
+    <span class="fn">data_get</span>(<span class="v">$result</span>-&gt;raw, <span class="s">'processorInformation.merchantAdvice.code'</span>); <span class="c">// network retry guidance</span>
+    <span class="fn">data_get</span>(<span class="v">$result</span>-&gt;raw, <span class="s">'processorInformation.approvalCode'</span>);
+}</code></pre>
+      </div>
+      <p>The two layers answer different questions. <code>customerMessage()</code> is deliberately
+         vague — issuers do not want the real reason relayed to a cardholder, and a raw code in the
+         checkout UI helps a fraudster more than a customer. The bank response is the opposite: keep
+         <code>processorInformation.responseCode</code> and <code>merchantAdvice.code</code> in your
+         logs, because they are what support quotes back and what the classifier itself reads to
+         decide whether a retry is worth attempting at all.</p>
+    </section>
+
     <section id="void" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara">
-      <p class="doc-eyebrow">Payment flow</p>
+      <p class="doc-eyebrow">Corrections</p>
       <h2>Void</h2>
       <p class="doc-sig"><span class="fn">void</span>(VoidRequest): <span class="rt">PaymentResult</span></p>
       <p>Cancels an authorization before it settles. Nothing is captured.</p>
@@ -522,7 +688,7 @@
     </section>
 
     <section id="refund" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara">
-      <p class="doc-eyebrow">Payment flow</p>
+      <p class="doc-eyebrow">Corrections</p>
       <h2>Refund</h2>
       <p class="doc-sig"><span class="fn">refund</span>(RefundRequest): <span class="rt">RefundResult</span></p>
       <p>Returns settled funds and accepts partials. Retrying with the same key is a no-op at the gateway
@@ -537,7 +703,7 @@
     </section>
 
     <section id="reverse-authorization" class="doc-section" data-gws="cyber paylink paytabs mpgs airwallex tamara">
-      <p class="doc-eyebrow">Payment flow</p>
+      <p class="doc-eyebrow">Corrections</p>
       <h2>Reverse authorization</h2>
       <p class="doc-sig"><span class="fn">reverseAuthorization</span>(ReversalRequest): <span class="rt">PaymentResult</span></p>
       <p>Releases an auth hold without capturing. A partial <code>money</code> releases only part of the
@@ -551,49 +717,149 @@
       </div>
     </section>
 
-    <section id="device-fingerprint" class="doc-section" data-gws="cyber">
-      <p class="doc-eyebrow">Fraud screening</p>
-      <h2>Device fingerprinting</h2>
-      <p>Decision Manager profiles the shopper's device so a charge can be fraud-screened. It has two
-         halves: a profiling tag you embed on the checkout page, and a session id you send on the request.
-         The browser tag is yours to embed — this package never renders HTML.</p>
-      <p><code>org_id</code> is CyberSource's standard Decision Manager profiling org id (shared, not a
-         per-merchant secret): <code>1snn5n9w</code> in test, <code>k8vif92e</code> in production.
-         <code>session_id</code> is your merchant id concatenated with a fresh per-page-load
-         <code>crypto.randomUUID()</code> (max 88 chars, <code>[A-Za-z0-9_-]</code>). Add it above
-         <code>&lt;/body&gt;</code> — <code>tags.js</code> supersedes the legacy <code>check.js</code>:</p>
-      <div class="code">
-<pre><code><span class="k">const</span> <span class="v">orgId</span>      = <span class="v">isTestMode</span> ? <span class="s">'1snn5n9w'</span> : <span class="s">'k8vif92e'</span>;
-<span class="k">const</span> <span class="v">sessionId</span>  = <span class="v">crypto</span>.<span class="fn">randomUUID</span>();               <span class="c">// the &lt;session id&gt;; send THIS to the API</span>
-<span class="k">const</span> <span class="v">tag</span>        = <span class="v">document</span>.<span class="fn">createElement</span>(<span class="s">'script'</span>);
-<span class="v">tag</span>.src = <span class="s">'https://h.online-metrix.net/fp/tags.js?org_id='</span> + <span class="v">orgId</span> +
-          <span class="s">'&amp;session_id='</span> + <span class="fn">encodeURIComponent</span>(<span class="v">merchantId</span> + <span class="v">sessionId</span>);
-<span class="v">document</span>.head.<span class="fn">appendChild</span>(<span class="v">tag</span>);</code></pre>
-      </div>
-      <p>On the request, send <code>only</code> the <code>&lt;session id&gt;</code> part as
-         <code>deviceFingerprintId</code> — it maps to <code>deviceInformation.fingerprintSessionId</code>.
-         It is accepted on <code>charge</code>, <code>chargeStoredCredential</code>,
-         <code>chargeWallet</code>, and <code>enrollPayerAuth</code>:</p>
-      <div class="code">
-<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="k">new</span> <span class="t">ChargeRequest</span>(
-    <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>,
-    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'EGP'</span>),
-    <span class="a">deviceFingerprintId:</span> <span class="v">$sessionId</span>, <span class="c">// the UUID from the tag (the &lt;session id&gt; part), NOT merchantId + UUID</span>
+    <section id="increment-authorization" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Corrections</p>
+      <h2>Increment authorization</h2>
+      <p class="doc-sig"><span class="fn">incrementAuthorization</span>(IncrementAuthorizationRequest): <span class="rt">PaymentResult</span></p>
+      <p>Raises the amount already authorized, keeping <strong>one</strong> hold. For open-ended
+         stays and rentals where the final bill is not known when the card is presented: a hotel
+         authorizes an estimate on arrival and increments as charges accumulate. Authorizing again
+         instead would place a second hold and withhold the funds twice. The request carries the
+         amount to <em>add</em>, not the new total.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$gateway</span>-&gt;<span class="fn">incrementAuthorization</span>(<span class="k">new</span> <span class="t">IncrementAuthorizationRequest</span>(
+    <span class="a">transactionId:</span> <span class="v">$paymentId</span>,
+    <span class="a">additionalAmount:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">5000</span>, <span class="s">'USD'</span>), <span class="c">// adds $50 to the existing hold</span>
+    <span class="a">reason:</span> <span class="s">'5'</span>,
 ));</code></pre>
+        </div>
       </div>
-      <p>Set <code>useRawFingerprintSessionId: true</code> only when you sent the session id to the tag
-         <em>without</em> the merchant-id prefix; for the standard tag above, leave it <code>false</code>.</p>
-      <p>In the <em>orchestrated</em> flow (a <code>completeMandate</code> on
-         <code>createCheckoutSession</code>) there is no <code>fingerprintSessionId</code> to send — the
-         widget runs Decision Manager itself. Toggle it with <code>decisionManager</code> on
-         <code>CheckoutSessionRequest</code> (default <code>true</code>), emitted as
-         <code>completeMandate.decisionManager</code>. Likewise <code>enable3ds</code> (default
-         <code>true</code>) is emitted as <code>completeMandate.consumerAuthentication</code> so the
-         widget runs 3-D Secure as part of the mandate — it applies to the orchestrated flow only;
-         the manual transient-token flow runs 3DS through <code>enrollPayerAuth</code> /
-         <code>validatePayerAuth</code>. The widget's collected fields (billing/email/phone/shipping,
-         accepted-network icons) come from a <code>CybersourceCheckoutOptions</code> on
-         <code>options</code>, which maps to the capture context's <code>captureMandate</code>.</p>
+    </section>
+
+    <section id="refund-capture" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Corrections</p>
+      <h2>Refund a capture</h2>
+      <p class="doc-sig"><span class="fn">refundCapture</span>(RefundRequest): <span class="rt">RefundResult</span></p>
+      <p>Needed when authorization and capture were requested separately. The capture is then its
+         own resource with its own id, and <code>refund</code> — which addresses the payment id —
+         cannot reach it. Pass the <strong>capture</strong> id as <code>transactionId</code>.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$gateway</span>-&gt;<span class="fn">refundCapture</span>(<span class="k">new</span> <span class="t">RefundRequest</span>(
+    <span class="a">transactionId:</span> <span class="v">$captureId</span>, <span class="c">// the capture id, not the payment id</span>
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">1000</span>, <span class="s">'USD'</span>),
+));</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="void-capture" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Corrections</p>
+      <h2>Void a capture</h2>
+      <p class="doc-sig"><span class="fn">voidCapture</span>(VoidRequest): <span class="rt">PaymentResult</span></p>
+      <p>Cancels a capture that has not yet settled. <code>void</code> addresses a payment — which
+         CyberSource documents as being for authorization and capture requested <em>together</em>;
+         this addresses a capture requested independently, which that call cannot reach.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$gateway</span>-&gt;<span class="fn">voidCapture</span>(<span class="k">new</span> <span class="t">VoidRequest</span>(<span class="a">transactionId:</span> <span class="v">$captureId</span>));</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="credit-payment" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Corrections</p>
+      <h2>Standalone credit</h2>
+      <p class="doc-sig"><span class="fn">creditPayment</span>(CreditRequest): <span class="rt">PaymentResult</span></p>
+      <p>Pushes money to a card with <strong>no original transaction behind it</strong> — a goodwill
+         payment, a rebate, a settlement, or a refund whose original transaction is past the
+         gateway&#39;s refund window. Unlike a refund it is bounded by nothing: no amount cap, no sale
+         to tie it to. That is why processors watch credits, and why this belongs behind the same
+         authorisation you would put on a payout rather than on a refund.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$gateway</span>-&gt;<span class="fn">creditPayment</span>(<span class="k">new</span> <span class="t">CreditRequest</span>(
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">2500</span>, <span class="s">'USD'</span>),
+    <span class="a">transientToken:</span> <span class="v">$token</span>,              <span class="c">// or paymentInstrumentId / customerId</span>
+    <span class="a">merchantTransactionId:</span> <span class="s">'mtid-credit-1'</span>, <span class="c">// so a lost reply can still be voided</span>
+));</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="void-credit" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Corrections</p>
+      <h2>Void a credit</h2>
+      <p class="doc-sig"><span class="fn">voidCredit</span>(VoidRequest): <span class="rt">PaymentResult</span></p>
+      <p>Cancels a standalone credit before it settles — the only way to undo one, since a credit
+         has no payment to reverse against. Worth wiring up alongside <code>creditPayment</code>: a
+         credit sent in error is money out the door once it settles.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$gateway</span>-&gt;<span class="fn">voidCredit</span>(<span class="k">new</span> <span class="t">VoidRequest</span>(<span class="a">transactionId:</span> <span class="v">$creditId</span>));</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="void-refund" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Corrections</p>
+      <h2>Void a refund</h2>
+      <p class="doc-sig"><span class="fn">voidRefund</span>(VoidRequest): <span class="rt">PaymentResult</span></p>
+      <p>Cancels a refund before it settles, so an over-refund caught in time costs nothing.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$gateway</span>-&gt;<span class="fn">voidRefund</span>(<span class="k">new</span> <span class="t">VoidRequest</span>(<span class="a">transactionId:</span> <span class="v">$refundId</span>));</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="timeout-void" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Corrections</p>
+      <h2>Timeout void</h2>
+      <p class="doc-sig"><span class="fn">timeoutVoid</span>(TimeoutVoidRequest): <span class="rt">PaymentResult</span></p>
+      <p>Cancels a payment, capture, refund, or credit <strong>whose reply never arrived</strong>.
+         When a request times out you cannot know whether it landed, and you have no transaction id
+         to void with — the response that carried it never came. This matches on the merchant
+         transaction id from the <em>original</em> request and reverses it if it landed, or does
+         nothing if it did not.</p>
+      <p><strong>It only works if that id was sent in the first place.</strong> Set
+         <code>merchantTransactionId</code> on anything you may need to undo blind — it cannot be
+         supplied retrospectively.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="c">// On the original call — without this, the timeout void below is impossible:</span>
+<span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="k">new</span> <span class="t">ChargeRequest</span>(
+    <span class="a">transientToken:</span> <span class="v">$token</span>, <span class="a">money:</span> <span class="v">$money</span>,
+    <span class="a">merchantTransactionId:</span> <span class="s">'mtid-charge-1'</span>,
+));
+
+<span class="c">// … the request times out; you have no transaction id …</span>
+
+<span class="v">$gateway</span>-&gt;<span class="fn">timeoutVoid</span>(<span class="k">new</span> <span class="t">TimeoutVoidRequest</span>(
+    <span class="a">merchantTransactionId:</span> <span class="s">'mtid-charge-1'</span>,
+));</code></pre>
+        </div>
+      </div>
+      <p>Complements, rather than replaces, reconciling by reference:
+         <code>findSuccessfulTransactionByReference</code> tells you <em>whether</em> a lost request
+         settled and is eventually consistent; this <em>undoes</em> it, and acts immediately.</p>
+    </section>
+
+    <section id="timeout-reversal" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Corrections</p>
+      <h2>Timeout reversal</h2>
+      <p class="doc-sig"><span class="fn">timeoutReversal</span>(TimeoutVoidRequest): <span class="rt">PaymentResult</span></p>
+      <p>The authorization-side counterpart of the timeout void, subject to the same precondition.
+         Without it, a timed-out authorization strands a hold on the cardholder&#39;s card until the
+         issuer expires it — which can be days.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$gateway</span>-&gt;<span class="fn">timeoutReversal</span>(<span class="k">new</span> <span class="t">TimeoutVoidRequest</span>(
+    <span class="a">merchantTransactionId:</span> <span class="s">'mtid-auth-1'</span>,
+));</code></pre>
+        </div>
+      </div>
     </section>
 
     <section id="get-transaction" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara">
@@ -740,6 +1006,21 @@
 <span class="k">foreach</span> (<span class="v">$outcomes</span> <span class="k">as</span> <span class="v">$outcome</span>) {
     <span class="c">// $outcome->reconciled(), $outcome->snapshot?->status, $outcome->error</span>
 }</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="refresh-payment-status" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">After the payment</p>
+      <h2>Refresh payment status</h2>
+      <p class="doc-sig"><span class="fn">refreshPaymentStatus</span>(string): <span class="rt">PaymentResult</span></p>
+      <p>Asks CyberSource to re-check a payment with the processor, for the alternative payment
+         methods that settle asynchronously. Unlike <code>getTransaction</code>, which reads
+         CyberSource&#39;s own record, this makes CyberSource go back to the processor — so reach for
+         it when the record itself looks stale rather than merely unfinished.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">refreshPaymentStatus</span>(<span class="v">$paymentId</span>);</code></pre>
         </div>
       </div>
     </section>
@@ -961,334 +1242,6 @@
       <div class="gw-variant" data-gw="cyber">
         <div class="code">
 <pre><code><span class="v">$gateway</span>-&gt;<span class="fn">deleteWebhook</span>(<span class="v">$id</span>);</code></pre>
-        </div>
-      </div>
-    </section>
-
-    <section id="events" class="doc-section" data-gws="misc">
-      <p class="doc-eyebrow">Cross-cutting</p>
-      <h2>Events</h2>
-      <p class="doc-sig"><span class="fn">Event::listen</span>(PaymentEvent::class, listener): <span class="rt">void</span></p>
-      <p>Every driver emits a typed domain event after each operation. All events implement the
-         <code>PaymentEvent</code> interface, so one listener receives them all — or target a single
-         event type. Events fire on completion (success or decline); the result carries the outcome.
-         Payloads are queue-safe: ids, amount and result, never the raw request or card data.</p>
-      <div class="code">
-<pre><code><span class="c">// one subscriber, every event — match on the concrete type</span>
-<span class="k">final class</span> <span class="t">PaymentEventSubscriber</span>
-{
-    <span class="k">public function</span> <span class="fn">handle</span>(<span class="t">PaymentEvent</span> <span class="v">$event</span>): <span class="k">void</span>
-    {
-        <span class="k">match</span> (<span class="k">true</span>) {
-            <span class="v">$event</span> <span class="k">instanceof</span> <span class="t">PaymentCaptured</span> =&gt; <span class="v">$this</span>-&gt;<span class="fn">markOrderPaid</span>(<span class="v">$event</span>-&gt;orderReference, <span class="v">$event</span>-&gt;result),
-            <span class="v">$event</span> <span class="k">instanceof</span> <span class="t">PaymentRefunded</span> =&gt; <span class="v">$this</span>-&gt;<span class="fn">recordRefund</span>(<span class="v">$event</span>-&gt;transactionId, <span class="v">$event</span>-&gt;result),
-            <span class="v">$event</span> <span class="k">instanceof</span> <span class="t">WebhookReceived</span> =&gt; <span class="v">$this</span>-&gt;<span class="fn">applyWebhook</span>(<span class="v">$event</span>-&gt;webhook),
-            <span class="k">default</span> =&gt; <span class="k">null</span>, <span class="c">// charge/void/vault/checkout — ignored here</span>
-        };
-    }
-}
-
-<span class="c">// register once; receives every event via the interface</span>
-<span class="t">Event</span>::<span class="fn">listen</span>(<span class="t">PaymentEvent</span>::<span class="k">class</span>, <span class="t">PaymentEventSubscriber</span>::<span class="k">class</span>);
-
-<span class="c">// config/gateway.php — on by default; 'log' attaches the redaction-safe audit listener</span>
-<span class="s">'events'</span> =&gt; [<span class="s">'enabled'</span> =&gt; <span class="k">true</span>, <span class="s">'log'</span> =&gt; <span class="k">false</span>]</code></pre>
-      </div>
-    </section>
-
-    <section id="operation-logging" class="doc-section" data-gws="misc">
-      <p class="doc-eyebrow">Cross-cutting</p>
-      <h2>Operation logging</h2>
-      <p class="doc-sig"><span class="fn">LoggingGateway</span>(driver, logger): <span class="rt">PaymentGatewayInterface</span></p>
-      <p>Wrap every driver in a <code>LoggingGateway</code> that logs each operation — charge, capture,
-         refund, getTransaction, verifyWebhook, … — with its duration and a safe correlation context
-         (gateway, order/transaction ids, amount) through your PSR-3 logger. The context carries no PAN,
-         cvv or tokens, and the underlying <code>LogsAction</code> trait masks sensitive keys as a backstop.
-         Distinct from <code>http.logging</code>, which logs the lower-level HTTP request/response metadata.</p>
-      <p>With <code>gateway.logging.operations</code> enabled the factory wraps every driver for you. To
-         compose it yourself — outside Laravel, or around a driver you built — wrap it with any PSR-3
-         logger:</p>
-      <div class="code">
-<pre><code><span class="k">use</span> <span class="t">Hyprpay\Payments\Application\PaymentGatewayFactory</span>;
-<span class="k">use</span> <span class="t">Hyprpay\Payments\Infrastructure\Gateway\LoggingGateway</span>;
-<span class="k">use</span> <span class="t">Illuminate\Support\Facades\Log</span>;
-
-<span class="k">final class</span> <span class="t">PaymentGatewayProvider</span>
-{
-    <span class="k">public function</span> <span class="fn">__construct</span>(<span class="k">private</span> <span class="t">PaymentGatewayFactory</span> <span class="v">$factory</span>) {}
-
-    <span class="c">/**
-     * Resolve a PayPal gateway that logs every operation with its duration.
-     *
-     * Wraps the driver in a LoggingGateway, so each call is recorded as
-     * [LoggingGateway] {operation} through the "payments" channel with a
-     * masked, PAN-free context. Enabling gateway.logging.operations makes the
-     * factory do this automatically, so this wrapper becomes unnecessary.
-     */</span>
-    <span class="k">public function</span> <span class="fn">payments</span>(): <span class="t">PaymentGatewayInterface</span>
-    {
-        <span class="k">return new</span> <span class="t">LoggingGateway</span>(
-            <span class="v">$this</span>-&gt;factory-&gt;<span class="fn">make</span>(<span class="t">GatewayName</span>::<span class="cn">PayPal</span>),
-            <span class="t">Log</span>::<span class="fn">channel</span>(<span class="s">'payments'</span>),
-        );
-    }
-}</code></pre>
-      </div>
-      <p>Each call then lands in your PSR-3 log at info — the message plus a structured context:</p>
-      <div class="code">
-<pre><code>[paypal] charge
-{
-    <span class="s">"gateway"</span>: <span class="s">"paypal"</span>,
-    <span class="s">"order_reference"</span>: <span class="s">"ORDER-123"</span>,
-    <span class="s">"amount"</span>: <span class="s">"100.00"</span>,
-    <span class="s">"currency"</span>: <span class="s">"USD"</span>,
-    <span class="s">"duration_ms"</span>: <span class="n">84.2</span>
-}</code></pre>
-      </div>
-      <p>The log is identified by gateway + operation; the message carries the operation, the context the
-         gateway. Request-scoped fields — request_id, ip, url — aren't added by the SDK (it stays
-         framework-agnostic and runs in CLI/queue where there is no request). Add them once to your app's
-         log context so they land on every line, these included; the timestamp is already stamped by the
-         logger. For the initiator's own name, use the <code>LogsAction</code> trait in your action class —
-         there the <code>action</code> field is your class.</p>
-      <div class="code">
-<pre><code><span class="c">// e.g. in middleware — attaches request_id/ip/url to every subsequent log line</span>
-<span class="t">Log</span>::<span class="fn">shareContext</span>([
-    <span class="s">'request_id'</span> =&gt; (<span class="k">string</span>) <span class="t">Str</span>::<span class="fn">uuid</span>(),
-    <span class="s">'ip'</span> =&gt; <span class="v">$request</span>-&gt;<span class="fn">ip</span>(),
-    <span class="s">'url'</span> =&gt; <span class="v">$request</span>-&gt;<span class="fn">fullUrl</span>(),
-]);
-
-<span class="c">// or tag one wrapper with static extra fields via the constructor hook:</span>
-<span class="k">new</span> <span class="t">LoggingGateway</span>(<span class="v">$driver</span>, <span class="v">$logger</span>, [<span class="s">'component'</span> =&gt; <span class="s">'checkout'</span>]);</code></pre>
-      </div>
-      <p>The SDK logs to its own daily file — <code>storage/logs/hyprpay-2026-08-08.log</code> by default,
-         kept out of your app log. With shared context in place the line reads — timestamp from the
-         logger, request_id/ip/url from your shared context, the rest from the SDK:</p>
-      <div class="code">
-<pre><code>[2026-08-08 10:15:42] production.INFO: [paypal] charge
-{
-    <span class="s">"request_id"</span>: <span class="s">"9b1e5b1e-3c2a-4f77-9c1e-2b0f5a7d1e42"</span>,
-    <span class="s">"ip"</span>: <span class="s">"203.0.113.7"</span>,
-    <span class="s">"url"</span>: <span class="s">"https://shop.test/checkout"</span>,
-    <span class="s">"gateway"</span>: <span class="s">"paypal"</span>,
-    <span class="s">"order_reference"</span>: <span class="s">"ORDER-123"</span>,
-    <span class="s">"amount"</span>: <span class="s">"100.00"</span>,
-    <span class="s">"currency"</span>: <span class="s">"USD"</span>,
-    <span class="s">"duration_ms"</span>: <span class="n">84.2</span>
-}</code></pre>
-      </div>
-    </section>
-
-    <section id="credential-resolver" class="doc-section" data-gws="misc">
-      <p class="doc-eyebrow">Cross-cutting</p>
-      <h2>Credential resolver</h2>
-      <p class="doc-sig"><span class="fn">CredentialResolver::resolve</span>(GatewayName): <span class="rt">GatewayCredentials</span></p>
-      <p>The factory never reads keys itself — it asks a <code>CredentialResolver</code> port. The default
-         <code>ConfigCredentialResolver</code> loads the <code>gateway.gateways.{key}</code> block from
-         Laravel config and hydrates a <code>GatewayCredentials</code> DTO, throwing
-         <code>MissingCredentialsException</code> when the block is missing, blank or incomplete. Rebind the
-         port to source credentials from anywhere — a per-tenant table, a secrets manager, an encrypted
-         vault — and every driver the factory builds picks them up, no driver code touched.</p>
-      <div class="code">
-<pre><code><span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Contract\CredentialResolver</span>;
-<span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Enum\GatewayName</span>;
-<span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Exception\MissingCredentialsException</span>;
-<span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\ValueObject\GatewayCredentials</span>;
-
-<span class="c">// resolve the active tenant's keys instead of static config</span>
-<span class="k">final readonly class</span> <span class="t">TenantCredentialResolver</span> <span class="k">implements</span> <span class="t">CredentialResolver</span>
-{
-    <span class="k">public function</span> <span class="fn">__construct</span>(<span class="k">private</span> <span class="t">TenantContext</span> <span class="v">$tenant</span>) {}
-
-    <span class="k">public function</span> <span class="fn">resolve</span>(<span class="t">GatewayName</span> <span class="v">$gateway</span>): <span class="t">GatewayCredentials</span>
-    {
-        <span class="v">$secrets</span> = <span class="v">$this</span>-&gt;tenant-&gt;<span class="fn">current</span>()
-            -&gt;<span class="fn">gatewaySecrets</span>(<span class="v">$gateway</span>-&gt;value)
-            ?? <span class="k">throw</span> <span class="t">MissingCredentialsException</span>::<span class="fn">forGateway</span>(<span class="v">$gateway</span>);
-
-        <span class="k">return</span> <span class="t">GatewayCredentials</span>::<span class="fn">fromConfig</span>(<span class="v">$secrets</span>);
-    }
-}
-
-<span class="c">// swap the port once, in a service provider — the factory now uses it everywhere</span>
-<span class="v">$this</span>-&gt;app-&gt;<span class="fn">bind</span>(<span class="t">CredentialResolver</span>::<span class="k">class</span>, <span class="t">TenantCredentialResolver</span>::<span class="k">class</span>);</code></pre>
-      </div>
-    </section>
-
-    <section id="http-client" class="doc-section" data-gws="misc">
-      <p class="doc-eyebrow">Cross-cutting</p>
-      <h2>HTTP client</h2>
-      <p class="doc-sig"><span class="fn">HttpClient::send</span>(HttpRequest): <span class="rt">HttpResponse</span></p>
-      <p>Every driver reaches its gateway API through the <code>HttpClient</code> port — one
-         <code>send(HttpRequest): HttpResponse</code> method, no Laravel HTTP types leaking into the domain.
-         The container assembles the default stack for you from the <code>http.*</code> config: a
-         <code>LaravelHttpClient</code> transport, optionally wrapped by <code>RateLimitingHttpClient</code>
-         and <code>LoggingHttpClient</code>, with <code>RetryingHttpClient</code> on the outside. Each
-         decorator is just another <code>HttpClient</code>, so you can add your own — tracing, a circuit
-         breaker, a signing proxy — by extending the binding, keeping the retry/rate-limit/logging stack the
-         SDK already built.</p>
-      <div class="code">
-<pre><code><span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Contract\HttpClient</span>;
-<span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Http\HttpRequest</span>;
-<span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Http\HttpResponse</span>;
-
-<span class="c">// a decorator that records every outbound call on your APM span</span>
-<span class="k">final readonly class</span> <span class="t">TracingHttpClient</span> <span class="k">implements</span> <span class="t">HttpClient</span>
-{
-    <span class="k">public function</span> <span class="fn">__construct</span>(<span class="k">private</span> <span class="t">HttpClient</span> <span class="v">$inner</span>) {}
-
-    <span class="k">public function</span> <span class="fn">send</span>(<span class="t">HttpRequest</span> <span class="v">$request</span>): <span class="t">HttpResponse</span>
-    {
-        <span class="k">return</span> <span class="t">Tracer</span>::<span class="fn">span</span>(<span class="s">"http {$request->method} {$request->url}"</span>, <span class="k">fn</span> () =&gt; <span class="v">$this</span>-&gt;inner-&gt;<span class="fn">send</span>(<span class="v">$request</span>));
-    }
-}
-
-<span class="c">// wrap whatever the SDK already built — its stack stays underneath yours</span>
-<span class="v">$this</span>-&gt;app-&gt;<span class="fn">extend</span>(<span class="t">HttpClient</span>::<span class="k">class</span>, <span class="k">fn</span> (<span class="t">HttpClient</span> <span class="v">$inner</span>) =&gt; <span class="k">new</span> <span class="t">TracingHttpClient</span>(<span class="v">$inner</span>));</code></pre>
-      </div>
-      <p>In tests, bind the same port to <code>FakeHttpClient</code>: it records every request and replays
-         queued responses in order (falling back to a <code>200 {}</code>), so you assert on what the driver
-         sent without touching the network.</p>
-      <div class="code">
-<pre><code><span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Contract\HttpClient</span>;
-<span class="k">use</span> <span class="t">Hyprpay\Payments\Infrastructure\Http\FakeHttpClient</span>;
-
-<span class="v">$http</span> = (<span class="k">new</span> <span class="t">FakeHttpClient</span>())
-    -&gt;<span class="fn">queueJson</span>([<span class="s">'status'</span> =&gt; <span class="s">'captured'</span>]);
-
-<span class="v">$this</span>-&gt;app-&gt;<span class="fn">instance</span>(<span class="t">HttpClient</span>::<span class="k">class</span>, <span class="v">$http</span>);
-
-<span class="c">// ... exercise a gateway action, then assert on the captured request</span>
-<span class="v">$this</span>-&gt;<span class="fn">assertSame</span>(<span class="n">1</span>, <span class="v">$http</span>-&gt;<span class="fn">requestCount</span>());
-<span class="v">$this</span>-&gt;<span class="fn">assertSame</span>(<span class="s">'POST'</span>, <span class="v">$http</span>-&gt;<span class="fn">lastRequest</span>()-&gt;method);</code></pre>
-      </div>
-    </section>
-
-    <section id="configuration" class="doc-section" data-gws="misc">
-      <p class="doc-eyebrow">Cross-cutting</p>
-      <h2>Configuration</h2>
-      <p class="doc-sig"><span class="fn">config</span>(<span class="s">'gateway.*'</span>): <span class="rt">mixed</span></p>
-      <p>Publish it with <code>php artisan vendor:publish --tag=gateway-config</code>. Every key, its
-         env var, and default, broken down below.</p>
-      <div class="code">
-<pre><code><span class="c">/**
- * config/gateway.php — every setting at a glance.
- *
- * default                       string  Gateway used when make() is called without one.  (GATEWAY_DEFAULT)
- *
- * http.timeout                  int     Per-request timeout, seconds.                     (GATEWAY_HTTP_TIMEOUT = 30)
- * http.retries                  int     Retries for transient failures (408/429/5xx).     (GATEWAY_HTTP_RETRIES = 2)
- * http.retry_base_delay_ms      int     Base backoff in ms, doubled per retry.            (GATEWAY_HTTP_RETRY_BASE_MS = 200)
- * http.logging                  bool    Log HTTP request/response metadata — no bodies.   (GATEWAY_HTTP_LOGGING = false)
- * http.rate_limit               bool    Token-bucket throttle for outbound requests.      (GATEWAY_HTTP_RATE_LIMIT = false)
- * http.rate_limit_max_requests  int     Bucket size / requests per window.                (GATEWAY_HTTP_RATE_LIMIT_MAX = 10)
- * http.rate_limit_per_seconds   int     Refill window length, seconds.                    (GATEWAY_HTTP_RATE_LIMIT_PER = 1)
- *
- * commands.reconcile            bool    Register the gateway:reconcile:{X} commands.       (GATEWAY_RECONCILE_COMMANDS = true)
- *
- * events.enabled                bool    Wrap drivers to emit payment domain events.        (GATEWAY_EVENTS = true)
- * events.log                    bool    Attach the redaction-safe audit-logging listener.  (GATEWAY_EVENTS_LOG = false)
- *
- * logging.operations            bool    Wrap drivers in a LoggingGateway (per-call logs).  (GATEWAY_LOG_OPERATIONS = false)
- * logging.channel               string  Log channel; null → dedicated daily hyprpay log.   (GATEWAY_LOG_CHANNEL)
- * logging.days                  int     Retention for the daily hyprpay log.               (GATEWAY_LOG_DAYS = 14)
- * logging.level                 string  Minimum level for the hyprpay channel.             (GATEWAY_LOG_LEVEL = debug)
- *
- * gateways.{key}                array   Per-gateway credentials — merchant id, secret, host, locale, currency.
- */</span></code></pre>
-      </div>
-    </section>
-
-    <section id="ai-docs" class="doc-section" data-gws="misc">
-      <p class="doc-eyebrow">Cross-cutting</p>
-      <h2>AI docs &amp; MCP</h2>
-      <p class="doc-sig"><span class="fn">docs/guides/ai/</span> — machine-consumable SDK reference, plus a developer MCP in <span class="fn">mcp/</span></p>
-      <p>A 100%-coverage, machine-consumable reference for AI assistants lives under
-         <code>docs/guides/ai/</code>: every one of the package's 192 classes, plus the full operation
-         contract, request/result DTOs, value objects, enums, exceptions, events, ports, all ten
-         gateways, and the config surface. Load it as context when an AI is helping you use the SDK —
-         <code>class-index.md</code> lists every class so nothing is left undocumented.</p>
-      <p>The package also ships a <b>developer MCP server</b> in <code>mcp/</code> — read-only
-         <a href="https://modelcontextprotocol.io">Model Context Protocol</a> tools that reflect the
-         live classes so a coding agent can explore the SDK and generate correct integrations:
-         <code>get_sdk_overview</code>, <code>list_gateways</code>, <code>get_operation_details</code>,
-         <code>get_class_details</code>, <code>get_code_template</code>, and <code>search</code>. A
-         project-scoped <code>.mcp.json</code> registers it as <code>php mcp/server.php</code>, so it
-         is always exact — the support matrix and code templates come straight from the source.</p>
-      <p>Start at the <a href="https://github.com/MHJaafar9869/hyprpay/blob/main/docs/guides/ai/README.md">AI docs index</a>,
-         the <a href="https://github.com/MHJaafar9869/hyprpay/blob/main/docs/guides/ai/class-index.md">complete class index</a>,
-         or the <a href="https://github.com/MHJaafar9869/hyprpay/blob/main/mcp/README.md">developer MCP guide</a>.</p>
-    </section>
-
-    <section id="setup-payer-auth" class="doc-section" data-gws="cyber">
-      <p class="doc-eyebrow">3-D Secure</p>
-      <h2>Setup payer auth</h2>
-      <p class="doc-sig"><span class="fn">setupPayerAuth</span>(PayerAuthSetupRequest): <span class="rt">PayerAuthSetupResult</span></p>
-      <p>Primes 3-D Secure device data collection before enrollment — returns the device-data-collection
-         URL to load in a hidden iframe, plus the reference id to carry into <code>enrollPayerAuth</code>.</p>
-      <div class="code">
-<pre><code><span class="v">$setup</span> = <span class="v">$gateway</span>-&gt;<span class="fn">setupPayerAuth</span>(<span class="k">new</span> <span class="t">PayerAuthSetupRequest</span>(
-    <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>,
-    <span class="a">orderReference:</span> <span class="s">'ORDER-123'</span>,
-));
-<span class="c">// Load $setup->deviceDataCollectionUrl in a hidden iframe, then enroll with $setup->referenceId</span></code></pre>
-      </div>
-    </section>
-
-    <section id="enroll-payer-auth" class="doc-section" data-gws="cyber mpgs">
-      <p class="doc-eyebrow">3-D Secure</p>
-      <h2>Enroll payer auth</h2>
-      <p class="doc-sig"><span class="fn">enrollPayerAuth</span>(PayerAuthEnrollRequest): <span class="rt">PayerAuthResult</span></p>
-      <p>Starts the 3-D Secure challenge for a transient token before you charge it.</p>
-      <div class="code">
-<pre><code><span class="v">$auth</span> = <span class="v">$gateway</span>-&gt;<span class="fn">enrollPayerAuth</span>(<span class="k">new</span> <span class="t">PayerAuthEnrollRequest</span>(<span class="c">/* … */</span>));
-<span class="c">// $auth->status drives the challenge on the front end</span></code></pre>
-      </div>
-      <p><em>CyberSource:</em> pass the <code>referenceId</code> from <code>setupPayerAuth</code> and the
-         collected browser device data via a <code>BrowserDeviceData</code> on
-         <code>PayerAuthEnrollRequest.device</code>. The SDK maps it onto CyberSource's
-         <code>deviceInformation</code> and marks the device channel as <code>Browser</code>, so the issuer
-         can risk-assess the browser and grant a frictionless (no-challenge) authentication more often.</p>
-      <p><em>CyberSource — ECI enforcement:</em> a completed authentication (a frictionless enroll, or
-         validate after a challenge) whose resolved ECI is not fully authenticated — <code>02</code>
-         (Mastercard) or <code>05</code> (Visa, American Express, JCB, Diners Club, Discover) — is marked
-         unsuccessful, and a <code>PayerAuthenticationEciRejected</code> event is dispatched. This stops an
-         attempted or unauthenticated result from carrying a spurious liability shift into the charge; a
-         pending step-up challenge and a response with no ECI are unaffected.</p>
-    </section>
-
-    <section id="validate-payer-auth" class="doc-section" data-gws="cyber mpgs">
-      <p class="doc-eyebrow">3-D Secure</p>
-      <h2>Validate payer auth</h2>
-      <p class="doc-sig"><span class="fn">validatePayerAuth</span>(ValidatePayerAuthRequest): <span class="rt">PayerAuthResult</span></p>
-      <p>Confirms the challenge result once the payer completes it — check it before charging.</p>
-      <div class="code">
-<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">validatePayerAuth</span>(<span class="k">new</span> <span class="t">ValidatePayerAuthRequest</span>(
-    <span class="a">authenticationTransactionId:</span> <span class="v">$auth</span>-&gt;authenticationTransactionId,
-    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'USD'</span>),
-    <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>, <span class="c">// CyberSource references the card by the token's jti</span>
-));
-<span class="c">// $result->consumerAuthenticationInformation carries the CAVV/ECI for the charge</span></code></pre>
-      </div>
-      <p><em>MPGS:</em> pass 3-D Secure browser device data via a <code>BrowserDeviceData</code> on
-         <code>ValidatePayerAuthRequest.device</code> — the user agent, <code>browserDetails</code>
-         (screen size, colour depth, language, time zone, challenge window size), and client IP. MPGS
-         forwards it as <code>device</code> on the <code>AUTHENTICATE_PAYER</code> call so the issuer can
-         risk-assess and grant a frictionless (no-challenge) authentication more often.</p>
-      <div class="gw-variant" data-gw="mpgs">
-        <div class="code">
-<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">validatePayerAuth</span>(<span class="k">new</span> <span class="t">ValidatePayerAuthRequest</span>(
-    <span class="a">authenticationTransactionId:</span> <span class="v">$authTxnId</span>,
-    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'USD'</span>),
-    <span class="a">device:</span> <span class="k">new</span> <span class="t">BrowserDeviceData</span>(
-        <span class="a">ipAddress:</span> <span class="v">$request</span>-&gt;<span class="fn">ip</span>(),
-        <span class="a">userAgent:</span> <span class="v">$request</span>-&gt;<span class="fn">userAgent</span>(),
-        <span class="a">colorDepth:</span> <span class="n">24</span>, <span class="a">screenHeight:</span> <span class="n">640</span>, <span class="a">screenWidth:</span> <span class="n">480</span>,
-        <span class="a">language:</span> <span class="s">'en-US'</span>, <span class="a">timeZone:</span> <span class="n">273</span>, <span class="a">javaScriptEnabled:</span> <span class="k">true</span>,
-        <span class="a">challengeWindowSize:</span> <span class="s">'FULL_SCREEN'</span>,
-    ),
-));</code></pre>
         </div>
       </div>
     </section>
@@ -1653,37 +1606,6 @@
       </div>
     </section>
 
-    <section id="charge-wallet" class="doc-section" data-gws="cyber">
-      <p class="doc-eyebrow">Digital wallets</p>
-      <h2>Charge wallet</h2>
-      <p class="doc-sig"><span class="fn">chargeWallet</span>(WalletChargeRequest): <span class="rt">PaymentResult</span></p>
-      <p>Charges a native Apple Pay / Google Pay token from your own wallet button. Pass a
-         <code>WalletToken</code> in either shape — the SDK never decrypts it or handles the cleartext
-         PAN. CyberSource tags the charge with <code>paymentSolution</code> <code>001</code> (Apple Pay)
-         or <code>012</code> (Google Pay).</p>
-
-      <div class="gw-variant" data-gw="cyber">
-        <div class="code">
-<pre><code><span class="c">// Canonical: decrypt the wallet payload in your app, send the network-token fields</span>
-<span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">chargeWallet</span>(<span class="k">new</span> <span class="t">WalletChargeRequest</span>(
-    <span class="a">token:</span> <span class="k">new</span> <span class="t">DecryptedWalletToken</span>(
-        <span class="a">number:</span> <span class="v">$dpan</span>,           <span class="c">// decrypted device PAN</span>
-        <span class="a">cryptogram:</span> <span class="v">$cryptogram</span>,
-        <span class="a">expiryMonth:</span> <span class="s">'12'</span>,
-        <span class="a">expiryYear:</span> <span class="s">'2031'</span>,
-        <span class="a">eci:</span> <span class="s">'05'</span>,             <span class="c">// optional</span>
-        <span class="a">cardType:</span> <span class="s">'001'</span>,        <span class="c">// optional network code (001 Visa, 002 Mastercard, …)</span>
-    ),
-    <span class="a">wallet:</span> <span class="t">WalletType</span>::<span class="cn">ApplePay</span>,
-    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">2599</span>, <span class="s">'USD'</span>),
-));
-
-<span class="c">// Or forward the raw encrypted token for CyberSource to decrypt (fluidData):</span>
-<span class="c">// token: new EncryptedWalletToken($applePayPaymentDataJson)</span></code></pre>
-        </div>
-      </div>
-    </section>
-
     <section id="reports" class="doc-section" data-gws="cyber">
       <p class="doc-eyebrow">Reporting</p>
       <h2>Reports</h2>
@@ -1827,6 +1749,448 @@
       </div>
     </section>
 
+    <section id="events" class="doc-section" data-gws="misc">
+      <p class="doc-eyebrow">Cross-cutting</p>
+      <h2>Events</h2>
+      <p class="doc-sig"><span class="fn">Event::listen</span>(PaymentEvent::class, listener): <span class="rt">void</span></p>
+      <p>Every driver emits a typed domain event after each operation. All events implement the
+         <code>PaymentEvent</code> interface, so one listener receives them all — or target a single
+         event type. Events fire on completion (success or decline); the result carries the outcome.
+         Payloads are queue-safe: ids, amount and result, never the raw request or card data.</p>
+      <div class="code">
+<pre><code><span class="c">// one subscriber, every event — match on the concrete type</span>
+<span class="k">final class</span> <span class="t">PaymentEventSubscriber</span>
+{
+    <span class="k">public function</span> <span class="fn">handle</span>(<span class="t">PaymentEvent</span> <span class="v">$event</span>): <span class="k">void</span>
+    {
+        <span class="k">match</span> (<span class="k">true</span>) {
+            <span class="v">$event</span> <span class="k">instanceof</span> <span class="t">PaymentCaptured</span> =&gt; <span class="v">$this</span>-&gt;<span class="fn">markOrderPaid</span>(<span class="v">$event</span>-&gt;orderReference, <span class="v">$event</span>-&gt;result),
+            <span class="v">$event</span> <span class="k">instanceof</span> <span class="t">PaymentRefunded</span> =&gt; <span class="v">$this</span>-&gt;<span class="fn">recordRefund</span>(<span class="v">$event</span>-&gt;transactionId, <span class="v">$event</span>-&gt;result),
+            <span class="v">$event</span> <span class="k">instanceof</span> <span class="t">WebhookReceived</span> =&gt; <span class="v">$this</span>-&gt;<span class="fn">applyWebhook</span>(<span class="v">$event</span>-&gt;webhook),
+            <span class="k">default</span> =&gt; <span class="k">null</span>, <span class="c">// charge/void/vault/checkout — ignored here</span>
+        };
+    }
+}
+
+<span class="c">// register once; receives every event via the interface</span>
+<span class="t">Event</span>::<span class="fn">listen</span>(<span class="t">PaymentEvent</span>::<span class="k">class</span>, <span class="t">PaymentEventSubscriber</span>::<span class="k">class</span>);
+
+<span class="c">// config/gateway.php — on by default; 'log' attaches the redaction-safe audit listener</span>
+<span class="s">'events'</span> =&gt; [<span class="s">'enabled'</span> =&gt; <span class="k">true</span>, <span class="s">'log'</span> =&gt; <span class="k">false</span>]</code></pre>
+      </div>
+      <h3>Every event, and when it fires</h3>
+      <p>Eleven concrete events implement <code>PaymentEvent</code>. Each fires <em>after</em> the
+         operation completes — including when it declines, so a listener must read the result rather
+         than assume success.</p>
+      <div class="doc-table-wrap">
+        <table class="doc-table">
+          <thead><tr><th>Event</th><th>Emitted by</th><th>Fires when</th></tr></thead>
+          <tbody>
+            <tr><th><code>CheckoutSessionCreated</code></th><td><code>createCheckoutSession</code></td><td>A checkout session is created for the customer to complete payment</td></tr>
+            <tr><th><code>PaymentCharged</code></th><td><code>charge</code></td><td>A charge completes — read the result's success/status for the outcome</td></tr>
+            <tr><th><code>WalletCharged</code></th><td><code>chargeWallet</code></td><td>A digital-wallet charge (Apple Pay / Google Pay) completes</td></tr>
+            <tr><th><code>StoredCredentialCharged</code></th><td><code>chargeStoredCredential</code></td><td>A charge against a stored (vaulted) credential completes</td></tr>
+            <tr><th><code>PaymentCaptured</code></th><td><code>capture</code></td><td>A capture of a previously authorized payment completes</td></tr>
+            <tr><th><code>PaymentRefunded</code></th><td><code>refund</code></td><td>A refund of a settled payment completes</td></tr>
+            <tr><th><code>PaymentVoided</code></th><td><code>void</code></td><td>An authorized-but-uncaptured payment is voided</td></tr>
+            <tr><th><code>AuthorizationReversed</code></th><td><code>reverseAuthorization</code></td><td>An existing authorization is reversed and its held funds released</td></tr>
+            <tr><th><code>InstrumentVaulted</code></th><td><code>vaultInstrument</code></td><td>A payment instrument is tokenized for later reuse</td></tr>
+            <tr><th><code>WebhookReceived</code></th><td><code>verifyWebhook</code></td><td>An inbound webhook is verified and parsed</td></tr>
+            <tr><th><code>PayerAuthenticationEciRejected</code></th><td><code>enrollPayerAuth / validatePayerAuth</code></td><td>A 3-D Secure result is rejected because its ECI is not fully authenticated</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><code>PayerAuthenticationEciRejected</code> is the odd one out: it fires when a completed
+         3-D Secure result is rejected for a non-authenticated ECI. It is the only event that
+         reports something the return value cannot — the charge never happens — so it is worth
+         alerting on rather than merely recording.</p>
+
+      <h3>Payloads are queue-safe by construction</h3>
+      <p>Events carry ids, amount, and the normalised result — never the raw request, the card, or
+         the gateway payload. That is deliberate: an event that can be serialised onto a queue and
+         retried must not become a place card data comes to rest. If a listener needs the raw
+         response it should read it from the result it was handed, in-process.</p>
+
+      <h3>Two built-in listeners, and the off switch</h3>
+      <p><code>LoggingPaymentEventListener</code> writes one redaction-safe audit line per event, and
+         <code>RecordingPaymentEventListener</code> persists events through the activity store that
+         backs the dashboard. Dispatch itself is a decorator, so it can be removed entirely:</p>
+      <div class="code">
+<pre><code><span class="c">// config/gateway.php</span>
+'events' => [
+    'enabled' => env('GATEWAY_EVENTS', true),   <span class="c">// false returns bare drivers, no dispatch</span>
+    'log'     => env('GATEWAY_EVENTS_LOG', false), <span class="c">// attach the audit listener</span>
+],</code></pre>
+      </div>
+      <p>With no listeners registered the overhead is negligible, so leaving it enabled costs
+         nothing until you actually subscribe.</p>
+    </section>
+
+    <section id="operation-logging" class="doc-section" data-gws="misc">
+      <p class="doc-eyebrow">Cross-cutting</p>
+      <h2>Operation logging</h2>
+      <p class="doc-sig"><span class="fn">LoggingGateway</span>(driver, logger): <span class="rt">PaymentGatewayInterface</span></p>
+      <p>Wrap every driver in a <code>LoggingGateway</code> that logs each operation — charge, capture,
+         refund, getTransaction, verifyWebhook, … — with its duration and a safe correlation context
+         (gateway, order/transaction ids, amount) through your PSR-3 logger. The context carries no PAN,
+         cvv or tokens, and the underlying <code>LogsAction</code> trait masks sensitive keys as a backstop.
+         Distinct from <code>http.logging</code>, which logs the lower-level HTTP request/response metadata.</p>
+      <p>With <code>gateway.logging.operations</code> enabled the factory wraps every driver for you. To
+         compose it yourself — outside Laravel, or around a driver you built — wrap it with any PSR-3
+         logger:</p>
+      <div class="code">
+<pre><code><span class="k">use</span> <span class="t">Hyprpay\Payments\Application\PaymentGatewayFactory</span>;
+<span class="k">use</span> <span class="t">Hyprpay\Payments\Infrastructure\Gateway\LoggingGateway</span>;
+<span class="k">use</span> <span class="t">Illuminate\Support\Facades\Log</span>;
+
+<span class="k">final class</span> <span class="t">PaymentGatewayProvider</span>
+{
+    <span class="k">public function</span> <span class="fn">__construct</span>(<span class="k">private</span> <span class="t">PaymentGatewayFactory</span> <span class="v">$factory</span>) {}
+
+    <span class="c">/**
+     * Resolve a PayPal gateway that logs every operation with its duration.
+     *
+     * Wraps the driver in a LoggingGateway, so each call is recorded as
+     * [LoggingGateway] {operation} through the "payments" channel with a
+     * masked, PAN-free context. Enabling gateway.logging.operations makes the
+     * factory do this automatically, so this wrapper becomes unnecessary.
+     */</span>
+    <span class="k">public function</span> <span class="fn">payments</span>(): <span class="t">PaymentGatewayInterface</span>
+    {
+        <span class="k">return new</span> <span class="t">LoggingGateway</span>(
+            <span class="v">$this</span>-&gt;factory-&gt;<span class="fn">make</span>(<span class="t">GatewayName</span>::<span class="cn">PayPal</span>),
+            <span class="t">Log</span>::<span class="fn">channel</span>(<span class="s">'payments'</span>),
+        );
+    }
+}</code></pre>
+      </div>
+      <p>Each call then lands in your PSR-3 log at info — the message plus a structured context:</p>
+      <div class="code">
+<pre><code>[paypal] charge
+{
+    <span class="s">"gateway"</span>: <span class="s">"paypal"</span>,
+    <span class="s">"order_reference"</span>: <span class="s">"ORDER-123"</span>,
+    <span class="s">"amount"</span>: <span class="s">"100.00"</span>,
+    <span class="s">"currency"</span>: <span class="s">"USD"</span>,
+    <span class="s">"duration_ms"</span>: <span class="n">84.2</span>
+}</code></pre>
+      </div>
+      <p>The log is identified by gateway + operation; the message carries the operation, the context the
+         gateway. Request-scoped fields — request_id, ip, url — aren't added by the SDK (it stays
+         framework-agnostic and runs in CLI/queue where there is no request). Add them once to your app's
+         log context so they land on every line, these included; the timestamp is already stamped by the
+         logger. For the initiator's own name, use the <code>LogsAction</code> trait in your action class —
+         there the <code>action</code> field is your class.</p>
+      <div class="code">
+<pre><code><span class="c">// e.g. in middleware — attaches request_id/ip/url to every subsequent log line</span>
+<span class="t">Log</span>::<span class="fn">shareContext</span>([
+    <span class="s">'request_id'</span> =&gt; (<span class="k">string</span>) <span class="t">Str</span>::<span class="fn">uuid</span>(),
+    <span class="s">'ip'</span> =&gt; <span class="v">$request</span>-&gt;<span class="fn">ip</span>(),
+    <span class="s">'url'</span> =&gt; <span class="v">$request</span>-&gt;<span class="fn">fullUrl</span>(),
+]);
+
+<span class="c">// or tag one wrapper with static extra fields via the constructor hook:</span>
+<span class="k">new</span> <span class="t">LoggingGateway</span>(<span class="v">$driver</span>, <span class="v">$logger</span>, [<span class="s">'component'</span> =&gt; <span class="s">'checkout'</span>]);</code></pre>
+      </div>
+      <p>The SDK logs to its own daily file — <code>storage/logs/hyprpay-2026-08-08.log</code> by default,
+         kept out of your app log. With shared context in place the line reads — timestamp from the
+         logger, request_id/ip/url from your shared context, the rest from the SDK:</p>
+      <div class="code">
+<pre><code>[2026-08-08 10:15:42] production.INFO: [paypal] charge
+{
+    <span class="s">"request_id"</span>: <span class="s">"9b1e5b1e-3c2a-4f77-9c1e-2b0f5a7d1e42"</span>,
+    <span class="s">"ip"</span>: <span class="s">"203.0.113.7"</span>,
+    <span class="s">"url"</span>: <span class="s">"https://shop.test/checkout"</span>,
+    <span class="s">"gateway"</span>: <span class="s">"paypal"</span>,
+    <span class="s">"order_reference"</span>: <span class="s">"ORDER-123"</span>,
+    <span class="s">"amount"</span>: <span class="s">"100.00"</span>,
+    <span class="s">"currency"</span>: <span class="s">"USD"</span>,
+    <span class="s">"duration_ms"</span>: <span class="n">84.2</span>
+}</code></pre>
+      </div>
+      <h3>What is logged, and what never is</h3>
+      <p>Each operation is logged as <code>[LoggingGateway] {op}</code> with the gateway, correlation
+         ids, amount, and an elapsed <code>duration_ms</code>. The context is chosen to be safe
+         rather than filtered afterwards — no PAN, no CVV, no tokens, no raw payloads — and
+         <code>LogsAction</code> masks sensitive keys as a backstop rather than as the primary
+         defence.</p>
+
+      <h3>It wraps the interface, not the driver</h3>
+      <p>This matters for CyberSource specifically. <code>LoggingGateway</code> implements
+         <code>PaymentGatewayInterface</code>, so it only sees the shared operations. Everything
+         CyberSource exposes outside that contract — <code>lookupBin</code>,
+         <code>validateBankAccount</code>, the vault lifecycle, subscriptions, plans, reporting, the
+         webhook management calls — passes straight through the concrete driver and is
+         <strong>not logged at all</strong>.</p>
+      <p>That is a security property worth relying on: a raw PAN passed to <code>lookupBin</code>, or
+         routing and account numbers passed to <code>validateBankAccount</code>, are never seen by the
+         logging decorator. It is also an observability gap worth knowing about — if you need those
+         calls timed, wrap them yourself.</p>
+
+      <h3>Layering with HTTP logging</h3>
+      <p><code>GATEWAY_HTTP_LOGGING</code> is a different layer: it logs the outbound HTTP round trip
+         rather than the SDK operation. Enable both and you get the business action and the wire call
+         as separate lines; enable only the first for an audit trail without request-level noise.</p>
+    </section>
+
+    <section id="credential-resolver" class="doc-section" data-gws="misc">
+      <p class="doc-eyebrow">Cross-cutting</p>
+      <h2>Credential resolver</h2>
+      <p class="doc-sig"><span class="fn">CredentialResolver::resolve</span>(GatewayName): <span class="rt">GatewayCredentials</span></p>
+      <p>The factory never reads keys itself — it asks a <code>CredentialResolver</code> port. The default
+         <code>ConfigCredentialResolver</code> loads the <code>gateway.gateways.{key}</code> block from
+         Laravel config and hydrates a <code>GatewayCredentials</code> DTO, throwing
+         <code>MissingCredentialsException</code> when the block is missing, blank or incomplete. Rebind the
+         port to source credentials from anywhere — a per-tenant table, a secrets manager, an encrypted
+         vault — and every driver the factory builds picks them up, no driver code touched.</p>
+      <div class="code">
+<pre><code><span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Contract\CredentialResolver</span>;
+<span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Enum\GatewayName</span>;
+<span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Exception\MissingCredentialsException</span>;
+<span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\ValueObject\GatewayCredentials</span>;
+
+<span class="c">// resolve the active tenant's keys instead of static config</span>
+<span class="k">final readonly class</span> <span class="t">TenantCredentialResolver</span> <span class="k">implements</span> <span class="t">CredentialResolver</span>
+{
+    <span class="k">public function</span> <span class="fn">__construct</span>(<span class="k">private</span> <span class="t">TenantContext</span> <span class="v">$tenant</span>) {}
+
+    <span class="k">public function</span> <span class="fn">resolve</span>(<span class="t">GatewayName</span> <span class="v">$gateway</span>): <span class="t">GatewayCredentials</span>
+    {
+        <span class="v">$secrets</span> = <span class="v">$this</span>-&gt;tenant-&gt;<span class="fn">current</span>()
+            -&gt;<span class="fn">gatewaySecrets</span>(<span class="v">$gateway</span>-&gt;value)
+            ?? <span class="k">throw</span> <span class="t">MissingCredentialsException</span>::<span class="fn">forGateway</span>(<span class="v">$gateway</span>);
+
+        <span class="k">return</span> <span class="t">GatewayCredentials</span>::<span class="fn">fromConfig</span>(<span class="v">$secrets</span>);
+    }
+}
+
+<span class="c">// swap the port once, in a service provider — the factory now uses it everywhere</span>
+<span class="v">$this</span>-&gt;app-&gt;<span class="fn">bind</span>(<span class="t">CredentialResolver</span>::<span class="k">class</span>, <span class="t">TenantCredentialResolver</span>::<span class="k">class</span>);</code></pre>
+      </div>
+      <h3>Multi-tenancy is the point</h3>
+      <p>Because the factory asks the port on every <code>make()</code>, a resolver that reads the
+         current tenant returns that tenant's keys — no driver, payload, or call site changes. The
+         same hook covers a secrets manager, an encrypted column, or per-environment keys.</p>
+
+      <h3>The extra bag carries what the DTO does not</h3>
+      <p><code>GatewayCredentials::$extra</code> holds per-gateway settings that are not universal
+         credentials, read with <code>extra('some.key')</code> by dot path. For CyberSource that
+         includes <code>capture_context_endpoint</code> (switching the Unified Checkout session URL)
+         and <code>organization_id</code> — which reporting, Account Updater, and the webhook calls
+         scope themselves to, falling back to the merchant id. Set it for a portfolio or partner
+         account whose reports live under a different organization.</p>
+
+      <h3>Failing loudly beats failing at the gateway</h3>
+      <p><code>ConfigCredentialResolver</code> throws <code>MissingCredentialsException</code> when a
+         block is missing, blank, or incomplete, so a misconfigured environment fails at resolution
+         with a clear message rather than surfacing later as an opaque 401 from the gateway.
+         <code>GatewayCredentials::isComplete()</code> lets you assert the same thing at boot.</p>
+    </section>
+
+    <section id="http-client" class="doc-section" data-gws="misc">
+      <p class="doc-eyebrow">Cross-cutting</p>
+      <h2>HTTP client</h2>
+      <p class="doc-sig"><span class="fn">HttpClient::send</span>(HttpRequest): <span class="rt">HttpResponse</span></p>
+      <p>Every driver reaches its gateway API through the <code>HttpClient</code> port — one
+         <code>send(HttpRequest): HttpResponse</code> method, no Laravel HTTP types leaking into the domain.
+         The container assembles the default stack for you from the <code>http.*</code> config: a
+         <code>LaravelHttpClient</code> transport, optionally wrapped by <code>RateLimitingHttpClient</code>
+         and <code>LoggingHttpClient</code>, with <code>RetryingHttpClient</code> on the outside. Each
+         decorator is just another <code>HttpClient</code>, so you can add your own — tracing, a circuit
+         breaker, a signing proxy — by extending the binding, keeping the retry/rate-limit/logging stack the
+         SDK already built.</p>
+      <div class="code">
+<pre><code><span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Contract\HttpClient</span>;
+<span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Http\HttpRequest</span>;
+<span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Http\HttpResponse</span>;
+
+<span class="c">// a decorator that records every outbound call on your APM span</span>
+<span class="k">final readonly class</span> <span class="t">TracingHttpClient</span> <span class="k">implements</span> <span class="t">HttpClient</span>
+{
+    <span class="k">public function</span> <span class="fn">__construct</span>(<span class="k">private</span> <span class="t">HttpClient</span> <span class="v">$inner</span>) {}
+
+    <span class="k">public function</span> <span class="fn">send</span>(<span class="t">HttpRequest</span> <span class="v">$request</span>): <span class="t">HttpResponse</span>
+    {
+        <span class="k">return</span> <span class="t">Tracer</span>::<span class="fn">span</span>(<span class="s">"http {$request->method} {$request->url}"</span>, <span class="k">fn</span> () =&gt; <span class="v">$this</span>-&gt;inner-&gt;<span class="fn">send</span>(<span class="v">$request</span>));
+    }
+}
+
+<span class="c">// wrap whatever the SDK already built — its stack stays underneath yours</span>
+<span class="v">$this</span>-&gt;app-&gt;<span class="fn">extend</span>(<span class="t">HttpClient</span>::<span class="k">class</span>, <span class="k">fn</span> (<span class="t">HttpClient</span> <span class="v">$inner</span>) =&gt; <span class="k">new</span> <span class="t">TracingHttpClient</span>(<span class="v">$inner</span>));</code></pre>
+      </div>
+      <p>In tests, bind the same port to <code>FakeHttpClient</code>: it records every request and replays
+         queued responses in order (falling back to a <code>200 {}</code>), so you assert on what the driver
+         sent without touching the network.</p>
+      <div class="code">
+<pre><code><span class="k">use</span> <span class="t">Hyprpay\Payments\Domain\Contract\HttpClient</span>;
+<span class="k">use</span> <span class="t">Hyprpay\Payments\Infrastructure\Http\FakeHttpClient</span>;
+
+<span class="v">$http</span> = (<span class="k">new</span> <span class="t">FakeHttpClient</span>())
+    -&gt;<span class="fn">queueJson</span>([<span class="s">'status'</span> =&gt; <span class="s">'captured'</span>]);
+
+<span class="v">$this</span>-&gt;app-&gt;<span class="fn">instance</span>(<span class="t">HttpClient</span>::<span class="k">class</span>, <span class="v">$http</span>);
+
+<span class="c">// ... exercise a gateway action, then assert on the captured request</span>
+<span class="v">$this</span>-&gt;<span class="fn">assertSame</span>(<span class="n">1</span>, <span class="v">$http</span>-&gt;<span class="fn">requestCount</span>());
+<span class="v">$this</span>-&gt;<span class="fn">assertSame</span>(<span class="s">'POST'</span>, <span class="v">$http</span>-&gt;<span class="fn">lastRequest</span>()-&gt;method);</code></pre>
+      </div>
+      <h3>A decorator stack, assembled from config</h3>
+      <p>The port is one method, so behaviour is layered by wrapping rather than by flags inside a
+         client. The service provider composes, outermost first: rate limiting, then retries, then
+         logging, around the Laravel HTTP client.</p>
+      <div class="code">
+<pre><code>RateLimitingHttpClient  <span class="c">token bucket — smooths bursts against a gateway's own limit</span>
+  RetryingHttpClient    <span class="c">exponential backoff on transient failures</span>
+    LoggingHttpClient   <span class="c">one line per outbound request</span>
+      LaravelHttpClient <span class="c">the real call</span></code></pre>
+      </div>
+
+      <h3>The defaults, and why they are what they are</h3>
+      <p><code>RetryingHttpClient</code> retries <code>408, 429, 500, 502, 503, 504</code> — statuses
+         that indicate the request did not get a considered answer — with a 200&nbsp;ms base delay and
+         exponential growth. A <code>4xx</code> that is not 408 or 429 is never retried, because the
+         gateway has answered and repeating the call will not change the reply.
+         <code>RateLimitingHttpClient</code> is a token bucket, defaulting to 10 requests per second,
+         which shapes bursts rather than capping throughput.</p>
+      <div class="code">
+<pre><code><span class="c">// config/gateway.php → http</span>
+'timeout'                 => env('GATEWAY_HTTP_TIMEOUT', 30),
+'retries'                 => env('GATEWAY_HTTP_RETRIES', 2),
+'retry_base_delay_ms'     => env('GATEWAY_HTTP_RETRY_BASE_MS', 200),
+'logging'                 => env('GATEWAY_HTTP_LOGGING', false),
+'rate_limit'              => env('GATEWAY_HTTP_RATE_LIMIT', false),
+'rate_limit_max_requests' => env('GATEWAY_HTTP_RATE_LIMIT_MAX', 10),
+'rate_limit_per_seconds'  => env('GATEWAY_HTTP_RATE_LIMIT_PER', 1),</code></pre>
+      </div>
+
+      <h3>Retries and money</h3>
+      <p>A retry is a second attempt at a request that may already have been received. That is safe
+         here because every write carries an idempotency key and the payload builders are
+         deterministic — no <code>uniqid()</code>, no timestamps — so the same inputs produce a
+         byte-identical request the gateway can deduplicate.</p>
+      <p>But CyberSource's deduplication window is bounded. A retry seconds later is caught by the
+         key; one hours later is not. For anything spaced beyond the immediate,
+         <code>findSuccessfulTransactionByReference()</code> before re-charging, and set a
+         <code>merchantTransactionId</code> so a timed-out attempt can be reversed outright.</p>
+
+      <h3>Testing without the network</h3>
+      <p><code>FakeHttpClient</code> implements the same port: queue responses, then assert on the
+         requests that were sent — method, URL, headers, signed body. Every gateway test in this
+         package is written against it, which is why the suite runs in under a second and needs no
+         sandbox credentials.</p>
+    </section>
+
+    <section id="configuration" class="doc-section" data-gws="misc">
+      <p class="doc-eyebrow">Cross-cutting</p>
+      <h2>Configuration</h2>
+      <p class="doc-sig"><span class="fn">config</span>(<span class="s">'gateway.*'</span>): <span class="rt">mixed</span></p>
+      <p>Publish it with <code>php artisan vendor:publish --tag=gateway-config</code>. Every key, its
+         env var, and default, broken down below.</p>
+      <div class="code">
+<pre><code><span class="c">/**
+ * config/gateway.php — every setting at a glance.
+ *
+ * default                       string  Gateway used when make() is called without one.  (GATEWAY_DEFAULT)
+ *
+ * http.timeout                  int     Per-request timeout, seconds.                     (GATEWAY_HTTP_TIMEOUT = 30)
+ * http.retries                  int     Retries for transient failures (408/429/5xx).     (GATEWAY_HTTP_RETRIES = 2)
+ * http.retry_base_delay_ms      int     Base backoff in ms, doubled per retry.            (GATEWAY_HTTP_RETRY_BASE_MS = 200)
+ * http.logging                  bool    Log HTTP request/response metadata — no bodies.   (GATEWAY_HTTP_LOGGING = false)
+ * http.rate_limit               bool    Token-bucket throttle for outbound requests.      (GATEWAY_HTTP_RATE_LIMIT = false)
+ * http.rate_limit_max_requests  int     Bucket size / requests per window.                (GATEWAY_HTTP_RATE_LIMIT_MAX = 10)
+ * http.rate_limit_per_seconds   int     Refill window length, seconds.                    (GATEWAY_HTTP_RATE_LIMIT_PER = 1)
+ *
+ * commands.reconcile            bool    Register the gateway:reconcile:{X} commands.       (GATEWAY_RECONCILE_COMMANDS = true)
+ *
+ * events.enabled                bool    Wrap drivers to emit payment domain events.        (GATEWAY_EVENTS = true)
+ * events.log                    bool    Attach the redaction-safe audit-logging listener.  (GATEWAY_EVENTS_LOG = false)
+ *
+ * logging.operations            bool    Wrap drivers in a LoggingGateway (per-call logs).  (GATEWAY_LOG_OPERATIONS = false)
+ * logging.channel               string  Log channel; null → dedicated daily hyprpay log.   (GATEWAY_LOG_CHANNEL)
+ * logging.days                  int     Retention for the daily hyprpay log.               (GATEWAY_LOG_DAYS = 14)
+ * logging.level                 string  Minimum level for the hyprpay channel.             (GATEWAY_LOG_LEVEL = debug)
+ *
+ * gateways.{key}                array   Per-gateway credentials — merchant id, secret, host, locale, currency.
+ */</span></code></pre>
+      </div>
+      <h3>The blocks, and what each one governs</h3>
+      <div class="doc-table-wrap">
+        <table class="doc-table">
+          <thead><tr><th>Block</th><th>What it governs</th></tr></thead>
+          <tbody>
+            <tr><th><code>default</code></th><td>Gateway used when <code>make()</code> is called with no name</td></tr>
+            <tr><th><code>gateways</code></th><td>Per-gateway credentials, plus the <code>extra</code> bag</td></tr>
+            <tr><th><code>http</code></th><td>Timeout, retries, rate limiting, wire logging</td></tr>
+            <tr><th><code>events</code></th><td>Domain-event dispatch, and the built-in audit listener</td></tr>
+            <tr><th><code>logging</code></th><td>Operation logging channel and level</td></tr>
+            <tr><th><code>commands</code></th><td>The <code>gateway:reconcile:{gateway}</code> Artisan commands</td></tr>
+            <tr><th><code>dashboard</code></th><td>The activity store and its UI</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Everything is env-driven, so nothing is committed</h3>
+      <p>Each key reads through <code>env()</code>, so credentials live in the environment and the
+         published config file stays safe to commit. That also means
+         <code>php artisan config:cache</code> is safe — but a cached config ignores later
+         <code>.env</code> edits, which is the usual cause of a key change that appears to do nothing.</p>
+
+      <h3>Reconciliation commands</h3>
+      <p><code>commands.reconcile</code> registers one Artisan command per gateway
+         (<code>gateway:reconcile:cybersource</code> and friends), which fetch the authoritative
+         status of one or more transaction ids straight from the gateway. Turn it off if your
+         application ships its own reconciliation tooling and you would rather not expose a second
+         path to the same data.</p>
+    </section>
+
+    <section id="ai-docs" class="doc-section" data-gws="misc">
+      <p class="doc-eyebrow">Cross-cutting</p>
+      <h2>AI docs &amp; MCP</h2>
+      <p class="doc-sig"><span class="fn">docs/guides/ai/</span> — machine-consumable SDK reference, plus a developer MCP in <span class="fn">mcp/</span></p>
+      <p>A 100%-coverage, machine-consumable reference for AI assistants lives under
+         <code>docs/guides/ai/</code>: every class in the package, plus the full operation
+         contract, request/result DTOs, value objects, enums, exceptions, events, ports, all ten
+         gateways, and the config surface. Load it as context when an AI is helping you use the SDK —
+         <code>class-index.md</code> lists every class so nothing is left undocumented.</p>
+      <p>The package also ships a <b>developer MCP server</b> in <code>mcp/</code> — read-only
+         <a href="https://modelcontextprotocol.io">Model Context Protocol</a> tools that reflect the
+         live classes so a coding agent can explore the SDK and generate correct integrations:
+         <code>get_sdk_overview</code>, <code>list_gateways</code>, <code>get_operation_details</code>,
+         <code>get_class_details</code>, <code>get_code_template</code>, and <code>search</code>. A
+         project-scoped <code>.mcp.json</code> registers it as <code>php mcp/server.php</code>, so it
+         is always exact — the support matrix and code templates come straight from the source.</p>
+      <p>Start at the <a href="https://github.com/MHJaafar9869/hyprpay/blob/main/docs/guides/ai/README.md">AI docs index</a>,
+         the <a href="https://github.com/MHJaafar9869/hyprpay/blob/main/docs/guides/ai/class-index.md">complete class index</a>,
+         or the <a href="https://github.com/MHJaafar9869/hyprpay/blob/main/mcp/README.md">developer MCP guide</a>.</p>
+      <h3>What the MCP server exposes</h3>
+      <div class="doc-table-wrap">
+        <table class="doc-table">
+          <thead><tr><th>Tool</th><th>What it returns</th></tr></thead>
+          <tbody>
+            <tr><th><code>get_sdk_overview</code></th><td>The package, its gateways, and this tool list</td></tr>
+            <tr><th><code>list_gateways</code></th><td>Every driver and the exact operations it implements</td></tr>
+            <tr><th><code>get_operation_details</code></th><td>An operation's request DTO, result, and supporting gateways</td></tr>
+            <tr><th><code>get_class_details</code></th><td>Full reflection of any class, interface, enum, or trait</td></tr>
+            <tr><th><code>get_code_template</code></th><td>A ready-to-adapt snippet for a gateway + operation</td></tr>
+            <tr><th><code>search</code></th><td>Find types by name or purpose across the package</td></tr>
+            <tr><th><code>get_gateway_gotchas</code></th><td>Real-world pitfalls reflection cannot show</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The first six reflect the live package, so they cannot drift from the code. The seventh is
+         curated: header quirks, account entitlements, ordering constraints, and the failure modes
+         that only show up against the real gateway — the things a DTO signature will never tell an
+         agent. CyberSource alone carries more than thirty.</p>
+
+      <h3>Why the gotchas exist</h3>
+      <p>Reflection shows an agent that <code>timeoutVoid()</code> takes a
+         <code>TimeoutVoidRequest</code>. It cannot show that the call is impossible unless a
+         <code>merchantTransactionId</code> was set on the <em>original</em> request hours earlier,
+         that a report download is keyed by the end of the period rather than the report id, or that
+         creating a webhook before its signing key leaves it unable to sign anything. Those are the
+         mistakes that cost a day, and they are what <code>get_gateway_gotchas</code> is for.</p>
+    </section>
+
   </main>
 
   <!-- ═══════════  RIGHT: one entry per action  ═══════════ -->
@@ -1842,24 +2206,26 @@
           <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#overview" data-spy="overview">Overview</a></li>
         </ul>
       </div>
-      <div class="tree-group" data-group="payment-flow">
-        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-payment-flow">
+      <div class="tree-group" data-group="checkout">
+        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-checkout">
           <span class="caret" aria-hidden="true">▾</span>
-          <span class="tree-label-text">Payment flow</span>
+          <span class="tree-label-text">Checkout</span>
         </button>
-        <ul id="tree-payment-flow">
+        <ul id="tree-checkout">
           <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs airwallex tamara"><a href="#create-checkout" data-spy="create-checkout">Create checkout</a></li>
           <li data-gws="cyber"><a href="#confirm-orchestrated" data-spy="confirm-orchestrated">Confirm orchestrated</a></li>
           <li data-gws="cyber"><a href="#microform-session" data-spy="microform-session">Microform session</a></li>
+        </ul>
+      </div>
+      <div class="tree-group" data-group="before-charging">
+        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-before-charging">
+          <span class="caret" aria-hidden="true">▾</span>
+          <span class="tree-label-text">Before charging</span>
+        </button>
+        <ul id="tree-before-charging">
+          <li data-gws="cyber"><a href="#bin-lookup" data-spy="bin-lookup">Card offers (BIN lookup)</a></li>
           <li data-gws="cyber"><a href="#dcc-rate" data-spy="dcc-rate">DCC rate</a></li>
           <li data-gws="cyber"><a href="#installments" data-spy="installments">Installments</a></li>
-          <li data-gws="cyber"><a href="#bin-lookup" data-spy="bin-lookup">Card offers (BIN lookup)</a></li>
-          <li data-gws="cyber paytabs paypal mpgs authorizenet airwallex"><a href="#charge" data-spy="charge">Charge</a></li>
-          <li data-gws="cyber"><a href="#declines" data-spy="declines">Declines &amp; messages</a></li>
-          <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#capture" data-spy="capture">Capture</a></li>
-          <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#void" data-spy="void">Void</a></li>
-          <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#refund" data-spy="refund">Refund</a></li>
-          <li data-gws="cyber paylink paytabs mpgs airwallex tamara"><a href="#reverse-authorization" data-spy="reverse-authorization">Reverse authorization</a></li>
         </ul>
       </div>
       <div class="tree-group" data-group="fraud-screening">
@@ -1871,6 +2237,48 @@
           <li data-gws="cyber"><a href="#device-fingerprint" data-spy="device-fingerprint">Device fingerprinting</a></li>
         </ul>
       </div>
+      <div class="tree-group" data-group="3-d-secure">
+        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-3-d-secure">
+          <span class="caret" aria-hidden="true">▾</span>
+          <span class="tree-label-text">3-D Secure</span>
+        </button>
+        <ul id="tree-3-d-secure">
+          <li data-gws="cyber"><a href="#setup-payer-auth" data-spy="setup-payer-auth">Setup payer auth</a></li>
+          <li data-gws="cyber mpgs"><a href="#enroll-payer-auth" data-spy="enroll-payer-auth">Enroll payer auth</a></li>
+          <li data-gws="cyber mpgs"><a href="#validate-payer-auth" data-spy="validate-payer-auth">Validate payer auth</a></li>
+        </ul>
+      </div>
+      <div class="tree-group" data-group="charging">
+        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-charging">
+          <span class="caret" aria-hidden="true">▾</span>
+          <span class="tree-label-text">Charging</span>
+        </button>
+        <ul id="tree-charging">
+          <li data-gws="cyber paytabs paypal mpgs authorizenet airwallex"><a href="#charge" data-spy="charge">Normal Charge</a></li>
+          <li data-gws="cyber"><a href="#charge-wallet" data-spy="charge-wallet">Wallet Charge</a></li>
+          <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#capture" data-spy="capture">Authorization Charge</a></li>
+          <li data-gws="cyber"><a href="#declines" data-spy="declines">Declines &amp; messages</a></li>
+        </ul>
+      </div>
+      <div class="tree-group" data-group="corrections">
+        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-corrections">
+          <span class="caret" aria-hidden="true">▾</span>
+          <span class="tree-label-text">Corrections</span>
+        </button>
+        <ul id="tree-corrections">
+          <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#void" data-spy="void">Void</a></li>
+          <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#refund" data-spy="refund">Refund</a></li>
+          <li data-gws="cyber paylink paytabs mpgs airwallex tamara"><a href="#reverse-authorization" data-spy="reverse-authorization">Reverse authorization</a></li>
+          <li data-gws="cyber"><a href="#increment-authorization" data-spy="increment-authorization">Increment authorization</a></li>
+          <li data-gws="cyber"><a href="#refund-capture" data-spy="refund-capture">Refund a capture</a></li>
+          <li data-gws="cyber"><a href="#void-capture" data-spy="void-capture">Void a capture</a></li>
+          <li data-gws="cyber"><a href="#credit-payment" data-spy="credit-payment">Standalone credit</a></li>
+          <li data-gws="cyber"><a href="#void-credit" data-spy="void-credit">Void a credit</a></li>
+          <li data-gws="cyber"><a href="#void-refund" data-spy="void-refund">Void a refund</a></li>
+          <li data-gws="cyber"><a href="#timeout-void" data-spy="timeout-void">Timeout void</a></li>
+          <li data-gws="cyber"><a href="#timeout-reversal" data-spy="timeout-reversal">Timeout reversal</a></li>
+        </ul>
+      </div>
       <div class="tree-group" data-group="after-the-payment">
         <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-after-the-payment">
           <span class="caret" aria-hidden="true">▾</span>
@@ -1880,6 +2288,7 @@
           <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#get-transaction" data-spy="get-transaction">Get transaction</a></li>
           <li data-gws="cyber fawry paymob paylink mpgs airwallex tamara"><a href="#search-transaction" data-spy="search-transaction">Search transaction</a></li>
           <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#reconcile" data-spy="reconcile">Reconcile</a></li>
+          <li data-gws="cyber"><a href="#refresh-payment-status" data-spy="refresh-payment-status">Refresh payment status</a></li>
         </ul>
       </div>
       <div class="tree-group" data-group="webhooks">
@@ -1900,31 +2309,6 @@
           <li data-gws="cyber"><a href="#delete-webhook" data-spy="delete-webhook">Delete webhook</a></li>
         </ul>
       </div>
-      <div class="tree-group" data-group="cross-cutting">
-        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-cross-cutting">
-          <span class="caret" aria-hidden="true">▾</span>
-          <span class="tree-label-text">Cross-cutting</span>
-        </button>
-        <ul id="tree-cross-cutting">
-          <li data-gws="misc"><a href="#events" data-spy="events">Events</a></li>
-          <li data-gws="misc"><a href="#operation-logging" data-spy="operation-logging">Operation logging</a></li>
-          <li data-gws="misc"><a href="#credential-resolver" data-spy="credential-resolver">Credential resolver</a></li>
-          <li data-gws="misc"><a href="#http-client" data-spy="http-client">HTTP client</a></li>
-          <li data-gws="misc"><a href="#configuration" data-spy="configuration">Configuration</a></li>
-          <li data-gws="misc"><a href="#ai-docs" data-spy="ai-docs">AI docs &amp; MCP</a></li>
-        </ul>
-      </div>
-      <div class="tree-group" data-group="3-d-secure">
-        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-3-d-secure">
-          <span class="caret" aria-hidden="true">▾</span>
-          <span class="tree-label-text">3-D Secure</span>
-        </button>
-        <ul id="tree-3-d-secure">
-          <li data-gws="cyber"><a href="#setup-payer-auth" data-spy="setup-payer-auth">Setup payer auth</a></li>
-          <li data-gws="cyber mpgs"><a href="#enroll-payer-auth" data-spy="enroll-payer-auth">Enroll payer auth</a></li>
-          <li data-gws="cyber mpgs"><a href="#validate-payer-auth" data-spy="validate-payer-auth">Validate payer auth</a></li>
-        </ul>
-      </div>
       <div class="tree-group" data-group="stored-credentials">
         <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-stored-credentials">
           <span class="caret" aria-hidden="true">▾</span>
@@ -1939,15 +2323,6 @@
           <li data-gws="cyber"><a href="#plans" data-spy="plans">Plans</a></li>
           <li data-gws="cyber"><a href="#vault-lifecycle" data-spy="vault-lifecycle">Vault lifecycle</a></li>
           <li data-gws="cyber"><a href="#account-updater" data-spy="account-updater">Account Updater</a></li>
-        </ul>
-      </div>
-      <div class="tree-group" data-group="digital-wallets">
-        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-digital-wallets">
-          <span class="caret" aria-hidden="true">▾</span>
-          <span class="tree-label-text">Digital wallets</span>
-        </button>
-        <ul id="tree-digital-wallets">
-          <li data-gws="cyber"><a href="#charge-wallet" data-spy="charge-wallet">Charge wallet</a></li>
         </ul>
       </div>
       <div class="tree-group" data-group="reporting">
@@ -1970,6 +2345,20 @@
           <li data-gws="cyber"><a href="#validate-bank-account" data-spy="validate-bank-account">Validate bank account</a></li>
         </ul>
       </div>
+      <div class="tree-group" data-group="cross-cutting">
+        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-cross-cutting">
+          <span class="caret" aria-hidden="true">▾</span>
+          <span class="tree-label-text">Cross-cutting</span>
+        </button>
+        <ul id="tree-cross-cutting">
+          <li data-gws="misc"><a href="#events" data-spy="events">Events</a></li>
+          <li data-gws="misc"><a href="#operation-logging" data-spy="operation-logging">Operation logging</a></li>
+          <li data-gws="misc"><a href="#credential-resolver" data-spy="credential-resolver">Credential resolver</a></li>
+          <li data-gws="misc"><a href="#http-client" data-spy="http-client">HTTP client</a></li>
+          <li data-gws="misc"><a href="#configuration" data-spy="configuration">Configuration</a></li>
+          <li data-gws="misc"><a href="#ai-docs" data-spy="ai-docs">AI docs &amp; MCP</a></li>
+        </ul>
+      </div>
     </div>
   </aside>
 
@@ -1984,7 +2373,7 @@
     <a href="https://packagist.org/packages/hyprpay/payments">Packagist</a>
     <a href="https://github.com/MHJaafar9869/hyprpay/blob/main/README.md">README</a>
   </nav>
-  <p class="foot-note">Domain-driven · ports &amp; adapters · deterministic · exact money · <a href="https://packagist.org/packages/hyprpay/payments">v0.15.0</a></p>
+  <p class="foot-note">Domain-driven · ports &amp; adapters · deterministic · exact money · <a href="https://packagist.org/packages/hyprpay/payments">v0.16.0</a></p>
 </footer>
 
 <button class="to-top" type="button" aria-label="Back to top" title="Back to top">↑</button>

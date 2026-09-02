@@ -16,8 +16,10 @@ use Hyprpay\Payments\Domain\Command\CreateReportRequest;
 use Hyprpay\Payments\Domain\Command\CreateReportSubscriptionRequest;
 use Hyprpay\Payments\Domain\Command\CreateSubscriptionRequest;
 use Hyprpay\Payments\Domain\Command\CreateWebhookRequest;
+use Hyprpay\Payments\Domain\Command\CreditRequest;
 use Hyprpay\Payments\Domain\Command\DccRateRequest;
 use Hyprpay\Payments\Domain\Command\DownloadReportRequest;
+use Hyprpay\Payments\Domain\Command\IncrementAuthorizationRequest;
 use Hyprpay\Payments\Domain\Command\ListReportsRequest;
 use Hyprpay\Payments\Domain\Command\ListSubscriptionsRequest;
 use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
@@ -25,6 +27,7 @@ use Hyprpay\Payments\Domain\Command\PayerAuthSetupRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
 use Hyprpay\Payments\Domain\Command\ReversalRequest;
 use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
+use Hyprpay\Payments\Domain\Command\TimeoutVoidRequest;
 use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\UpdatePaymentInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\UpdatePlanRequest;
@@ -78,6 +81,8 @@ use Hyprpay\Payments\Domain\Result\SubscriptionResult;
 use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
 use Hyprpay\Payments\Domain\Result\VaultedInstrument;
 use Hyprpay\Payments\Domain\Result\WebhookEvent;
+use Hyprpay\Payments\Domain\Result\WebhookEventType;
+use Hyprpay\Payments\Domain\Result\WebhookProductCatalog;
 use Hyprpay\Payments\Domain\Result\WebhookSecurityKey;
 use Hyprpay\Payments\Domain\Result\WebhookSubscription;
 use Hyprpay\Payments\Domain\ValueObject\BillingPeriod;
@@ -96,7 +101,9 @@ use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\BinLookupPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CaptureContextPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CapturePayload;
+use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CreditPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CurrencyConversionPayload;
+use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\IncrementAuthPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\MicroformCaptureContextPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\PayerAuthEnrollPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\PayerAuthSetupPayload;
@@ -110,6 +117,7 @@ use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\SearchPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\StoredCredentialPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\SubscriptionPayload;
+use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\TimeoutVoidPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\TokenizePayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\VoidPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\WalletPaymentPayload;
@@ -364,6 +372,198 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
             ),
             PaymentStatus::Reversed,
         );
+    }
+
+    /**
+     * Raises the amount already authorized, keeping one hold rather than placing a second.
+     *
+     * For open-ended stays and rentals where the final bill is not known up front: a hotel
+     * authorizes an estimate on arrival and increments as charges accumulate. Authorizing again
+     * instead would place a second hold and withhold the funds twice. The request carries the
+     * amount to *add*, not the new total. This is a CyberSource-specific operation, outside the
+     * shared {@see PaymentGatewayInterface}.
+     */
+    public function incrementAuthorization(IncrementAuthorizationRequest $request): PaymentResult
+    {
+        return $this->toPaymentResult($this->client->patch(
+            CybersourceEndpoint::Payments->path().'/'.$request->transactionId,
+            IncrementAuthPayload::build($request),
+            'increment authorization',
+            $request->idempotencyKey ?? $request->orderReference,
+        ));
+    }
+
+    /**
+     * Pushes money to a card with no original transaction behind it (a standalone credit).
+     *
+     * Distinct from {@see refund()}, which returns part of a specific captured payment and is
+     * bounded by it. A credit is bounded by nothing — no amount cap and no sale to tie it to —
+     * which is why processors watch them and why it belongs behind payout-grade authorisation
+     * rather than refund-grade. Use it for goodwill payments, rebates, settlements, or a refund
+     * whose original transaction is beyond the gateway's refund window.
+     */
+    public function creditPayment(CreditRequest $request): PaymentResult
+    {
+        return $this->toPaymentResult(
+            $this->client->post(
+                CybersourceEndpoint::Credits->path(),
+                CreditPayload::build($request),
+                'credit payment',
+                $request->idempotencyKey ?? $request->orderReference,
+            ),
+            PaymentStatus::Refunded,
+        );
+    }
+
+    /**
+     * Refunds a specific capture rather than the payment as a whole.
+     *
+     * Needed when authorization and capture were requested separately: the refund then belongs to
+     * the capture, and {@see refund()} — which addresses the payment id — cannot reach it.
+     *
+     * @param  RefundRequest  $request  Refund inputs whose `transactionId` is the **capture** id.
+     */
+    public function refundCapture(RefundRequest $request): RefundResult
+    {
+        $response = $this->client->post(
+            CybersourceEndpoint::CaptureRefunds->path($request->transactionId),
+            RefundPayload::build($request),
+            'refund capture',
+            $request->idempotencyKey,
+        );
+
+        $status = $this->resolveStatus($response, PaymentStatus::Refunded);
+
+        return new RefundResult(
+            success: $status->isSuccessful(),
+            status: $status,
+            refundId: $this->transactionId($response),
+            code: $this->reasonCode($response),
+            message: $this->message($response),
+            raw: $response,
+        );
+    }
+
+    /**
+     * Cancels a capture that has not yet settled.
+     *
+     * {@see void()} addresses a payment; this addresses a capture requested independently of its
+     * authorization, which that call cannot reach.
+     *
+     * @param  VoidRequest  $request  Void inputs whose `transactionId` is the **capture** id.
+     */
+    public function voidCapture(VoidRequest $request): PaymentResult
+    {
+        return $this->toPaymentResult(
+            $this->client->post(
+                CybersourceEndpoint::CaptureVoids->path($request->transactionId),
+                VoidPayload::build($request),
+                'void capture',
+                $request->idempotencyKey,
+            ),
+            PaymentStatus::Voided,
+        );
+    }
+
+    /**
+     * Cancels a standalone credit before it settles — the way to undo a credit sent in error,
+     * since a credit has no payment to reverse against.
+     *
+     * @param  VoidRequest  $request  Void inputs whose `transactionId` is the **credit** id.
+     */
+    public function voidCredit(VoidRequest $request): PaymentResult
+    {
+        return $this->toPaymentResult(
+            $this->client->post(
+                CybersourceEndpoint::CreditVoids->path($request->transactionId),
+                VoidPayload::build($request),
+                'void credit',
+                $request->idempotencyKey,
+            ),
+            PaymentStatus::Voided,
+        );
+    }
+
+    /**
+     * Cancels a refund before it settles, so an over-refund caught in time costs nothing.
+     *
+     * @param  VoidRequest  $request  Void inputs whose `transactionId` is the **refund** id.
+     */
+    public function voidRefund(VoidRequest $request): PaymentResult
+    {
+        return $this->toPaymentResult(
+            $this->client->post(
+                CybersourceEndpoint::RefundVoids->path($request->transactionId),
+                VoidPayload::build($request),
+                'void refund',
+                $request->idempotencyKey,
+            ),
+            PaymentStatus::Voided,
+        );
+    }
+
+    /**
+     * Cancels a payment, capture, refund, or credit whose reply never arrived.
+     *
+     * When a request times out you cannot know whether it landed, and you have no transaction id
+     * to void with because the response that carried it never came. This matches on the merchant
+     * transaction id sent on the *original* request and reverses it if it landed, or does nothing
+     * if it did not — so it must have been sent in the first place (see
+     * {@see ChargeRequest::$merchantTransactionId}); it cannot be supplied retrospectively.
+     *
+     * Complements, rather than replaces, reconciling by reference:
+     * {@see findSuccessfulTransactionByReference()} tells you *whether* a lost request settled and
+     * is eventually consistent; this *undoes* it, and acts immediately.
+     */
+    public function timeoutVoid(TimeoutVoidRequest $request): PaymentResult
+    {
+        return $this->toPaymentResult(
+            $this->client->post(
+                CybersourceEndpoint::TimeoutVoids->path(),
+                TimeoutVoidPayload::build($request),
+                'timeout void',
+                $request->idempotencyKey ?? $request->merchantTransactionId,
+            ),
+            PaymentStatus::Voided,
+        );
+    }
+
+    /**
+     * Reverses an authorization whose reply never arrived, releasing a hold you cannot address by id.
+     *
+     * The authorization-side counterpart of {@see timeoutVoid()}, and subject to the same
+     * precondition: the original request must have carried a merchant transaction id. Without this,
+     * a timed-out authorization strands a hold on the cardholder's card until the issuer expires it.
+     */
+    public function timeoutReversal(TimeoutVoidRequest $request): PaymentResult
+    {
+        return $this->toPaymentResult(
+            $this->client->post(
+                CybersourceEndpoint::TimeoutReversals->path(),
+                TimeoutVoidPayload::build($request),
+                'timeout reversal',
+                $request->idempotencyKey ?? $request->merchantTransactionId,
+            ),
+            PaymentStatus::Reversed,
+        );
+    }
+
+    /**
+     * Asks CyberSource to re-check a payment's status with the processor.
+     *
+     * For the alternative payment methods that settle asynchronously, where the original response
+     * was not final. Unlike {@see getTransaction()}, which reads CyberSource's own record, this
+     * makes CyberSource go back to the processor — so use it when the record itself looks stale
+     * rather than merely unfinished.
+     *
+     * @param  string  $transactionId  Payment to re-check.
+     */
+    public function refreshPaymentStatus(string $transactionId): PaymentResult
+    {
+        return $this->toPaymentResult($this->client->postWithoutBody(
+            CybersourceEndpoint::RefreshPaymentStatus->path($transactionId),
+            'refresh payment status',
+        ));
     }
 
     /**
@@ -1545,17 +1745,28 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
      * Lists the products and event types this organization may subscribe to.
      *
      * Which are available depends on the account's entitlements, so discover them here rather than
-     * hard-coding product ids and event names into a subscription.
+     * hard-coding product ids and event names into a subscription — that is also why neither is
+     * modelled as an enum. Each entry carries the per-event metadata that decides how a
+     * subscription should be configured: which events are time-sensitive (so a retry policy that
+     * queues and backfills would strip their value) and which arrive encrypted (so message-level
+     * encryption must be in place before they can be read).
      *
      * @param  string|null  $organizationId  Organization to inspect; defaults to the credentials' organization.
-     * @return array<int|string, mixed> The raw catalogue; each entry pairs a product with its event types.
+     * @return list<WebhookProductCatalog>
      */
     public function listWebhookProducts(?string $organizationId = null): array
     {
-        return $this->client->get(
+        $response = $this->client->get(
             CybersourceEndpoint::WebhookProducts->path($this->organizationId($organizationId)),
             'list webhook products',
         );
+
+        $products = array_is_list($response) ? $response : Value::array($response['products'] ?? null);
+
+        return array_values(array_map(
+            fn (mixed $product): WebhookProductCatalog => $this->toWebhookProductCatalog(Value::array($product)),
+            $products,
+        ));
     }
 
     /**
@@ -1792,6 +2003,33 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
             updatedRecords: Value::int($totals['updatedRecords'] ?? null),
             networkResponses: Value::int($totals['caResponses'] ?? null),
             raw: $response,
+        );
+    }
+
+    /**
+     * Maps a CyberSource webhook product-catalogue entry into a WebhookProductCatalog DTO.
+     *
+     * @param  array<string, mixed>  $product  Decoded catalogue entry.
+     */
+    private function toWebhookProductCatalog(array $product): WebhookProductCatalog
+    {
+        $events = is_array($product['eventTypes'] ?? null) ? $product['eventTypes'] : [];
+
+        return new WebhookProductCatalog(
+            productId: Value::nullableString($product['productId'] ?? null),
+            productName: Value::nullableString($product['productName'] ?? null),
+            eventTypes: array_values(array_map(
+                static fn (mixed $event): WebhookEventType => new WebhookEventType(
+                    eventName: Value::nullableString(data_get($event, 'eventName')),
+                    displayName: Value::nullableString(data_get($event, 'displayName')),
+                    frequency: is_numeric(data_get($event, 'frequency')) ? Value::int(data_get($event, 'frequency')) : null,
+                    isTimeSensitive: Value::bool(data_get($event, 'timeSensitivity')),
+                    isEncrypted: Value::bool(data_get($event, 'payloadEncryption')),
+                    raw: Value::array($event),
+                ),
+                $events,
+            )),
+            raw: $product,
         );
     }
 

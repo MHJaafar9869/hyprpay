@@ -26,7 +26,7 @@ final class CapturePayload
     {
         return [
             'clientReferenceInformation' => [
-                'code' => ClientReference::code($request->orderReference, $request->transactionId),
+                ...ClientReference::block($request->orderReference, $request->merchantTransactionId, $request->transactionId),
             ],
             'orderInformation' => [
                 'amountDetails' => [

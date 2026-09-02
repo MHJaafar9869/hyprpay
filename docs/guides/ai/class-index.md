@@ -14,6 +14,7 @@ Every class, interface, enum, and trait in `hyprpay/payments`, grouped by namesp
 
 ## `Domain\Command`
 
+- **`BinLookupRequest`** _class_ — Input DTO for looking up what a card is before charging it.
 - **`CaptureRequest`** _class_ — Input DTO for capturing funds on a previously authorised transaction.
 - **`ChargeRequest`** _class_ — Input DTO for charging a card captured by the Unified Checkout widget.
 - **`CheckoutOptions`** _interface_ — A typed, gateway-specific bag of checkout options carried by a CheckoutSessionRequest.
@@ -25,7 +26,10 @@ Every class, interface, enum, and trait in `hyprpay/payments`, grouped by namesp
 - **`CreateReportSubscriptionRequest`** _class_ — Input DTO for scheduling a report the gateway generates on a recurring cadence.
 - **`CreateSubscriptionRequest`** _class_ — Input DTO for creating a recurring subscription against a vaulted payment instrument.
 - **`DccRateRequest`** _class_ — Input DTO for requesting a Dynamic Currency Conversion (DCC) rate quote.
+- **`CreateWebhookRequest`** _class_ — Input DTO for subscribing an endpoint to gateway notifications.
+- **`CreditRequest`** _class_ — Input DTO for pushing money to a card with no original transaction behind it.
 - **`DownloadReportRequest`** _class_ — Input DTO for downloading a generated report file.
+- **`IncrementAuthorizationRequest`** _class_ — Input DTO for raising the amount already authorized on a transaction.
 - **`ListReportsRequest`** _class_ — Input DTO for finding the reports available over a period.
 - **`ListSubscriptionsRequest`** _class_ — Input DTO for listing subscriptions, one page at a time.
 - **`PayerAuthEnrollRequest`** _class_ — Input DTO for enrolling a card into 3-D Secure payer authentication.
@@ -33,9 +37,11 @@ Every class, interface, enum, and trait in `hyprpay/payments`, grouped by namesp
 - **`ReversalRequest`** _class_ — Input DTO for reversing (releasing) a prior authorisation.
 - **`StoredCredentialChargeRequest`** _class_ — Input DTO for charging a previously vaulted payment instrument (stored credential).
 - **`TokenizeInstrumentRequest`** _class_ — Input DTO for tokenising (vaulting) a raw card into a reusable payment instrument.
+- **`TimeoutVoidRequest`** _class_ — Input DTO for cancelling a request whose reply never arrived.
 - **`UpdatePaymentInstrumentRequest`** _class_ — Input DTO for amending a vaulted payment instrument in place.
 - **`UpdatePlanRequest`** _class_ — Input DTO for amending an existing recurring billing plan.
 - **`UpdateSubscriptionRequest`** _class_ — Input DTO for amending an existing recurring subscription in place.
+- **`UpdateWebhookRequest`** _class_ — Input DTO for amending an existing webhook subscription.
 - **`ValidateBankAccountRequest`** _class_ — Input DTO for the Visa Bank Account Validation Service (BAVS).
 - **`ValidatePayerAuthRequest`** _class_ — Input DTO for validating a 3-D Secure authentication after a challenge (step-up).
 - **`VoidRequest`** _class_ — Input DTO for voiding an uncaptured transaction.
@@ -60,6 +66,9 @@ Every class, interface, enum, and trait in `hyprpay/payments`, grouped by namesp
 - **`ReportFrequency`** _enum_ — How often a scheduled gateway report is generated.
 - **`ReportStatus`** _enum_ — Generation status of a gateway report.
 - **`ReportSubscriptionType`** _enum_ — Which family of report definitions a definition name resolves against.
+- **`BinLookupStatus`** _enum_ — Outcome of a BIN lookup (resolved, ambiguous, or unknown).
+- **`CardFundingSource`** _enum_ — How the account behind a card is funded.
+- **`CardPlatform`** _enum_ — Whether a card was issued to a person or an organisation.
 - **`CredentialInitiator`** _enum_ — Identifies who initiated a stored-credential (card-on-file) transaction.
 - **`CybersourceCommerceIndicator`** _enum_ — Commerce indicator declaring how a CyberSource Recurring Billing subscription was taken.
 - **`CybersourcePaymentType`** _enum_ — CyberSource Unified Checkout capture-context `allowedPaymentTypes` (PAN entry, Google Pay, Apple Pay, Click to Pay, eCheck, Paze).
@@ -68,6 +77,9 @@ Every class, interface, enum, and trait in `hyprpay/payments`, grouped by namesp
 - **`PaymentStatus`** _enum_ — Normalized, gateway-agnostic lifecycle status of a payment.
 - **`SubscriptionStatus`** _enum_ — Normalized, gateway-agnostic lifecycle status of a recurring subscription.
 - **`WalletType`** _enum_ — The digital wallet (Apple Pay / Google Pay) whose device-encrypted token is charged via `chargeWallet`.
+- **`WebhookRetryAlgorithm`** _enum_ — How the delay between webhook delivery retries grows.
+- **`WebhookSecurityType`** _enum_ — How the gateway authenticates itself when calling your webhook endpoint.
+- **`WebhookStatus`** _enum_ — Delivery state of a webhook subscription.
 
 ## `Domain\Event`
 
@@ -102,6 +114,7 @@ Every class, interface, enum, and trait in `hyprpay/payments`, grouped by namesp
 
 - **`AccountUpdaterBatch`** _class_ — Result DTO describing an Account Updater batch and what the networks changed.
 - **`BankAccountValidationResult`** _class_ — Result DTO describing the outcome of a Visa Bank Account Validation (BAVS) check.
+- **`BinLookupResult`** _class_ — Result DTO describing what a card actually is, from a BIN lookup.
 - **`CheckoutSession`** _class_ — Result DTO describing how the customer completes a started payment.
 - **`DccQuote`** _class_ — Result DTO describing a Dynamic Currency Conversion (DCC) rate quote.
 - **`OrchestratedPaymentResult`** _class_ — Outcome of a verified Unified Checkout v1 orchestrated (autoProcessing) payment.
@@ -121,6 +134,10 @@ Every class, interface, enum, and trait in `hyprpay/payments`, grouped by namesp
 - **`TransactionSnapshot`** _class_ — Result DTO representing the current state of a transaction as fetched from the gateway.
 - **`VaultedInstrument`** _class_ — Result DTO returned after tokenising (vaulting) a card.
 - **`WebhookEvent`** _class_ — Result DTO representing a parsed and signature-verified inbound gateway webhook.
+- **`WebhookEventType`** _class_ — Result DTO describing one event a webhook product can notify on.
+- **`WebhookProductCatalog`** _class_ — Result DTO describing one product an account may subscribe to, with its events.
+- **`WebhookSecurityKey`** _class_ — Result DTO holding a webhook security key the gateway created.
+- **`WebhookSubscription`** _class_ — Result DTO describing a webhook subscription.
 
 ## `Domain\ValueObject`
 
@@ -134,6 +151,8 @@ Every class, interface, enum, and trait in `hyprpay/payments`, grouped by namesp
 - **`GatewayCredentials`** _class_ — Immutable DTO holding the per-gateway credentials and settings a driver needs.
 - **`Installment`** _class_ — Issuer-funded installment plan attached to a charge (maps to processingInformation.installment).
 - **`Money`** _class_ — Immutable money value object holding an amount in minor units plus its currency.
+- **`WebhookProduct`** _class_ — One product a webhook subscription listens to, and which of its events it wants.
+- **`WebhookRetryPolicy`** _class_ — How the gateway retries a webhook your endpoint failed to accept.
 - **`WalletToken`** _interface_ — A digital-wallet payment token in one of two shapes (encrypted or decrypted) for a wallet charge.
 
 ## `Infrastructure`
@@ -217,9 +236,11 @@ Every class, interface, enum, and trait in `hyprpay/payments`, grouped by namesp
 
 - **`AccountUpdaterPayload`** _class_ — Builds the CyberSource Account Updater batch request body.
 - **`AccountValidationPayload`** _class_ — Builds the Visa Bank Account Validation Service (BAVS) request body.
+- **`BinLookupPayload`** _class_ — Builds the CyberSource BIN Lookup request body.
 - **`CaptureContextPayload`** _class_ — Builds the CyberSource Unified Checkout capture-context request body.
 - **`CapturePayload`** _class_ — Builds the CyberSource capture request body.
 - **`ClientReference`** _class_ — Derives the CyberSource clientReferenceInformation.code correlation value.
+- **`CreditPayload`** _class_ — Builds the CyberSource standalone-credit request body.
 - **`CurrencyConversionPayload`** _class_ — Builds the CyberSource DCC rate-inquiry (currency conversion) request body.
 - **`DccAmountDetails`** _class_ — Produces the Dynamic Currency Conversion fields added to a CyberSource amountDetails block.
 - **`DeviceInformation`** _class_ — Produces the CyberSource deviceInformation block carrying the Decision Manager device fingerprint.
@@ -230,11 +251,14 @@ Every class, interface, enum, and trait in `hyprpay/payments`, grouped by namesp
 - **`ReversalPayload`** _class_ — Builds the CyberSource authorization reversal request body.
 - **`SearchPayload`** _class_ — Builds the CyberSource Transaction Search (TSS) request body.
 - **`StoredCredentialPayload`** _class_ — Builds the CyberSource payments request body for a stored-credential charge.
+- **`IncrementAuthPayload`** _class_ — Builds the CyberSource incremental-authorization request body.
 - **`PaymentInstrumentPayload`** _class_ — Builds the TMS request body for amending a stored payment instrument.
 - **`PlanPayload`** _class_ — Builds the CyberSource Recurring Billing request bodies for the plan endpoints.
 - **`ReportPayload`** _class_ — Builds the CyberSource Reporting request bodies and signed query strings.
 - **`SubscriptionPayload`** _class_ — Builds the CyberSource Recurring Billing (RBS) requests for the subscription endpoints.
+- **`TimeoutVoidPayload`** _class_ — Builds the CyberSource timeout void / timeout reversal request body.
 - **`TokenizePayload`** _class_ — Builds the CyberSource Token Management Service (TMS) request bodies used to save a card.
+- **`WebhookPayload`** _class_ — Builds the CyberSource notification-subscription request bodies.
 - **`VoidPayload`** _class_ — Builds the CyberSource void request body.
 
 ## `Infrastructure\Gateway\Fawry`

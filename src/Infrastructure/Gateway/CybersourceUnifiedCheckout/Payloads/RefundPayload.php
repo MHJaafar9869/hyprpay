@@ -26,7 +26,7 @@ final class RefundPayload
     public static function build(RefundRequest $request): array
     {
         $clientReferenceInformation = [
-            'code' => ClientReference::code($request->orderReference, $request->transactionId),
+            ...ClientReference::block($request->orderReference, $request->merchantTransactionId, $request->transactionId),
         ];
 
         if (filled($request->reason)) {

@@ -23,6 +23,14 @@ enum CybersourceEndpoint: string
     case Refunds = '/pts/v2/payments/{id}/refunds';
     case Voids = '/pts/v2/payments/{id}/voids';
     case Reversals = '/pts/v2/payments/{id}/reversals';
+    case Credits = '/pts/v2/credits';
+    case CaptureRefunds = '/pts/v2/captures/{id}/refunds';
+    case CaptureVoids = '/pts/v2/captures/{id}/voids';
+    case CreditVoids = '/pts/v2/credits/{id}/voids';
+    case RefundVoids = '/pts/v2/refunds/{id}/voids';
+    case TimeoutVoids = '/pts/v2/voids';
+    case TimeoutReversals = '/pts/v2/reversals';
+    case RefreshPaymentStatus = '/pts/v2/refresh-payment-status/{id}';
     case CurrencyConversion = '/vas/v1/currencyconversion';
     case AuthenticationSetups = '/risk/v1/authentication-setups';
     case Authentications = '/risk/v1/authentications';

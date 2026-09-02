@@ -232,3 +232,69 @@ Methods:
 | `Completed` | `COMPLETED` | Completed | false | true | false |
 | `Rejected` | `REJECTED` | Rejected | false | false | true |
 | `Declined` | `DECLINED` | Declined | false | false | true |
+
+## BinLookupStatus
+`Hyprpay\Payments\Domain\Enum\BinLookupStatus` — outcome of a BIN lookup. `Multiple` and `NoMatch` both mean "unknown", not "declined" — neither is grounds for refusing a payment.
+
+| case | backing value | `isResolved()` |
+|---|---|---|
+| `Completed` | `COMPLETED` | true |
+| `Multiple` | `MULTIPLE` | false |
+| `NoMatch` | `NO MATCH` | false |
+
+## CardFundingSource
+`Hyprpay\Payments\Domain\Enum\CardFundingSource` — how the account behind a card is funded. Drives surcharging rules, routing, and the expectation of partial approvals.
+
+| case | backing value | `label()` | `canPartiallyApprove()` |
+|---|---|---|---|
+| `Credit` | `CREDIT` | Credit | false |
+| `Debit` | `DEBIT` | Debit | false |
+| `Prepaid` | `PREPAID` | Prepaid | **true** |
+| `DeferredDebit` | `DEFERRED DEBIT` | Deferred debit | false |
+| `Charge` | `CHARGE` | Charge | false |
+
+## CardPlatform
+`Hyprpay\Payments\Domain\Enum\CardPlatform` — who the card was issued to. A commercial card can qualify for Level 2/3 interchange when the transaction carries the extra line-item and tax data, which is what makes supplying that data worthwhile.
+
+| case | backing value | `isCommercial()` |
+|---|---|---|
+| `Consumer` | `CONSUMER` | false |
+| `Business` | `BUSINESS` | true |
+| `Corporate` | `CORPORATE` | true |
+| `Commercial` | `COMMERCIAL` | true |
+| `Government` | `GOVERNMENT` | true |
+
+## WebhookStatus
+`Hyprpay\Payments\Domain\Enum\WebhookStatus` — delivery state of a subscription. The gateway can set this itself after repeated delivery failures.
+
+| case | backing value | `isDelivering()` |
+|---|---|---|
+| `Active` | `ACTIVE` | true |
+| `Inactive` | `INACTIVE` | false |
+
+## WebhookSecurityType
+`Hyprpay\Payments\Domain\Enum\WebhookSecurityType` — how the gateway authenticates to your endpoint. Only `Key` produces signed notifications `verifyWebhook()` can check; the oAuth variants use a bearer token instead, and `verifyWebhook()` would fail closed on them.
+
+| case | backing value | `isSignatureVerifiable()` |
+|---|---|---|
+| `Key` | `key` | true |
+| `OAuth` | `oAuth` | false |
+| `OAuthJwt` | `oAuth_JWT` | false |
+
+## WebhookRetryAlgorithm
+`Hyprpay\Payments\Domain\Enum\WebhookRetryAlgorithm` — how the delay between delivery retries grows. With `firstRetry: 10` and `interval: 30`, arithmetic gives 10/40/70 minutes; geometric gives 10/300/9,000.
+
+| case | backing value |
+|---|---|
+| `Arithmetic` | `ARITHMETIC` |
+| `Geometric` | `GEOMETRIC` |
+
+## CybersourceCardNetwork — resolution helpers
+
+The card brand reaches the SDK in three shapes depending on origin: a numeric code from BIN lookup and the vault, a lowercase name from a verified orchestrated result, and an uppercase name from BIN lookup's brand field. These collapse them all:
+
+- `static fromCyberSourceCode(?string $code): ?self` — `001` → `Visa`. Null for a network not modelled.
+- `static fromBrandName(?string $name): ?self` — tolerates spelling differences (`AMERICAN EXPRESS` → `Amex`, `CHINA UNION PAY` → `Cup`, `diners` → `DinersClub`).
+- `static resolve(?string $value): ?self` — either representation.
+
+`BinLookupResult::network()`, `PaymentInstrument::network()`, and `OrchestratedPaymentResult::network()` all return the same case, so branching on the network is one `match`.

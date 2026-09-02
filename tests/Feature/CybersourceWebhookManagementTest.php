@@ -178,11 +178,12 @@ it('deletes a subscription and sends a test notification', function (): void {
 
 it('discovers the products and events an account may subscribe to', function (): void {
     [$gateway, $http] = webhookMgmtGateway();
-    $http->queueJson([['productId' => 'payments', 'eventTypes' => ['payments.payments.accept']]]);
+    $http->queueJson([['productId' => 'payments', 'eventTypes' => [['eventName' => 'payments.payments.accept']]]]);
 
     $products = $gateway->listWebhookProducts();
 
-    expect(data_get($products, '0.productId'))->toBe('payments')
+    expect($products[0]->productId)->toBe('payments')
+        ->and($products[0]->eventNames())->toBe(['payments.payments.accept'])
         ->and($http->lastRequest()?->url)
         ->toBe('https://apitest.cybersource.com/notification-subscriptions/v2/products/test_merchant');
 });
@@ -221,4 +222,51 @@ it('reports a key response that carried no key value', function (): void {
     [$gateway] = webhookMgmtGateway();
 
     expect($gateway->createWebhookSecurityKey(['provider' => 'nrtd'])->hasKey())->toBeFalse();
+});
+
+it('surfaces the per-event metadata that decides how a subscription is configured', function (): void {
+    [$gateway, $http] = webhookMgmtGateway();
+    $http->queueJson([[
+        'productId' => 'payments',
+        'productName' => 'Payments',
+        'eventTypes' => [
+            ['eventName' => 'payments.payments.accept', 'displayName' => 'Payment accepted', 'frequency' => 1],
+            ['eventName' => 'payments.payments.review', 'timeSensitivity' => true],
+            ['eventName' => 'payments.payments.secret', 'payloadEncryption' => true],
+        ],
+    ]]);
+
+    $product = $gateway->listWebhookProducts()[0];
+
+    expect($product->productName)->toBe('Payments')
+        ->and($product->eventNames())->toHaveCount(3)
+        ->and($product->eventTypes[0]->displayName)->toBe('Payment accepted')
+        ->and($product->eventTypes[0]->frequency)->toBe(1)
+        ->and($product->eventTypes[0]->isTimeSensitive)->toBeFalse()
+        ->and($product->timeSensitiveEvents())->toHaveCount(1)
+        ->and($product->timeSensitiveEvents()[0]->eventName)->toBe('payments.payments.review')
+        ->and($product->encryptedEvents())->toHaveCount(1)
+        ->and($product->encryptedEvents()[0]->eventName)->toBe('payments.payments.secret');
+});
+
+it('turns a catalogue entry straight into a subscription entry', function (): void {
+    [$gateway, $http] = webhookMgmtGateway();
+    $http->queueJson([[
+        'productId' => 'payments',
+        'eventTypes' => [
+            ['eventName' => 'payments.payments.accept'],
+            ['eventName' => 'payments.refunds.accept'],
+        ],
+    ]]);
+
+    $product = $gateway->listWebhookProducts()[0];
+
+    expect($product->toSubscription()->toArray())->toBe([
+        'productId' => 'payments',
+        'eventTypes' => ['payments.payments.accept', 'payments.refunds.accept'],
+    ])
+        ->and($product->toSubscription(['payments.refunds.accept'])->toArray())->toBe([
+            'productId' => 'payments',
+            'eventTypes' => ['payments.refunds.accept'],
+        ]);
 });

@@ -22,6 +22,7 @@ final readonly class RefundRequest
      * @param  string|null  $orderReference  Optional merchant order/reference number for reconciliation
      * @param  string|null  $idempotencyKey  Optional idempotency key; sent to the gateway so a retried refund is not double-processed. Supply a value unique to this refund (partial refunds need distinct keys).
      * @param  DccQuote|null  $dcc  Optional DCC quote from the original charge, to refund at the same quoted rate
+     * @param  string|null  $merchantTransactionId  Unique id you assign to this request; required on the original call if you may later need a timeout void or reversal
      */
     public function __construct(
         public string $transactionId,
@@ -30,5 +31,6 @@ final readonly class RefundRequest
         public ?string $orderReference = null,
         public ?string $idempotencyKey = null,
         public ?DccQuote $dcc = null,
+        public ?string $merchantTransactionId = null,
     ) {}
 }

@@ -406,3 +406,88 @@ Named constructor:
 - `static forTokenIds(array $tokenIds, AccountUpdaterBatchType $type = OneOff, ?string $merchantReference = null): self` — the common case, a batch of plain token ids with no stored expiry to send alongside.
 
 The poll/report operations take no DTO — `getAccountUpdaterBatchStatus(string $batchId)`, `getAccountUpdaterBatchReport(string $batchId)`, and `listAccountUpdaterBatches(int $limit = 20, int $offset = 0, ?string $fromDate = null, ?string $toDate = null)` (dates in ISO 8601 basic format, `yyyyMMddTHHmmssZ`).
+
+## Corrections and lifecycle
+
+### IncrementAuthorizationRequest
+`Hyprpay\Payments\Domain\Command\IncrementAuthorizationRequest` — raises the amount already authorized (`PATCH /pts/v2/payments/{id}`), keeping **one** hold. For hotels, car rental, and any open-ended stay where the final bill is unknown when the card is presented; authorizing again instead places a second hold and withholds the funds twice.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$transactionId` | `string` | — | Authorization to increase |
+| `$additionalAmount` | `Money` | — | Amount to **add** — not the new total |
+| `$reason` | `?string` | `null` | Why the amount increased, for the processor's records |
+| `$orderReference` | `?string` | `null` | Merchant order/reference number |
+| `$idempotencyKey` | `?string` | `null` | So a retried increment is not applied twice |
+
+### CreditRequest
+`Hyprpay\Payments\Domain\Command\CreditRequest` — pushes money to a card with **no original transaction behind it** (`POST /pts/v2/credits`). Distinct from `RefundRequest`, which returns part of a specific captured payment and is bounded by it. A credit is bounded by nothing — no amount cap, no sale to tie it to — which is why processors watch them and why it belongs behind payout-grade authorisation.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$money` | `Money` | — | Amount and currency to credit |
+| `$transientToken` | `?string` | `null` | Transient token identifying the card |
+| `$paymentInstrumentId` | `?string` | `null` | Vault payment-instrument to credit instead |
+| `$customerId` | `?string` | `null` | Vault customer whose default instrument is credited |
+| `$orderReference` | `?string` | `null` | Merchant order/reference number |
+| `$billTo` | `?BillingAddress` | `null` | Billing address, when the processor requires one |
+| `$merchantTransactionId` | `?string` | `null` | So a credit whose reply is lost can still be reversed |
+| `$idempotencyKey` | `?string` | `null` | So a retried credit does not pay out twice |
+
+### TimeoutVoidRequest
+`Hyprpay\Payments\Domain\Command\TimeoutVoidRequest` — cancels a payment, capture, refund, or credit **whose reply never arrived** (`POST /pts/v2/voids`, or `/pts/v2/reversals` for an authorization). Takes no resource id, because the response that would have carried one never came; it matches on the merchant transaction id from the original request instead.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$merchantTransactionId` | `string` | — | The id sent as `clientReferenceInformation.transactionId` on the original request |
+| `$orderReference` | `?string` | `null` | Merchant order/reference number |
+| `$idempotencyKey` | `?string` | `null` | So a retried void is not applied twice |
+
+**It only works if that id was sent in the first place.** `ChargeRequest`, `CaptureRequest`, `RefundRequest`, and `CreditRequest` all gained a `$merchantTransactionId` for this; it cannot be supplied retrospectively.
+
+### BinLookupRequest
+`Hyprpay\Payments\Domain\Command\BinLookupRequest` — asks what a card is before charging it (`POST /bin/v1/binlookup`). Supply exactly one credential; prefer a token over a raw PAN.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$cardNumber` | `?string` | `null` | Raw PAN; prefer a token when available |
+| `$transientToken` | `?string` | `null` | Transient-token JWT from Microform or Unified Checkout |
+| `$transientTokenJti` | `?string` | `null` | The token referenced by its `jti` claim |
+| `$customerId` | `?string` | `null` | Vault customer whose default instrument is inspected |
+| `$paymentInstrumentId` | `?string` | `null` | Vault payment-instrument to inspect |
+| `$instrumentIdentifierId` | `?string` | `null` | Vault instrument-identifier to inspect |
+| `$orderReference` | `?string` | `null` | Merchant reference for correlating the lookup |
+
+Named constructor:
+- `static forTransientToken(string $token, ?string $orderReference = null): self` — the token-first case, so no card data reaches your server.
+
+## Webhook subscriptions
+
+### CreateWebhookRequest
+`Hyprpay\Payments\Domain\Command\CreateWebhookRequest` — subscribes an endpoint to notifications (`POST /notification-subscriptions/v2/webhooks`). Create a signing key **first**: the gateway signs each notification with it, and it is the same secret `verifyWebhook()` checks.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$name` | `string` | — | Human-readable name |
+| `$webhookUrl` | `string` | — | Your endpoint |
+| `$products` | `list<WebhookProduct>` | — | Products and event types to subscribe to |
+| `$description` | `?string` | `null` | Human-readable description |
+| `$healthCheckUrl` | `?string` | `null` | Probed before resuming a suspended subscription |
+| `$securityType` | `?WebhookSecurityType` | `null` | `Key` is the signed scheme `verifyWebhook()` checks |
+| `$securityConfig` | `array<string,mixed>` | `[]` | Settings for the chosen type (e.g. the key id) |
+| `$retryPolicy` | `?WebhookRetryPolicy` | `null` | How failed deliveries are retried |
+| `$notificationScope` | `?string` | `null` | `SCOPE_SELF` or `SCOPE_DESCENDANTS` |
+| `$organizationId` | `?string` | `null` | Defaults to the credentials' organization |
+
+Constants: `SCOPE_SELF`, `SCOPE_DESCENDANTS`.
+
+### UpdateWebhookRequest
+`Hyprpay\Payments\Domain\Command\UpdateWebhookRequest` — partial patch of a subscription. Deliberately **cannot** change the status, so a routine URL edit can never silently reactivate a paused subscription; that is `setWebhookStatus()`.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$webhookId` | `string` | — | Subscription to amend |
+| `$name` / `$description` / `$webhookUrl` / `$healthCheckUrl` | `?string` | `null` | Replacement values |
+| `$products` | `?list<WebhookProduct>` | `null` | Replacement product/event subscriptions |
+| `$retryPolicy` | `?WebhookRetryPolicy` | `null` | Replacement retry policy |
+| `$notificationScope` | `?string` | `null` | `SELF` or `DESCENDANTS` |

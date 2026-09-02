@@ -157,3 +157,30 @@ Methods:
 - `toArray(): array<string,string>` — the token's fields as the batch carries them, omitting an expiry not supplied.
 
 Build these in bulk from plain ids with `CreateAccountUpdaterBatchRequest::forTokenIds()`.
+
+## WebhookProduct
+`Hyprpay\Payments\Domain\ValueObject\WebhookProduct` — one product a webhook subscription listens to, and which of its events it wants. A subscription can span several products, each with its own event list.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$productId` | `string` | — | Gateway product identifier |
+| `$eventTypes` | `array<int,string>` | `[]` | Event types within that product to receive |
+
+Methods: `toArray(): array<string,mixed>` — the product as the subscription payload carries it.
+
+## WebhookRetryPolicy
+`Hyprpay\Payments\Domain\ValueObject\WebhookRetryPolicy` — how the gateway retries a delivery your endpoint refused.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$algorithm` | `WebhookRetryAlgorithm` | `Arithmetic` | How the delay grows |
+| `$firstRetry` | `?int` | `null` | Minutes before the first retry |
+| `$interval` | `?int` | `null` | Interval between retries, in minutes |
+| `$numberOfRetries` | `?int` | `null` | Retries per sequence |
+| `$deactivateOnFailure` | `?bool` | `null` | Suspend and queue on an exhausted sequence, rather than dropping |
+| `$repeatSequenceCount` | `?int` | `null` | How many times to repeat the whole sequence |
+| `$repeatSequenceWaitTime` | `?int` | `null` | Minutes between repeated sequences |
+
+Methods: `toArray(): array<string,mixed>` — omits anything unset so the gateway's defaults apply.
+
+`$deactivateOnFailure` changes the failure shape: on, an exhausted sequence suspends the subscription and queues everything until the health-check URL recovers, then backfills; off, each notification exhausts its own retries and is dropped while the subscription stays active.

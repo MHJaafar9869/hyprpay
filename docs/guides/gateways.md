@@ -715,6 +715,78 @@ match (true) {
 Routing and account numbers are sensitive banking credentials. This operation sits outside
 `PaymentGatewayInterface`, so the logging decorator never sees them.
 
+### Corrections: voiding, crediting, and undoing a timeout
+
+Three tiers, distinguished by **what the id addresses**.
+
+`void`, `refund`, and `reverseAuthorization` are payment-scoped — CyberSource documents the first
+as being for authorization and capture requested *together*. Once you capture separately the
+capture becomes its own resource with its own id, and the payment path cannot reach it:
+
+```php
+$cybersource->voidCapture(new VoidRequest(transactionId: $captureId));
+$cybersource->refundCapture(new RefundRequest(transactionId: $captureId, money: $money));
+$cybersource->voidRefund(new VoidRequest(transactionId: $refundId));   // cancel a refund pre-settlement
+$cybersource->voidCredit(new VoidRequest(transactionId: $creditId));   // the only way to undo a credit
+```
+
+| You did | Undo with |
+| --- | --- |
+| `charge()` (auth + capture together) | `void()` |
+| `charge(capture: false)` then `capture()` | `voidCapture()` |
+| `refund()` | `voidRefund()` |
+| `creditPayment()` | `voidCredit()` |
+| anything that **timed out** | `timeoutVoid()` / `timeoutReversal()` |
+
+**`incrementAuthorization` raises an existing hold rather than placing a second one** — for hotels,
+car rental, and any open-ended stay where the final bill is unknown when the card is presented.
+The amount is the one to *add*, not the new total; passing the running total silently over-holds,
+and authorizing again would withhold the funds twice.
+
+```php
+$cybersource->incrementAuthorization(new IncrementAuthorizationRequest(
+    transactionId: $paymentId,
+    additionalAmount: Money::minor(5000, 'USD'),   // adds $50 to the existing hold
+));
+```
+
+**`creditPayment` is not a refund.** A refund returns part of a specific captured payment and is
+bounded by it; a credit pushes money to a card with no originating transaction, no amount cap, and
+nothing to tie it to. Processors watch credits — gate it behind the authorisation you would put on
+a payout, not on a refund, and wire up `voidCredit` alongside it.
+
+#### Undoing a request whose reply never arrived
+
+When a call times out you cannot know whether it landed, and you have no transaction id to void
+with. `timeoutVoid` and `timeoutReversal` take no resource id at all — they match on the merchant
+transaction id from the **original** request.
+
+```php
+// On the original call. Without this, the timeout void below is impossible.
+$cybersource->charge(new ChargeRequest(
+    transientToken: $token,
+    money: $money,
+    merchantTransactionId: 'mtid-charge-1',
+));
+
+// … the request times out; you never receive a transaction id …
+
+$cybersource->timeoutVoid(new TimeoutVoidRequest(merchantTransactionId: 'mtid-charge-1'));
+```
+
+`merchantTransactionId` is available on `ChargeRequest`, `CaptureRequest`, `RefundRequest`, and
+`CreditRequest`, and **cannot be supplied retrospectively** — set it on anything you may need to
+undo blind. Without a timeout *reversal*, a timed-out authorization strands a hold on the
+cardholder's card until the issuer expires it, which can take days.
+
+This complements rather than replaces reconciling by reference:
+`findSuccessfulTransactionByReference` tells you *whether* a lost request settled and is eventually
+consistent; a timeout void *undoes* it, and acts immediately.
+
+Finally, `refreshPaymentStatus` asks CyberSource to re-check with the **processor**, for the
+alternative payment methods that settle asynchronously — unlike `getTransaction`, which reads
+CyberSource's own record. Reach for it when the record looks stale rather than merely unfinished.
+
 ### Managing webhook subscriptions
 
 `verifyWebhook` verifies what arrives; these decide what is sent and where, so onboarding a

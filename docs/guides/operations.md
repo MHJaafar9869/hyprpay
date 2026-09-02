@@ -257,11 +257,29 @@ use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\DeclineCl
 if (! $result->success) {
     $outcome = DeclineClassifier::fromResult($result);
 
+    // What to show, and what to do
     $showToShopper = $outcome->customerMessage(); // "Your card was declined for insufficient funds…"
     $retryLater    = $outcome->isRetryable();     // false for expired/blocked/invalid cards
     $reasonCode    = $outcome->reason;            // stable code to localise your own copy
+    $rawStatus     = $outcome->status;            // raw transaction status, e.g. DECLINED
+
+    // What the bank actually said — log this, never show it
+    $result->code;      // errorInformation.reason, else the processor response code
+    $result->message;   // the gateway's own message for that code
+
+    // Straight from the issuer, for support and for retry policy
+    data_get($result->raw, 'processorInformation.responseCode');
+    data_get($result->raw, 'processorInformation.merchantAdvice.code'); // network retry guidance
+    data_get($result->raw, 'processorInformation.approvalCode');
 }
 ```
+
+The two layers answer different questions. `customerMessage()` is deliberately vague — issuers do
+not want the real reason relayed to a cardholder, and a raw code in the checkout UI helps a
+fraudster more than a customer. The bank response is the opposite: keep
+`processorInformation.responseCode` and `merchantAdvice.code` in your logs, because they are what
+support quotes back, and `merchantAdvice.code` is what `DeclineClassifier` itself reads to decide
+whether a retry is worth attempting at all.
 
 `fromResult()` takes a `SubscriptionResult` as readily as a `PaymentResult`, so a CyberSource
 Recurring Billing subscription the gateway refuses at create time is triaged by the same rules —
