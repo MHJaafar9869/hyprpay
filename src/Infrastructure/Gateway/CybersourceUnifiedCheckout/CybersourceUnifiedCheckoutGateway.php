@@ -15,6 +15,7 @@ use Hyprpay\Payments\Domain\Command\CreatePlanRequest;
 use Hyprpay\Payments\Domain\Command\CreateReportRequest;
 use Hyprpay\Payments\Domain\Command\CreateReportSubscriptionRequest;
 use Hyprpay\Payments\Domain\Command\CreateSubscriptionRequest;
+use Hyprpay\Payments\Domain\Command\CreateWebhookRequest;
 use Hyprpay\Payments\Domain\Command\DccRateRequest;
 use Hyprpay\Payments\Domain\Command\DownloadReportRequest;
 use Hyprpay\Payments\Domain\Command\ListReportsRequest;
@@ -28,6 +29,7 @@ use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\UpdatePaymentInstrumentRequest;
 use Hyprpay\Payments\Domain\Command\UpdatePlanRequest;
 use Hyprpay\Payments\Domain\Command\UpdateSubscriptionRequest;
+use Hyprpay\Payments\Domain\Command\UpdateWebhookRequest;
 use Hyprpay\Payments\Domain\Command\ValidateBankAccountRequest;
 use Hyprpay\Payments\Domain\Command\ValidatePayerAuthRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
@@ -50,6 +52,8 @@ use Hyprpay\Payments\Domain\Enum\ReportFrequency;
 use Hyprpay\Payments\Domain\Enum\ReportStatus;
 use Hyprpay\Payments\Domain\Enum\ReportSubscriptionType;
 use Hyprpay\Payments\Domain\Enum\SubscriptionStatus;
+use Hyprpay\Payments\Domain\Enum\WebhookSecurityType;
+use Hyprpay\Payments\Domain\Enum\WebhookStatus;
 use Hyprpay\Payments\Domain\Event\PayerAuthenticationEciRejected;
 use Hyprpay\Payments\Domain\Result\AccountUpdaterBatch;
 use Hyprpay\Payments\Domain\Result\BankAccountValidationResult;
@@ -74,10 +78,13 @@ use Hyprpay\Payments\Domain\Result\SubscriptionResult;
 use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
 use Hyprpay\Payments\Domain\Result\VaultedInstrument;
 use Hyprpay\Payments\Domain\Result\WebhookEvent;
+use Hyprpay\Payments\Domain\Result\WebhookSecurityKey;
+use Hyprpay\Payments\Domain\Result\WebhookSubscription;
 use Hyprpay\Payments\Domain\ValueObject\BillingPeriod;
 use Hyprpay\Payments\Domain\ValueObject\CybersourceEci;
 use Hyprpay\Payments\Domain\ValueObject\GatewayCredentials;
 use Hyprpay\Payments\Domain\ValueObject\Money;
+use Hyprpay\Payments\Domain\ValueObject\WebhookProduct;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Concerns\ParsesTransientToken;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Concerns\VerifiesCybersourceWebhook;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Concerns\VerifiesResultJwt;
@@ -106,6 +113,7 @@ use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\TokenizePayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\VoidPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\WalletPaymentPayload;
+use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\WebhookPayload;
 use Hyprpay\Payments\Infrastructure\Support\Value;
 
 /**
@@ -1403,6 +1411,189 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
     }
 
     /**
+     * Subscribes one of your endpoints to CyberSource notifications.
+     *
+     * The other half of {@see verifyWebhook()}: that verifies what arrives, this decides what is
+     * sent and where. Create a signing key with {@see createWebhookSecurityKey()} **first** — the
+     * gateway signs each notification with it and it is the same secret `verifyWebhook()` checks,
+     * so a subscription made before the key exists has nothing to sign with. Supply a health-check
+     * URL if you can: without one, a subscription the gateway suspends after repeated delivery
+     * failures must be reactivated by hand. This is a CyberSource-specific operation, outside the
+     * shared {@see PaymentGatewayInterface}.
+     */
+    public function createWebhook(CreateWebhookRequest $request): WebhookSubscription
+    {
+        return $this->toWebhookSubscription($this->client->post(
+            CybersourceEndpoint::Webhooks->path(),
+            WebhookPayload::create($request, $this->organizationId($request->organizationId)),
+            'create webhook',
+        ));
+    }
+
+    /**
+     * Lists the webhook subscriptions registered for an organization.
+     *
+     * @param  string|null  $productId  Only subscriptions covering this product.
+     * @param  string|null  $eventType  Only subscriptions covering this event type.
+     * @param  string|null  $organizationId  Organization to list; defaults to the credentials' organization.
+     * @return list<WebhookSubscription>
+     */
+    public function listWebhooks(?string $productId = null, ?string $eventType = null, ?string $organizationId = null): array
+    {
+        $query = array_filter([
+            'organizationId' => $this->organizationId($organizationId),
+            'productId' => $productId,
+            'eventType' => $eventType,
+        ], filled(...));
+
+        $response = $this->client->get(
+            CybersourceEndpoint::Webhooks->path().'?'.http_build_query($query),
+            'list webhooks',
+        );
+
+        $subscriptions = array_is_list($response) ? $response : Value::array($response['webhooks'] ?? null);
+
+        return array_values(array_map(
+            fn (mixed $webhook): WebhookSubscription => $this->toWebhookSubscription(Value::array($webhook)),
+            $subscriptions,
+        ));
+    }
+
+    /**
+     * Fetches one webhook subscription by id.
+     *
+     * @param  string  $webhookId  CyberSource webhook identifier.
+     */
+    public function getWebhook(string $webhookId): WebhookSubscription
+    {
+        return $this->toWebhookSubscription($this->client->get(
+            CybersourceEndpoint::Webhook->path($webhookId),
+            'get webhook',
+        ));
+    }
+
+    /**
+     * Amends a webhook subscription in place — a partial update.
+     *
+     * Changing the delivery state is a separate call: use {@see setWebhookStatus()}.
+     */
+    public function updateWebhook(UpdateWebhookRequest $request): WebhookSubscription
+    {
+        return $this->toWebhookSubscription($this->client->patch(
+            CybersourceEndpoint::Webhook->path($request->webhookId),
+            WebhookPayload::update($request),
+            'update webhook',
+        ));
+    }
+
+    /**
+     * Activates or deactivates a webhook subscription.
+     *
+     * Deactivating stops delivery without discarding the subscription or its history, which is the
+     * safe way to pause an endpoint you are redeploying — deleting it would lose the configuration.
+     *
+     * @param  string  $webhookId  CyberSource webhook identifier.
+     * @param  WebhookStatus  $status  The delivery state to move it to.
+     * @return bool True once CyberSource has accepted the change.
+     */
+    public function setWebhookStatus(string $webhookId, WebhookStatus $status): bool
+    {
+        $this->client->put(
+            CybersourceEndpoint::WebhookStatus->path($webhookId),
+            WebhookPayload::status($status),
+            'set webhook status',
+        );
+
+        return true;
+    }
+
+    /**
+     * Deletes a webhook subscription, stopping delivery permanently.
+     *
+     * The notification history is kept; only the subscription goes. Prefer
+     * {@see setWebhookStatus()} to pause an endpoint you intend to bring back.
+     *
+     * @param  string  $webhookId  CyberSource webhook identifier to delete.
+     * @return bool True once CyberSource has accepted the deletion.
+     */
+    public function deleteWebhook(string $webhookId): bool
+    {
+        $this->client->delete(CybersourceEndpoint::Webhook->path($webhookId), 'delete webhook');
+
+        return true;
+    }
+
+    /**
+     * Sends a sample notification to a subscription's endpoint, to prove the wiring works.
+     *
+     * The sample carries representative product and event values drawn from the subscription, so a
+     * receiver can be validated — including its signature verification — before any real payment
+     * depends on it.
+     *
+     * @param  string  $webhookId  CyberSource webhook identifier to test.
+     * @return array<string, mixed> The raw test result, including how your endpoint responded.
+     */
+    public function testWebhook(string $webhookId): array
+    {
+        return $this->client->postWithoutBody(
+            CybersourceEndpoint::WebhookTest->path($webhookId),
+            'test webhook',
+        );
+    }
+
+    /**
+     * Lists the products and event types this organization may subscribe to.
+     *
+     * Which are available depends on the account's entitlements, so discover them here rather than
+     * hard-coding product ids and event names into a subscription.
+     *
+     * @param  string|null  $organizationId  Organization to inspect; defaults to the credentials' organization.
+     * @return array<int|string, mixed> The raw catalogue; each entry pairs a product with its event types.
+     */
+    public function listWebhookProducts(?string $organizationId = null): array
+    {
+        return $this->client->get(
+            CybersourceEndpoint::WebhookProducts->path($this->organizationId($organizationId)),
+            'list webhook products',
+        );
+    }
+
+    /**
+     * Creates the symmetric key CyberSource signs webhook notifications with.
+     *
+     * This is the missing half of webhook onboarding: the key it returns is the value the
+     * `webhook_secret` credential holds, and the one {@see verifyWebhook()} checks signatures
+     * against. It is shown **once** — store {@see WebhookSecurityKey::$key} immediately, because
+     * it cannot be read back and a subscription signed with a key you lost is unverifiable.
+     *
+     * @param  array<string, mixed>  $keyInformation  Key attributes (provider, tenant, key type) as CyberSource's webhook guide specifies for your account.
+     * @param  string  $action  `CREATE` to have CyberSource generate the key, or `STORE`/`REFRESH` to supply or rotate one.
+     * @param  string|null  $organizationId  Organization the key belongs to; defaults to the credentials' organization.
+     */
+    public function createWebhookSecurityKey(array $keyInformation, string $action = 'CREATE', ?string $organizationId = null): WebhookSecurityKey
+    {
+        $keyInformation['organizationId'] ??= $this->organizationId($organizationId);
+
+        $response = $this->client->post(
+            CybersourceEndpoint::WebhookSymmetricKeys->path(),
+            WebhookPayload::securityKey($action, $keyInformation),
+            'create webhook security key',
+        );
+
+        $key = Value::array($response['keyInformation'] ?? null);
+
+        return new WebhookSecurityKey(
+            keyId: Value::nullableString($key['keyId'] ?? $response['keyId'] ?? null),
+            key: Value::nullableString($key['key'] ?? $response['key'] ?? null),
+            status: Value::nullableString($key['status'] ?? null),
+            keyType: Value::nullableString($key['keyType'] ?? null),
+            organizationId: Value::nullableString($key['organizationId'] ?? null),
+            expiryDuration: Value::nullableString($key['expiryDuration'] ?? null),
+            raw: $response,
+        );
+    }
+
+    /**
      * Verifies and parses an inbound CyberSource webhook into a WebhookEvent.
      *
      * Checks the signature against the configured webhook secret, then decodes the
@@ -1600,6 +1791,39 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
             rejectedRecords: Value::int($totals['rejectedRecords'] ?? null),
             updatedRecords: Value::int($totals['updatedRecords'] ?? null),
             networkResponses: Value::int($totals['caResponses'] ?? null),
+            raw: $response,
+        );
+    }
+
+    /**
+     * Maps a CyberSource notification-subscription JSON record into a WebhookSubscription DTO.
+     *
+     * @param  array<string, mixed>  $response  Decoded webhook-subscription record.
+     */
+    private function toWebhookSubscription(array $response): WebhookSubscription
+    {
+        $products = is_array($response['products'] ?? null) ? $response['products'] : [];
+
+        return new WebhookSubscription(
+            webhookId: Value::nullableString($response['webhookId'] ?? $response['id'] ?? null),
+            name: Value::nullableString($response['name'] ?? null),
+            description: Value::nullableString($response['description'] ?? null),
+            webhookUrl: Value::nullableString($response['webhookUrl'] ?? null),
+            healthCheckUrl: Value::nullableString($response['healthCheckUrl'] ?? null),
+            status: WebhookStatus::tryFrom(strtoupper(Value::string($response['status'] ?? null))),
+            securityType: WebhookSecurityType::tryFrom(Value::string(data_get($response, 'securityPolicy.securityType'))),
+            products: array_values(array_map(
+                static fn (mixed $product): WebhookProduct => new WebhookProduct(
+                    productId: Value::string(data_get($product, 'productId')),
+                    eventTypes: array_values(array_map(
+                        static fn (mixed $event): string => Value::string($event),
+                        is_array(data_get($product, 'eventTypes')) ? Value::array(data_get($product, 'eventTypes')) : [],
+                    )),
+                ),
+                $products,
+            )),
+            notificationScope: Value::nullableString($response['notificationScope'] ?? null),
+            organizationId: Value::nullableString($response['organizationId'] ?? null),
             raw: $response,
         );
     }

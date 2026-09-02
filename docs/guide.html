@@ -745,7 +745,7 @@
     </section>
 
     <section id="verify-webhook" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara">
-      <p class="doc-eyebrow">After the payment</p>
+      <p class="doc-eyebrow">Webhooks</p>
       <h2>Verify webhook</h2>
       <p class="doc-sig"><span class="fn">verifyWebhook</span>(payload, headers): <span class="rt">WebhookEvent</span></p>
       <p>Verify the signature first — it's unauthenticated until you do, and carries no timestamp. Then
@@ -756,6 +756,212 @@
 <span class="k">if</span> (<span class="v">$event</span>-&gt;verified) {
     <span class="c">// $event->eventType, $event->transactionId, $event->status</span>
 }</code></pre>
+      </div>
+    </section>
+
+    <section id="webhook-security-key" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Webhooks</p>
+      <h2>Webhook security key</h2>
+      <p class="doc-sig"><span class="fn">createWebhookSecurityKey</span>(array, string): <span class="rt">WebhookSecurityKey</span></p>
+      <p>Start here. CyberSource signs every notification with a symmetric key, and that key is
+         the same secret <code>verifyWebhook</code> validates against — so a subscription created
+         before the key exists has nothing to sign with. The key is returned <strong>once, at
+         creation</strong>, and cannot be read back: store it before discarding the response, or
+         every notification from that subscription becomes unverifiable and the only fix is a new
+         key. Treat it as a credential — never log it, never return it from an endpoint.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$key</span> = <span class="v">$gateway</span>-&gt;<span class="fn">createWebhookSecurityKey</span>([
+    <span class="s">'provider'</span> =&gt; <span class="s">'nrtd'</span>,          <span class="c">// values come from CyberSource&#39;s webhook guide</span>
+    <span class="s">'tenant'</span>   =&gt; <span class="s">'pxsecurity'</span>,      <span class="c">// for your account — they are not universal</span>
+    <span class="s">'keyType'</span>  =&gt; <span class="s">'sharedSecret'</span>,
+]);
+
+<span class="k">if</span> (! <span class="v">$key</span>-&gt;<span class="fn">hasKey</span>()) {
+    <span class="k">throw new</span> <span class="t">RuntimeException</span>(<span class="s">'No key returned — do not create the subscription yet.'</span>);
+}
+
+<span class="v">$this</span>-&gt;<span class="fn">storeWebhookSecret</span>(<span class="v">$key</span>-&gt;key); <span class="c">// this IS the webhook_secret credential</span>
+<span class="v">$key</span>-&gt;keyId;                        <span class="c">// referenced from the subscription&#39;s securityConfig</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="webhook-products" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Webhooks</p>
+      <h2>Webhook products</h2>
+      <p class="doc-sig"><span class="fn">listWebhookProducts</span>(?string): <span class="rt">array</span></p>
+      <p>Which products and event types an account may subscribe to depends on its entitlements,
+         so discover them rather than hard-coding product ids and event names into a subscription
+         — a name your account is not entitled to is rejected at create time.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$catalogue</span> = <span class="v">$gateway</span>-&gt;<span class="fn">listWebhookProducts</span>();
+
+<span class="c">// each entry pairs a productId with the eventTypes available under it,</span>
+<span class="c">// which is exactly what CreateWebhookRequest::$products expects</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="create-webhook" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Webhooks</p>
+      <h2>Create webhook</h2>
+      <p class="doc-sig"><span class="fn">createWebhook</span>(CreateWebhookRequest): <span class="rt">WebhookSubscription</span></p>
+      <p>Subscribes one of your endpoints to notifications. Supply a <code>healthCheckUrl</code>
+         if you can: without one, a subscription CyberSource suspends after repeated delivery
+         failures has to be reactivated by hand.</p>
+      <p><strong>Security type decides whether you can verify anything.</strong> Only
+         <code>WebhookSecurityType::Key</code> produces the signed notifications
+         <code>verifyWebhook</code> checks. The two oAuth variants make CyberSource fetch a bearer
+         token from your authorization server instead — authenticated, but not by this SDK, and
+         <code>verifyWebhook</code> would fail closed on them.</p>
+      <p><strong>Scope is worth setting explicitly.</strong> <code>SCOPE_SELF</code> delivers only
+         this organization&#39;s events; <code>SCOPE_DESCENDANTS</code> — CyberSource&#39;s default —
+         also delivers those of every organization beneath it. For a partner or portfolio account
+         that is the whole platform&#39;s volume versus one merchant&#39;s.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$webhook</span> = <span class="v">$gateway</span>-&gt;<span class="fn">createWebhook</span>(<span class="k">new</span> <span class="t">CreateWebhookRequest</span>(
+    <span class="a">name:</span> <span class="s">'Payments'</span>,
+    <span class="a">webhookUrl:</span> <span class="s">'https://shop.test/webhook'</span>,
+    <span class="a">products:</span> [<span class="k">new</span> <span class="t">WebhookProduct</span>(<span class="s">'payments'</span>, [
+        <span class="s">'payments.payments.accept'</span>,
+        <span class="s">'payments.refunds.accept'</span>,
+    ])],
+    <span class="a">healthCheckUrl:</span> <span class="s">'https://shop.test/health'</span>,
+    <span class="a">securityType:</span> <span class="t">WebhookSecurityType</span>::<span class="cn">Key</span>,
+    <span class="a">securityConfig:</span> [<span class="s">'keyId'</span> =&gt; <span class="v">$key</span>-&gt;keyId],
+    <span class="a">notificationScope:</span> <span class="t">CreateWebhookRequest</span>::<span class="cn">SCOPE_SELF</span>,
+));</code></pre>
+        </div>
+      </div>
+      <h3>Retries: the algorithm is not a detail</h3>
+      <p>With <code>firstRetry: 10</code> and <code>interval: 30</code>:</p>
+      <div class="code">
+<pre><code><span class="c">Arithmetic  a + r(n-1)   -&gt;  10, 40, 70 minutes      (all within the hour)</span>
+<span class="c">Geometric   a * r^(n-1)  -&gt;  10, 300, 9,000 minutes  (the third is six days later)</span></code></pre>
+      </div>
+      <p><code>deactivateOnFailure</code> changes the failure shape entirely. On, an exhausted
+         sequence <em>suspends the subscription</em> and queues everything behind it until your
+         health-check URL returns 200, then delivers the backlog — nothing is lost, but you must
+         have a health-check endpoint. Off, each notification exhausts its own retries and is then
+         dropped while the subscription stays active. Queue-and-recover for settlement events you
+         cannot lose; drop for high-volume events where a backlog is worse than a gap.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="a">retryPolicy:</span> <span class="k">new</span> <span class="t">WebhookRetryPolicy</span>(
+    <span class="a">algorithm:</span> <span class="t">WebhookRetryAlgorithm</span>::<span class="cn">Arithmetic</span>,
+    <span class="a">firstRetry:</span> <span class="n">10</span>, <span class="a">interval:</span> <span class="n">30</span>, <span class="a">numberOfRetries:</span> <span class="n">3</span>,
+    <span class="a">deactivateOnFailure:</span> <span class="k">true</span>,
+),</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="test-webhook" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Webhooks</p>
+      <h2>Test webhook</h2>
+      <p class="doc-sig"><span class="fn">testWebhook</span>(string): <span class="rt">array</span></p>
+      <p>Sends a sample notification to the subscription&#39;s endpoint, carrying representative
+         product and event values drawn from the subscription itself. It reports how your endpoint
+         replied, so a receiver — including its signature verification — can be proven before any
+         real payment depends on it.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">testWebhook</span>(<span class="v">$webhook</span>-&gt;webhookId);
+
+<span class="c">// run this in CI against a staging receiver: a signature check that</span>
+<span class="c">// silently fails is otherwise only discovered by a missed payment</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="list-webhooks" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Webhooks</p>
+      <h2>List webhooks</h2>
+      <p class="doc-sig"><span class="fn">listWebhooks</span>(?string, ?string, ?string): <span class="rt">WebhookSubscription[]</span></p>
+      <p>When an integration goes silent, this is the first thing to check. Usually the
+         subscription was suspended rather than the gateway falling over — deliveries stop with no
+         error on your side, because nothing is being sent.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="k">foreach</span> (<span class="v">$gateway</span>-&gt;<span class="fn">listWebhooks</span>() <span class="k">as</span> <span class="v">$w</span>) {
+    <span class="v">$w</span>-&gt;<span class="fn">isDelivering</span>();          <span class="c">// false once CyberSource suspends it</span>
+    <span class="v">$w</span>-&gt;<span class="fn">isSignatureVerifiable</span>(); <span class="c">// false for the oAuth types</span>
+    <span class="v">$w</span>-&gt;<span class="fn">eventTypes</span>();            <span class="c">// every event, flattened across products</span>
+    <span class="v">$w</span>-&gt;webhookUrl;               <span class="c">// still pointing at the old deploy?</span>
+}
+
+<span class="c">// Narrow it when an account has many subscriptions:</span>
+<span class="v">$gateway</span>-&gt;<span class="fn">listWebhooks</span>(<span class="a">productId:</span> <span class="s">'payments'</span>, <span class="a">eventType:</span> <span class="s">'payments.payments.accept'</span>);</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="get-webhook" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Webhooks</p>
+      <h2>Get webhook</h2>
+      <p class="doc-sig"><span class="fn">getWebhook</span>(string): <span class="rt">WebhookSubscription</span></p>
+      <p>Reads one subscription by id — its endpoint, status, security type, and the products and
+         events it receives.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$webhook</span> = <span class="v">$gateway</span>-&gt;<span class="fn">getWebhook</span>(<span class="v">$webhookId</span>);
+
+<span class="v">$webhook</span>-&gt;status;                    <span class="c">// WebhookStatus::Active | Inactive</span>
+<span class="v">$webhook</span>-&gt;<span class="fn">eventTypes</span>();
+<span class="v">$webhook</span>-&gt;<span class="fn">isSignatureVerifiable</span>();  <span class="c">// assert this at boot if your receiver assumes signatures</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="update-webhook" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Webhooks</p>
+      <h2>Update webhook</h2>
+      <p class="doc-sig"><span class="fn">updateWebhook</span>(UpdateWebhookRequest): <span class="rt">WebhookSubscription</span></p>
+      <p>A partial patch — only the fields you set are sent, so a URL change does not restate the
+         product list or the retry policy. It deliberately <strong>cannot</strong> change the
+         status, so a routine edit can never silently reactivate a subscription you had paused;
+         that is a separate, explicit call.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$gateway</span>-&gt;<span class="fn">updateWebhook</span>(<span class="k">new</span> <span class="t">UpdateWebhookRequest</span>(
+    <span class="a">webhookId:</span> <span class="v">$id</span>,
+    <span class="a">webhookUrl:</span> <span class="s">'https://shop.test/webhook-v2'</span>,
+));</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="webhook-status" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Webhooks</p>
+      <h2>Webhook status</h2>
+      <p class="doc-sig"><span class="fn">setWebhookStatus</span>(string, WebhookStatus): <span class="rt">bool</span></p>
+      <p>The one to reach for when redeploying a receiver: it stops delivery while keeping the
+         subscription, its id, and its whole configuration. Pair it with a retry policy that has
+         <code>deactivateOnFailure</code> on and notifications queue rather than drop while you are
+         down.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$gateway</span>-&gt;<span class="fn">setWebhookStatus</span>(<span class="v">$id</span>, <span class="t">WebhookStatus</span>::<span class="cn">Inactive</span>); <span class="c">// pause</span>
+<span class="c">// … deploy …</span>
+<span class="v">$gateway</span>-&gt;<span class="fn">setWebhookStatus</span>(<span class="v">$id</span>, <span class="t">WebhookStatus</span>::<span class="cn">Active</span>);   <span class="c">// resume</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="delete-webhook" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Webhooks</p>
+      <h2>Delete webhook</h2>
+      <p class="doc-sig"><span class="fn">deleteWebhook</span>(string): <span class="rt">bool</span></p>
+      <p>Permanent. The notification history survives, but the subscription does not — and
+         recreating it yields a new id, which breaks anything that referenced the old one. Prefer
+         <code>setWebhookStatus</code> unless the endpoint is genuinely gone for good.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$gateway</span>-&gt;<span class="fn">deleteWebhook</span>(<span class="v">$id</span>);</code></pre>
+        </div>
       </div>
     </section>
 
@@ -1674,7 +1880,24 @@
           <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#get-transaction" data-spy="get-transaction">Get transaction</a></li>
           <li data-gws="cyber fawry paymob paylink mpgs airwallex tamara"><a href="#search-transaction" data-spy="search-transaction">Search transaction</a></li>
           <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#reconcile" data-spy="reconcile">Reconcile</a></li>
+        </ul>
+      </div>
+      <div class="tree-group" data-group="webhooks">
+        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-webhooks">
+          <span class="caret" aria-hidden="true">▾</span>
+          <span class="tree-label-text">Webhooks</span>
+        </button>
+        <ul id="tree-webhooks">
           <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#verify-webhook" data-spy="verify-webhook">Verify webhook</a></li>
+          <li data-gws="cyber"><a href="#webhook-security-key" data-spy="webhook-security-key">Webhook security key</a></li>
+          <li data-gws="cyber"><a href="#webhook-products" data-spy="webhook-products">Webhook products</a></li>
+          <li data-gws="cyber"><a href="#create-webhook" data-spy="create-webhook">Create webhook</a></li>
+          <li data-gws="cyber"><a href="#test-webhook" data-spy="test-webhook">Test webhook</a></li>
+          <li data-gws="cyber"><a href="#list-webhooks" data-spy="list-webhooks">List webhooks</a></li>
+          <li data-gws="cyber"><a href="#get-webhook" data-spy="get-webhook">Get webhook</a></li>
+          <li data-gws="cyber"><a href="#update-webhook" data-spy="update-webhook">Update webhook</a></li>
+          <li data-gws="cyber"><a href="#webhook-status" data-spy="webhook-status">Webhook status</a></li>
+          <li data-gws="cyber"><a href="#delete-webhook" data-spy="delete-webhook">Delete webhook</a></li>
         </ul>
       </div>
       <div class="tree-group" data-group="cross-cutting">

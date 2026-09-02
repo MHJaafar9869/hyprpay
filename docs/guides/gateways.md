@@ -715,6 +715,51 @@ match (true) {
 Routing and account numbers are sensitive banking credentials. This operation sits outside
 `PaymentGatewayInterface`, so the logging decorator never sees them.
 
+### Managing webhook subscriptions
+
+`verifyWebhook` verifies what arrives; these decide what is sent and where, so onboarding a
+merchant's webhooks no longer needs the Business Center.
+
+**Create the signing key first.** CyberSource signs every notification with it, and it is the
+same secret `verifyWebhook` checks — a subscription created before the key exists has nothing to
+sign with. The key is returned **once** and cannot be read back: store it as the
+`webhook_secret` credential immediately.
+
+```php
+use Hyprpay\Payments\Domain\Command\CreateWebhookRequest;
+use Hyprpay\Payments\Domain\Enum\WebhookSecurityType;
+use Hyprpay\Payments\Domain\Enum\WebhookStatus;
+use Hyprpay\Payments\Domain\ValueObject\WebhookProduct;
+
+$key = $cybersource->createWebhookSecurityKey([
+    'provider' => 'nrtd', 'tenant' => 'pxsecurity', 'keyType' => 'sharedSecret',
+]);
+$key->key;   // shown once — this is the webhook_secret credential
+
+$cybersource->listWebhookProducts();   // what this account may subscribe to
+
+$webhook = $cybersource->createWebhook(new CreateWebhookRequest(
+    name: 'Payments',
+    webhookUrl: 'https://shop.test/webhook',
+    products: [new WebhookProduct('payments', ['payments.payments.accept'])],
+    healthCheckUrl: 'https://shop.test/health',   // lets CyberSource resume it on its own
+    securityType: WebhookSecurityType::Key,       // the signed scheme verifyWebhook() checks
+    securityConfig: ['keyId' => $key->keyId],
+));
+
+$cybersource->testWebhook($webhook->webhookId);   // prove the wiring before it matters
+$cybersource->setWebhookStatus($webhook->webhookId, WebhookStatus::Inactive);  // pause, keep config
+```
+
+Two things worth knowing. `isSignatureVerifiable()` is false for the oAuth security types — those
+notifications are authenticated with a bearer token rather than a signature, so `verifyWebhook`
+cannot check them. And a silent integration is often a subscription CyberSource quietly suspended
+after repeated delivery failures, so `listWebhooks()` and `isDelivering()` are worth monitoring.
+
+The retry policy's algorithm is easy to misread: with `firstRetry: 10` and `interval: 30`,
+`Arithmetic` retries at 10, 40, and 70 minutes while `Geometric` retries at 10, 300, and 9,000 —
+the difference between "later today" and "in six days".
+
 ### Card offers — knowing what the card is before you charge it
 
 Offers keyed on card type — a Visa promotion, a premium-tier perk, an installment plan only some
