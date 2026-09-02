@@ -78,7 +78,6 @@
 /* light-theme fixups: recolor the few fixed light-greys that sit on surfaces
    which flip to light, and soften the atmospheric glow */
 [data-theme="light"] code:not(pre code) { color: #2b3026; }
-[data-theme="light"] .matrix td.y { color: #363c31; }
 [data-theme="light"] body::before { opacity: 0.5; }
 [data-theme="light"] .nav-cta:hover { background: rgba(78, 125, 14, 0.08); }
 
@@ -224,6 +223,7 @@ body::before {
 }
 
 a { color: inherit; text-decoration: none; }
+.vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 code, pre { font-family: var(--mono); }
 ::selection { background: var(--accent); color: var(--on-accent); }
 
@@ -232,12 +232,12 @@ code, pre { font-family: var(--mono); }
   max-width: var(--maxw);
   /* spacing lives in the top MARGIN (outside the box) so an anchor jump
      lands on the section's content edge, not below a wall of padding. */
-  margin: clamp(72px, 11vw, 148px) auto 0;
+  margin: clamp(56px, 7.5vw, 104px) auto 0;
   padding: 0 24px;
   scroll-margin-top: 84px; /* clear the sticky nav (~64px) + a little breathing room */
 }
 
-.section-head { max-width: 720px; margin-bottom: 54px; }
+.section-head { max-width: 720px; margin-bottom: 40px; }
 .section-no {
   display: inline-block;
   font-family: var(--mono);
@@ -434,107 +434,14 @@ code:not(pre code) {
   font-size: 34px;
   line-height: 1;
   color: var(--accent);
+  font-variant-numeric: tabular-nums;
 }
 .hero-stats span { font-size: 13.5px; color: var(--muted); }
 
-/* ── ticker ───────────────────────────────────────────────── */
-.ticker {
-  margin-top: clamp(48px, 7vw, 84px);
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  overflow: hidden;
-  background: var(--ink-1);
-}
-.ticker-track {
-  display: inline-flex;
-  align-items: center;
-  gap: 34px;
-  white-space: nowrap;
-  padding: 15px 0;
-  font-family: var(--mono);
-  font-size: 13px;
-  letter-spacing: 0.22em;
-  color: var(--faint);
-  animation: ticker 42s linear infinite;
-}
-.ticker-track .dot { color: var(--accent); }
-@keyframes ticker { to { transform: translateX(-50%); } }
-@media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } }
-
-/* ── feature cards ────────────────────────────────────────── */
-.cards {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-.card {
-  position: relative;
-  background: linear-gradient(180deg, var(--ink-2), var(--ink-1));
-  border: 1px solid var(--line);
-  border-radius: 0;
-  padding: 30px 26px 28px;
-  transition: border-color 0.25s, transform 0.25s var(--ease), background 0.25s;
-  overflow: hidden;
-}
-.card::after {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--accent), transparent);
-  opacity: 0;
-  transition: opacity 0.25s;
-}
-.card:hover { border-color: var(--line-2); transform: translateY(-4px); }
-.card:hover::after { opacity: 1; }
-.card-no {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--accent-dk);
-  letter-spacing: 0.1em;
-}
-.card h3 {
-  font-family: var(--display);
-  font-weight: 600;
-  font-size: 22px;
-  letter-spacing: -0.01em;
-  margin: 12px 0 10px;
-}
-.card p { font-size: 15px; color: var(--muted); margin: 0; }
-.card code { font-size: 0.82em; }
-
-/* ── gateways ─────────────────────────────────────────────── */
-.gateways {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-.gw {
-  position: relative;
-  background: var(--ink-1);
-  border: 1px solid var(--line);
-  border-radius: 0;
-  padding: 26px 26px 24px;
-  overflow: hidden;
-  transition: transform 0.25s var(--ease), border-color 0.25s;
-}
-.gw::before {
-  content: "";
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 3px;
-  background: var(--gw);
-  box-shadow: 0 0 26px 1px var(--gw);
-  opacity: 0.85;
-}
-.gw:hover { transform: translateY(-4px); border-color: var(--line-2); }
-.gw header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
-}
+/* ── gateways: platform tour (alternating text / snippet rows) ──
+   Three flagship drivers get a full row each, sides alternating; the rest
+   collapse into the quiet index below so the section has a front page
+   instead of ten equal cards. */
 .gw-tag {
   font-family: var(--mono);
   font-size: 12px;
@@ -546,166 +453,169 @@ code:not(pre code) {
   padding: 4px 11px;
 }
 .gw-sig { font-family: var(--mono); font-size: 11.5px; color: var(--faint); letter-spacing: 0.04em; }
-.gw h3 {
+
+.pt { display: grid; gap: clamp(44px, 5.5vw, 72px); }
+.pt-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 30px; align-items: center; }
+.pt-row > * { min-width: 0; }
+.pt-kicker { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.pt-text h3 {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 26px;
-  letter-spacing: -0.015em;
-  margin: 0 0 10px;
+  font-size: clamp(26px, 3.2vw, 38px);
+  line-height: 1.06;
+  letter-spacing: -0.022em;
+  margin: 18px 0 14px;
 }
-.gw p { font-size: 15px; color: var(--muted); margin: 0 0 18px; }
-.gw footer {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--faint);
-  letter-spacing: 0.03em;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
+.pt-text > p { color: var(--muted); font-size: 16.5px; line-height: 1.66; margin: 0 0 22px; max-width: 46ch; }
+.pt-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.pt-chip {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--muted); border: 1px solid var(--line); padding: 5px 9px;
 }
-
-/* ── matrix table ─────────────────────────────────────────── */
-.matrix-wrap {
-  border: 1px solid var(--line);
-  border-radius: 0;
-  overflow-x: auto;
-  background: var(--ink-1);
+.pt-link {
+  display: inline-flex; align-items: center; gap: 9px; margin-top: 24px;
+  font-weight: 600; font-size: 14.5px; color: var(--accent);
 }
-.matrix {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14.5px;
-  min-width: 720px;
-}
-.matrix th, .matrix td {
-  text-align: left;
-  padding: 15px 18px;
-  border-bottom: 1px solid var(--line);
-  white-space: nowrap;
-}
-.matrix thead th {
-  position: sticky; top: 0;
-  background: var(--ink-2);
-  font-family: var(--mono);
-  font-size: 12.5px;
-  letter-spacing: 0.03em;
-  color: var(--text);
-  font-weight: 500;
-}
-.matrix thead th:first-child { color: var(--muted); }
-.matrix tbody th {
-  font-weight: 500;
-  color: var(--text);
-}
-.matrix tbody th code { background: none; border: 0; padding: 0; color: var(--text); font-size: 13.5px; }
-.matrix tbody th small { color: var(--faint); font-family: var(--sans); }
-.matrix tbody tr:hover { background: rgba(233, 236, 242, 0.025); }
-.matrix tr:last-child th, .matrix tr:last-child td { border-bottom: 0; }
-.matrix td.y { color: #cdd3dd; font-family: var(--mono); font-size: 12.5px; }
-.matrix td.n { color: var(--faint); text-align: center; }
-.matrix td:not(:first-child),
-.matrix thead th:not(:first-child) { text-align: center; }
-
-.d { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
-.d.cyber { background: var(--cyber); box-shadow: 0 0 10px var(--cyber); }
-.d.fawry { background: var(--fawry); box-shadow: 0 0 10px var(--fawry); }
-.d.paymob { background: var(--paymob); box-shadow: 0 0 10px var(--paymob); }
-.d.paylink { background: var(--paylink); box-shadow: 0 0 10px var(--paylink); }
-.d.paytabs { background: var(--paytabs); box-shadow: 0 0 10px var(--paytabs); }
-.d.paypal { background: var(--paypal); box-shadow: 0 0 10px var(--paypal); }
-
-/* ── gateway deck (card stack, all screens) ───────────────── */
-.deck { display: none; max-width: 640px; } /* .js swaps the table for the deck; table is the no-JS fallback */
-.js .deck { display: block; }
-.js .matrix-wrap { display: none; }
-
-/* single column on phones; heading beside the deck on wider screens */
-.matrix-layout { display: grid; gap: 36px; }
-.matrix-layout .section-head { margin-bottom: 0; }
-.matrix-col { min-width: 0; }
-
-.deck-bar {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 18px;
-}
-.deck-count { font-family: var(--mono); font-size: 13px; color: var(--muted); letter-spacing: 0.06em; }
-.deck-count b { color: var(--text); font-weight: 600; }
-.deck-hint {
-  font-family: var(--mono); font-size: 11.5px; color: var(--faint);
-  letter-spacing: 0.04em; text-transform: lowercase;
-}
-
-.deck-stack { display: grid; grid-template-columns: minmax(0, 1fr); overflow: hidden; padding: 54px 0 18px; }
-.deck-card {
-  grid-area: 1 / 1; /* stack every card in one cell */
-  position: relative;
-  background: var(--ink-2);
-  border: 1px solid var(--line-2);
-  border-radius: 0;
-  padding: 20px 20px 22px;
-  overflow: hidden;
-  box-shadow: 0 24px 56px -26px rgba(0, 0, 0, 0.95);
-  transition: transform 0.42s var(--ease), opacity 0.42s var(--ease);
-  will-change: transform;
-}
-.deck-card::before {
-  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-  background: var(--gw); box-shadow: 0 0 26px 1px var(--gw); opacity: 0.85;
-}
-/* only the front card shows content; the ones behind read as clean cascading
-   card shells (kept in the DOM so all cards stay the same size) */
-.deck-card > * { transition: opacity 0.3s var(--ease); }
-.deck-card:not([data-pos="0"]) > * { opacity: 0; }
-.deck-card:not([data-pos="0"]) { pointer-events: none; }
-.deck-card[data-pos="0"] { z-index: 5; cursor: pointer; }
-.deck-card[data-pos="0"]:active { transform: scale(0.994); }
-
-/* phones: keep the front card full width so nothing wraps; cascade peeks
-   upward (its rightward lean is clipped) */
-.deck-card[data-pos="1"] { transform: translate(7px, -12px) rotate(1.4deg); z-index: 4; }
-.deck-card[data-pos="2"] { transform: translate(14px, -24px) rotate(2.8deg); z-index: 3; }
-.deck-card[data-pos="3"] { transform: translate(21px, -36px) rotate(4.2deg); z-index: 2; }
-.deck-card[data-pos="4"] { transform: translate(28px, -48px) rotate(5.6deg); z-index: 1; }
-
+.pt-link span { transition: transform 0.2s var(--ease); }
+.pt-link:hover span { transform: translateX(5px); }
+/* the snippet column leads on the even rows, so the eye zig-zags down the page */
 @media (min-width: 900px) {
-  .matrix-layout { grid-template-columns: 0.55fr 1fr; gap: 48px; align-items: start; }
-  .matrix-layout .section-head { max-width: none; position: sticky; top: 104px; }
-  .deck { max-width: none; }
-  .deck-count { font-size: 14px; }
-  .deck-ops .op { padding: 9px 0; }
-  .deck-ops dt, .deck-ops dd { font-size: 12.5px; }
-  /* cascade up-and-to-the-right like a loose stack of papers; overflow:hidden
-     keeps the spread from ever widening the page */
-  .deck-stack { padding: 128px 150px 22px 6px; overflow: hidden; }
-  .deck-card[data-pos="1"] { transform: translate(34px, -30px) rotate(2deg); }
-  .deck-card[data-pos="2"] { transform: translate(68px, -60px) rotate(4deg); }
-  .deck-card[data-pos="3"] { transform: translate(102px, -90px) rotate(6deg); }
-  .deck-card[data-pos="4"] { transform: translate(136px, -120px) rotate(8deg); }
+  .pt-row { grid-template-columns: 1fr 1.05fr; gap: clamp(48px, 6vw, 84px); }
+  .pt-row:nth-child(even) .pt-text { order: 2; }
 }
-.deck-card-head {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  margin-bottom: 14px;
+
+/* ── a row assembles as it scrolls in ──
+   Each half slides in from the edge it already occupies, so the two meet in
+   the middle. The direction lives in --slide-x, which the parity rules below
+   set and nothing else touches — that keeps a single `transform` declaration
+   for the resting state and a single one for the settled state, so the two
+   never fight over specificity. The row itself opts out of the shared reveal
+   transform; only its halves move. */
+.js .pt { overflow-x: clip; }
+.js .pt-row.reveal { opacity: 1; transform: none; }
+.js .pt-row > * {
+  opacity: 0;
+  transform: translate(var(--slide-x, 0), var(--slide-y, 22px));
+  transition: opacity 0.6s var(--ease), transform 0.85s var(--ease);
 }
-.deck-card-head .gw-tag, .deck-card-head .gw-sig { white-space: nowrap; }
-.deck-ops { margin: 0; }
-/* labels/values never wrap or break mid-word; flex-wrap lets a rare over-long
-   value drop cleanly onto its own right-aligned line instead */
-.deck-ops .op {
-  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
-  gap: 2px 8px;
-  padding: 8px 0; border-top: 1px solid var(--line);
+@media (min-width: 900px) {
+  .js .pt-row > * { --slide-y: 0; }
+  .js .pt-row > .pt-text { --slide-x: -44px; }
+  .js .pt-row > figure { --slide-x: 44px; }
+  .js .pt-row:nth-child(even) > .pt-text { --slide-x: 44px; }
+  .js .pt-row:nth-child(even) > figure { --slide-x: -44px; }
 }
-.deck-ops .op:first-child { border-top: 0; }
-.deck-ops dt {
-  font-family: var(--mono); font-size: 10.5px; color: var(--muted);
-  letter-spacing: 0.01em; white-space: nowrap;
+.js .pt-row.in > * { opacity: 1; transform: none; }
+.js .pt-row.in > figure { transition-delay: 0.08s; }
+@media (prefers-reduced-motion: reduce) {
+  .js .pt-row > * { opacity: 1; transform: none; transition: none; }
 }
-/* inline value sits right; a rare over-long value that must drop lands
-   left-aligned under its label, reading as a description not a broken wrap */
-.deck-ops dd {
-  margin: 0; font-family: var(--mono); font-size: 10.5px; color: var(--gw);
-  white-space: nowrap;
+
+.pt-rest { margin-top: clamp(44px, 5.5vw, 72px); border-top: 1px solid var(--line-2); }
+.pt-rest-label {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--faint); padding: 22px 0 6px;
 }
-.deck-ops .op.off dt, .deck-ops .op.off dd { color: var(--faint); }
+.pt-rest-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 clamp(36px, 5vw, 72px); }
+.pt-rest-item {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 18px;
+  padding: 15px 0; border-bottom: 1px solid var(--line);
+  transition: padding-left 0.22s var(--ease), border-color 0.2s;
+}
+.pt-rest-item:hover { padding-left: 8px; border-bottom-color: var(--line-2); }
+.pt-rest-item strong { font-family: var(--display); font-weight: 600; font-size: 17px; }
+.pt-rest-item em { font-style: normal; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em; color: var(--faint); text-align: right; }
+.pt-rest-item i { display: inline-block; width: 6px; height: 6px; background: var(--g); margin-right: 10px; vertical-align: middle; }
+@media (max-width: 760px) { .pt-rest-grid { grid-template-columns: 1fr; } }
+
+/* ── combinations band (two rows, opposite directions) ──
+   Each set is duplicated in the markup and the track translates by exactly
+   half its width, so the loop is seamless. The gap is a card margin rather
+   than a flex gap — with a flex gap the two sets differ by half a gap and
+   the seam jumps. */
+.band { margin-top: clamp(44px, 5vw, 72px); overflow: hidden; scroll-margin-top: 84px; }
+.band-head { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+.band-head .section-head { margin-bottom: 28px; }
+.band-row { overflow: hidden; }
+.band-row + .band-row { margin-top: 14px; }
+.band-track { display: flex; width: max-content; animation: band 72s linear infinite; }
+.band-track.rev { animation-direction: reverse; }
+/* hovering eases both tracks to a stop via playbackRate (see app.js) rather
+   than snapping them with animation-play-state */
+.band-set { display: flex; }
+/* wide enough that the kicker and the headline each hold one line — three to
+   four cards are in view at a time, so nothing has to be read in a hurry */
+.band-card {
+  flex: 0 0 auto;
+  width: min(470px, 82vw);
+  margin-right: 14px;
+  background: linear-gradient(180deg, var(--ink-2), var(--ink-1));
+  border: 1px solid var(--line);
+  padding: 26px 30px 30px;
+}
+.band-card > p { font-size: 15px; line-height: 1.55; color: var(--muted); margin: 0; }
+.band-card h3 {
+  font-family: var(--display); font-weight: 600; font-size: 17px;
+  line-height: 1.35; letter-spacing: -0.005em; color: var(--text);
+  margin: 0 0 11px;
+}
+/* the kicker names the combination and then gets out of the way; the gap below
+   it is what separates the label from the claim it introduces. Two classes so
+   it outranks `.band-card > p`, which would otherwise flatten the margin. */
+.band-card .band-kicker {
+  font-family: var(--mono); font-size: 11.5px; font-weight: 500;
+  line-height: 1.4; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--accent); margin: 0 0 34px;
+}
+/* an inline symbol reads as a highlighted term here, not as a boxed chip */
+.band-card code {
+  background: none; border: 0; padding: 0; font-size: 0.88em;
+  color: color-mix(in oklab, var(--accent) 62%, var(--text));
+}
+/* phones: the cards are the tallest thing on the page here, so the whole scale
+   steps down and each card widens against the viewport — wider cards wrap into
+   fewer lines, which buys back more height than shrinking the type alone */
+@media (max-width: 720px) {
+  .band-card { width: 86vw; max-width: 360px; margin-right: 10px; padding: 16px 18px 18px; }
+  .band-card .band-kicker { font-size: 10px; letter-spacing: 0.07em; margin-bottom: 14px; }
+  .band-card h3 { font-size: 15px; line-height: 1.3; margin: 0 0 7px; }
+  .band-card > p { font-size: 13px; line-height: 1.5; }
+  .band-row + .band-row { margin-top: 10px; }
+}
+@keyframes band { to { transform: translateX(-50%); } }
+/* no animation: drop the duplicate set and let the row scroll by hand */
+@media (prefers-reduced-motion: reduce) {
+  .band-track { animation: none; width: auto; }
+  .band-dup { display: none; }
+  .band-row { overflow-x: auto; }
+}
+
+/* ── operation matrix: one row per operation ──
+   Every row renders all ten drivers in the same order, so the chips line up
+   column to column and the list reads as a matrix without a table — and
+   without a horizontal scrollbar. */
+.of-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding-bottom: 18px; }
+.of-legend span { display: inline-flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em; color: var(--muted); }
+.of-legend i { width: 7px; height: 7px; background: var(--g); }
+.of { border-top: 1px solid var(--line-2); }
+.of-row { display: grid; gap: 12px 26px; padding: 17px 0; border-bottom: 1px solid var(--line); align-items: center; }
+.of-row:hover { background: rgba(233, 236, 242, 0.022); }
+.of-name { font-family: var(--mono); font-size: 13px; color: var(--text); }
+.of-name code { background: none; border: 0; padding: 0; color: var(--text); font-size: 13px; }
+.of-name small { display: block; font-family: var(--sans); font-size: 12.5px; color: var(--faint); margin-top: 5px; }
+.of-dots { display: flex; flex-wrap: wrap; gap: 5px; }
+.of-dot {
+  position: relative;
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.05em; text-transform: uppercase;
+  padding: 4px 6px; border: 1px solid color-mix(in oklab, var(--g) 40%, transparent); color: var(--g);
+  text-align: center; cursor: default;
+}
+.of-dot.off { border-color: var(--line); color: var(--faint); opacity: 0.5; }
+@media (min-width: 1000px) {
+  .of-row { grid-template-columns: 0.62fr 1fr; }
+  .of-dots { flex-wrap: nowrap; }
+}
+[data-theme="light"] .of-row:hover { background: rgba(20, 26, 20, 0.03); }
 
 /* ── quick start ──────────────────────────────────────────── */
 .start-grid {
@@ -836,7 +746,7 @@ code:not(pre code) {
 /* ── cta ──────────────────────────────────────────────────── */
 .cta {
   max-width: var(--maxw);
-  margin: clamp(90px, 13vw, 170px) auto 0;
+  margin: clamp(68px, 9vw, 124px) auto 0;
   padding: clamp(56px, 8vw, 96px) 24px;
   text-align: center;
   position: relative;
@@ -884,7 +794,7 @@ code:not(pre code) {
 /* ── footer ───────────────────────────────────────────────── */
 .foot {
   max-width: var(--maxw);
-  margin: clamp(72px, 10vw, 120px) auto 0;
+  margin: clamp(56px, 7vw, 92px) auto 0;
   padding: 40px 24px 60px;
   border-top: 1px solid var(--line);
   display: flex;
@@ -920,9 +830,8 @@ code:not(pre code) {
 
 /* ── responsive ───────────────────────────────────────────── */
 @media (max-width: 960px) {
-  .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .start-grid { grid-template-columns: 1fr; }
-  .code.big { order: -1; }
+  .start-grid .code.big { order: -1; }
   /* stacked layout has no free space to center into, so give the button a
      fixed gap above the last step instead */
   .docs-cta { margin-top: 30px; }
@@ -939,7 +848,6 @@ code:not(pre code) {
   /* inset the CTA content past the border so full-width buttons don't touch it */
   .cta { padding-left: 34px; padding-right: 34px; }
   .hero-stats { grid-template-columns: repeat(2, 1fr); }
-  .cards { grid-template-columns: 1fr; }
   .gateways { grid-template-columns: 1fr; }
   .hero-cta { gap: 12px; }
   .copy { width: 100%; font-size: 13.5px; }
