@@ -24,6 +24,8 @@ use Hyprpay\Payments\Domain\Command\ListReportsRequest;
 use Hyprpay\Payments\Domain\Command\ListSubscriptionsRequest;
 use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
 use Hyprpay\Payments\Domain\Command\PayerAuthSetupRequest;
+use Hyprpay\Payments\Domain\Command\PullFundsRequest;
+use Hyprpay\Payments\Domain\Command\PushFundsRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
 use Hyprpay\Payments\Domain\Command\ReversalRequest;
 use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
@@ -63,6 +65,7 @@ use Hyprpay\Payments\Domain\Result\BankAccountValidationResult;
 use Hyprpay\Payments\Domain\Result\BinLookupResult;
 use Hyprpay\Payments\Domain\Result\CheckoutSession;
 use Hyprpay\Payments\Domain\Result\DccQuote;
+use Hyprpay\Payments\Domain\Result\FundsTransferResult;
 use Hyprpay\Payments\Domain\Result\OrchestratedPaymentResult;
 use Hyprpay\Payments\Domain\Result\PayerAuthResult;
 use Hyprpay\Payments\Domain\Result\PayerAuthSetupResult;
@@ -101,8 +104,10 @@ use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\BinLookupPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CaptureContextPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CapturePayload;
+use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\ClientReference;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CreditPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\CurrencyConversionPayload;
+use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\FundsTransferPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\IncrementAuthPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\MicroformCaptureContextPayload;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Payloads\PayerAuthEnrollPayload;
@@ -1195,6 +1200,128 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
     }
 
     /**
+     * Credits a card — the push half of a funds transfer (an Original Credit Transaction).
+     *
+     * Puts money *onto* a card, typically within seconds. That is what separates it from
+     * {@see refund()} and {@see creditPayment()}: those move money back along the rail a sale came
+     * in on, while this pushes funds to any eligible card whether or not it ever paid you.
+     *
+     * The business application id on the request tells the networks what the transfer is for, and
+     * drives interchange, the rules it is judged against, and in some markets whether it is
+     * permitted at all. For a money transfer the networks additionally require the **sender** to be
+     * identified so the transaction can be screened — omitting that is refused at the network, not
+     * declined by the issuer. Needs the Payouts entitlement, which is separate from the Payments
+     * product. This is a CyberSource-specific operation, outside the shared
+     * {@see PaymentGatewayInterface}.
+     */
+    public function pushFunds(PushFundsRequest $request): FundsTransferResult
+    {
+        return $this->toFundsTransferResult($this->client->post(
+            CybersourceEndpoint::PushFundsTransfer->path(),
+            FundsTransferPayload::push($request),
+            'push funds transfer',
+            $request->idempotencyKey ?? $request->merchantTransactionId ?? $request->orderReference,
+        ));
+    }
+
+    /**
+     * Debits a card to fund a transfer — the pull half (an Account Funding Transaction).
+     *
+     * Takes money *off* the sender's card so it can be pushed to someone else. It is not a purchase
+     * and must not be modelled as one: the cardholder is buying nothing, the networks price and
+     * rule it differently, and declaring a funding transaction as a sale is the usual reason a
+     * transfer programme is shut down.
+     *
+     * Pair it with {@see pushFunds()} carrying the same business application id, so the networks see
+     * one coherent transfer rather than an unrelated debit and credit.
+     */
+    public function pullFunds(PullFundsRequest $request): FundsTransferResult
+    {
+        return $this->toFundsTransferResult($this->client->post(
+            CybersourceEndpoint::PullFundsTransfer->path(),
+            FundsTransferPayload::pull($request),
+            'pull funds transfer',
+            $request->idempotencyKey ?? $request->merchantTransactionId ?? $request->orderReference,
+        ));
+    }
+
+    /**
+     * Returns funds taken by a pull, after it has settled.
+     *
+     * The remedy when a transfer fails *after* the sender was debited — a pull that succeeded
+     * followed by a push that declined leaves the sender out of pocket and the recipient unpaid,
+     * and the pull has to be given back rather than the push retried.
+     *
+     * @param  string  $transferId  Identifier of the pull to refund.
+     * @param  string|null  $orderReference  Merchant reference for reconciliation.
+     * @param  string|null  $idempotencyKey  So a retried refund does not return the money twice.
+     */
+    public function refundPullFunds(string $transferId, ?string $orderReference = null, ?string $idempotencyKey = null): FundsTransferResult
+    {
+        return $this->toFundsTransferResult($this->client->post(
+            CybersourceEndpoint::PullFundsRefund->path($transferId),
+            ['clientReferenceInformation' => ClientReference::block($orderReference, null, $transferId)],
+            'refund pull funds',
+            $idempotencyKey ?? $orderReference,
+        ));
+    }
+
+    /**
+     * Reverses a pull before it settles, releasing the debit rather than refunding it.
+     *
+     * Prefer this to {@see refundPullFunds()} when the failure is caught in time: a reversal
+     * releases the hold outright, while a refund is a second money movement the sender sees
+     * separately on their statement.
+     *
+     * @param  string  $transferId  Identifier of the pull to reverse.
+     * @param  string|null  $orderReference  Merchant reference for reconciliation.
+     * @param  string|null  $idempotencyKey  So a retried reversal is not applied twice.
+     */
+    public function reversePullFunds(string $transferId, ?string $orderReference = null, ?string $idempotencyKey = null): FundsTransferResult
+    {
+        return $this->toFundsTransferResult($this->client->post(
+            CybersourceEndpoint::PullFundsReversal->path($transferId),
+            ['clientReferenceInformation' => ClientReference::block($orderReference, null, $transferId)],
+            'reverse pull funds',
+            $idempotencyKey ?? $orderReference,
+        ));
+    }
+
+    /**
+     * Quotes the exchange rate a cross-border payout would settle at.
+     *
+     * Money transfer across currencies settles at the network's rate, not yours, so quoting first is
+     * how a sender can be shown what the recipient will actually receive before the transfer is
+     * committed.
+     *
+     * @param  array<string, mixed>  $query  Rate-request body as CyberSource's payouts guide specifies for your corridor.
+     * @return array<string, mixed> The raw rate response.
+     */
+    public function payoutFxRates(array $query): array
+    {
+        return $this->client->post(
+            CybersourceEndpoint::PayoutFxRates->path(),
+            $query,
+            'payout fx rates',
+        );
+    }
+
+    /**
+     * Looks up a payout's details by id, for reconciling a transfer whose outcome is unclear.
+     *
+     * @param  string  $transferId  Payout identifier to query.
+     * @return array<string, mixed> The raw transaction-query response.
+     */
+    public function queryPayout(string $transferId): array
+    {
+        return $this->client->post(
+            CybersourceEndpoint::PayoutTransactionQuery->path($transferId),
+            [],
+            'query payout',
+        );
+    }
+
+    /**
      * Looks up what a card actually is, before charging it (BIN Lookup).
      *
      * Asks the networks for the credential's brand, funding source, issuer country, platform, and
@@ -2002,6 +2129,31 @@ final class CybersourceUnifiedCheckoutGateway extends AbstractPaymentGateway
             rejectedRecords: Value::int($totals['rejectedRecords'] ?? null),
             updatedRecords: Value::int($totals['updatedRecords'] ?? null),
             networkResponses: Value::int($totals['caResponses'] ?? null),
+            raw: $response,
+        );
+    }
+
+    /**
+     * Maps a CyberSource funds-transfer JSON response into a FundsTransferResult DTO.
+     *
+     * The transfer endpoints report the same statuses as a payment, so the normalisation is shared;
+     * the reconciliation id and issuer approval code are lifted out because they are what a support
+     * conversation about a missing transfer turns on.
+     *
+     * @param  array<string, mixed>  $response  Decoded funds-transfer response.
+     */
+    private function toFundsTransferResult(array $response): FundsTransferResult
+    {
+        $status = $this->resolveStatus($response, null);
+
+        return new FundsTransferResult(
+            success: $status->isSuccessful(),
+            status: $status,
+            transferId: $this->transactionId($response),
+            reconciliationId: Value::nullableString($response['reconciliationId'] ?? null),
+            code: $this->reasonCode($response),
+            message: $this->message($response),
+            approvalCode: Value::nullableString(data_get($response, 'processorInformation.approvalCode')),
             raw: $response,
         );
     }

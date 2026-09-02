@@ -10,8 +10,9 @@ namespace Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\Enu
  * Each case is the URL path (relative to the credential host) for a CyberSource
  * service — Unified Checkout capture contexts, payment processing, token
  * management (TMS), payer authentication (risk), recurring billing (RBS), transaction
- * search (TSS), reporting, Account Updater, BIN lookup, notification subscriptions, and Visa
- * Bank Account Validation (BAVS). Cases with an `{id}` placeholder are resolved via path().
+ * search (TSS), reporting, Account Updater, BIN lookup, notification subscriptions, funds
+ * transfer (OCT/AFT), and Visa Bank Account Validation (BAVS). Cases with an `{id}` placeholder
+ * are resolved via path().
  */
 enum CybersourceEndpoint: string
 {
@@ -31,6 +32,13 @@ enum CybersourceEndpoint: string
     case TimeoutVoids = '/pts/v2/voids';
     case TimeoutReversals = '/pts/v2/reversals';
     case RefreshPaymentStatus = '/pts/v2/refresh-payment-status/{id}';
+    case PushFundsTransfer = '/pts/v1/push-funds-transfer';
+    case PullFundsTransfer = '/pts/v1/pull-funds-transfer';
+    case PullFundsRefund = '/pts/v1/pull-funds-transfer/{id}/refund';
+    case PullFundsReversal = '/pts/v1/pull-funds-transfer/{id}/reversal';
+    case Payouts = '/pts/v2/payouts';
+    case PayoutFxRates = '/pts/v2/payouts/fx-rates';
+    case PayoutTransactionQuery = '/pts/v2/payouts/transaction-query/{id}';
     case CurrencyConversion = '/vas/v1/currencyconversion';
     case AuthenticationSetups = '/risk/v1/authentication-setups';
     case Authentications = '/risk/v1/authentications';
