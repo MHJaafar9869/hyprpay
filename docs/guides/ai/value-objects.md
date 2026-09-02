@@ -131,3 +131,29 @@ Methods:
 | param | type | default | meaning |
 |---|---|---|---|
 | `$value` | `string` | — | The wallet's device-encrypted payment token as delivered client-side (Apple Pay: `paymentData` serialized to JSON) |
+
+## BillingPeriod
+`Hyprpay\Payments\Domain\ValueObject\BillingPeriod` — how often a subscription bills: a length plus a calendar unit. Attached to a `CreateSubscriptionRequest` to set the cadence inline, it maps to CyberSource's `planInformation.billingPeriod`; omit it and the subscription inherits the cadence of the plan it references.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$length` | `int` | — | How many units make up one billing period (must be at least 1; throws `InvalidArgumentException` otherwise) |
+| `$unit` | `BillingPeriodUnit` | — | Calendar unit the length is counted in (`Day` `D`, `Week` `W`, `Month` `M`, `Year` `Y`) |
+
+Methods:
+- `static daily(int $length = 1): self` / `weekly()` / `monthly()` / `yearly()` — named constructors for each unit (`monthly(3)` is quarterly).
+- `toArray(): array{length: string, unit: string}` — the `planInformation.billingPeriod` fields; both values are rendered as strings, which is how the Recurring Billing API types them.
+
+## AccountUpdaterToken
+`Hyprpay\Payments\Domain\ValueObject\AccountUpdaterToken` — a vault token submitted to Account Updater for refresh. The id is whichever TMS token stands for the card (customer, payment instrument, or instrument identifier); the networks are asked whether the card behind it has changed.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$id` | `string` | — | TMS token id to refresh |
+| `$expirationMonth` | `?string` | `null` | Two-digit expiry currently on file (`MM`); the networks match on it |
+| `$expirationYear` | `?string` | `null` | Four-digit expiry currently on file (`YYYY`) |
+
+Methods:
+- `toArray(): array<string,string>` — the token's fields as the batch carries them, omitting an expiry not supplied.
+
+Build these in bulk from plain ids with `CreateAccountUpdaterBatchRequest::forTokenIds()`.

@@ -198,3 +198,211 @@ Method:
 | `$orderReference` | `?string` | `null` | Merchant order reference the result must match when supplied |
 | `$expectedIssuer` | `?string` | `null` | Issuer (`iss`) claim the result must carry when supplied |
 | `$leewaySeconds` | `int` | `60` | Clock-skew allowance in seconds applied to exp/iat/nbf validation |
+
+## Recurring subscriptions
+
+### CreateSubscriptionRequest
+`Hyprpay\Payments\Domain\Command\CreateSubscriptionRequest` — opens a subscription the gateway bills on its own schedule (CyberSource Recurring Billing, `POST /rbs/v1/subscriptions`). Carries no card data: it references an already-vaulted customer token, so vault the card first. Nothing is charged when the subscription is created — the first charge falls on `$startDate`. The cadence comes from `$planId`, from the inline `$billingPeriod`/`$billingCycles`, or from both with the inline values overriding the plan.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$name` | `string` | — | Human-readable subscription name shown in the gateway's back office |
+| `$customerId` | `string` | — | Vault customer identifier whose default instrument is billed each cycle |
+| `$startDate` | `string` | — | Date of the first charge, UTC — `YYYY-MM-DD` (expanded to midnight UTC) or a full `YYYY-MM-DDThh:mm:ssZ` |
+| `$planId` | `?string` | `null` | Identifier of an existing billing plan supplying cadence and amount; omit to define them inline |
+| `$billingPeriod` | `?BillingPeriod` | `null` | Inline billing cadence (e.g. every month), overriding the plan's period |
+| `$billingCycles` | `?int` | `null` | Total cycles to bill before completing; null bills until cancelled |
+| `$billingAmount` | `?Money` | `null` | Amount charged each cycle, overriding the plan's amount |
+| `$setupFee` | `?Money` | `null` | One-off fee charged on the first cycle, in the same currency as the billing amount |
+| `$code` | `?string` | `null` | Merchant-assigned subscription code; the gateway generates one when omitted |
+| `$orderReference` | `?string` | `null` | Merchant order/reference number for reconciliation |
+| `$originalTransactionId` | `?string` | `null` | Network transaction id of the initial cardholder-initiated charge, threading this series to its CIT |
+| `$originalAuthorizedAmount` | `?Money` | `null` | Amount of that initial charge; required by Diners and Discover |
+| `$commerceIndicator` | `?CybersourceCommerceIndicator` | `null` | How the recurring agreement was taken; ignored when an original transaction id is supplied |
+| `$initiator` | `?CredentialInitiator` | `null` | Who initiates the recurring charges; ignored when an original transaction id is supplied |
+| `$idempotencyKey` | `?string` | `null` | Idempotency key so a retried create does not open a second subscription; defaults to `$orderReference` |
+
+### UpdateSubscriptionRequest
+`Hyprpay\Payments\Domain\Command\UpdateSubscriptionRequest` — amends an existing subscription in place (`PATCH /rbs/v1/subscriptions/{id}`). A partial update: only the fields supplied are sent and everything left null keeps its current value. Narrower than a create by CyberSource's own schema — there is no `BillingPeriod` and no currency, because the cadence and the billing currency are fixed once the subscription exists. The vault customer cannot be re-pointed either; to move a subscription onto a different card, update the payment instrument behind the existing customer token.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$subscriptionId` | `string` | — | Identifier of the subscription to amend |
+| `$name` | `?string` | `null` | New human-readable subscription name |
+| `$planId` | `?string` | `null` | Move the subscription onto a different billing plan |
+| `$code` | `?string` | `null` | New merchant-assigned subscription code |
+| `$startDate` | `?string` | `null` | Reschedule the first charge, UTC; only meaningful while the subscription has not started |
+| `$billingCycles` | `?int` | `null` | New total number of cycles to bill before completing |
+| `$billingAmount` | `?Money` | `null` | New per-cycle amount; **its currency is ignored** |
+| `$setupFee` | `?Money` | `null` | New one-off setup fee; **its currency is ignored** |
+| `$orderReference` | `?string` | `null` | Merchant order/reference number for reconciliation |
+| `$idempotencyKey` | `?string` | `null` | Idempotency key so a retried update is not applied twice; defaults to `$orderReference` |
+
+The response can carry `requestStatus` `PENDING_REVIEW` — accepted but held for review rather than applied. The SDK reports that as `success: true` (as it does every pending state); read `$requestStatus` to tell it apart from an applied `COMPLETED`.
+
+### ListSubscriptionsRequest
+`Hyprpay\Payments\Domain\Command\ListSubscriptionsRequest` — one page of subscriptions (`GET /rbs/v1/subscriptions`, CyberSource's `getAllSubscriptions`). Every filter is optional and they combine; passing none walks the whole book. Returns a `SubscriptionPage`, not a bare list — CyberSource defaults to 20 records and caps a page at 100, so page through with `SubscriptionPage::hasMore()` and `nextPage()`.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$status` | `?SubscriptionStatus` | `null` | Return only subscriptions in this lifecycle state (mapped back to CyberSource's spelling) |
+| `$code` | `?string` | `null` | Return only the subscription carrying this subscription code |
+| `$customerId` | `?string` | `null` | Return only subscriptions billing this vault customer |
+| `$orderReference` | `?string` | `null` | Return only subscriptions carrying this merchant reference (`clientReferenceInformationCode`) |
+| `$limit` | `int` | `20` | Page size; CyberSource caps it at 100 |
+| `$offset` | `int` | `0` | Records to skip, for paging |
+
+Public method:
+- `nextPage(): self` — the request for the following page, keeping every filter and the page size.
+
+The remaining lifecycle operations take no DTO — `getSubscription(string $id)`, `cancelSubscription(string $id)`, `suspendSubscription(string $id)`, and `activateSubscription(string $id, bool $processMissedPayments = true)` — and each returns a `SubscriptionResult`.
+
+## Reporting
+
+### CreateReportRequest
+`Hyprpay\Payments\Domain\Command\CreateReportRequest` — queues a one-off (ad-hoc) report over a fixed window (`POST /reporting/v3/reports`). Generation is asynchronous and the gateway answers with an empty 201, so the operation returns `bool`: find the queued report with `listReports` and download it once ready.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$name` | `string` | — | Merchant-assigned name for this run; the handle it is later downloaded by |
+| `$definitionName` | `ReportDefinitionName\|string` | — | Report definition to run — an enum case for the 19 documented reports, or a raw name for a custom one |
+| `$startTime` | `string` | — | Start of the window, UTC ISO 8601; a bare `YYYY-MM-DD` becomes midnight UTC |
+| `$endTime` | `string` | — | End of the window, same format |
+| `$format` | `ReportFormat` | `Csv` | File format to generate in |
+| `$fields` | `array<int,string>` | `[]` | Columns to include; empty uses the definition's defaults |
+| `$timezone` | `?string` | `null` | Timezone the window is interpreted in |
+| `$filters` | `array<string,array<int,string>>` | `[]` | Report filters as field => allowed values |
+| `$groupName` | `?string` | `null` | Report group to file the report under |
+| `$organizationId` | `?string` | `null` | Organization; defaults to the credentials' organization |
+
+### ListReportsRequest
+`Hyprpay\Payments\Domain\Command\ListReportsRequest` — finds the reports available over a window (`GET /reporting/v3/reports`). The window is required. `$timeQueryType` decides which timestamp it filters on — `executedTime` (when the report ran) or `reportTimeFrame` (the period it covers); they differ for any report generated after the data it describes.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$startTime` | `string` | — | Start of the search window, UTC ISO 8601 |
+| `$endTime` | `string` | — | End of the search window |
+| `$timeQueryType` | `string` | `executedTime` | `TIME_EXECUTED` or `TIME_REPORT_FRAME` |
+| `$status` | `?ReportStatus` | `null` | Only reports in this generation state |
+| `$frequency` | `?ReportFrequency` | `null` | Only reports produced at this cadence |
+| `$format` | `?ReportFormat` | `null` | Only reports in this file format |
+| `$name` | `?string` | `null` | Only reports carrying this name |
+| `$definitionId` | `?int` | `null` | Only reports from this report definition |
+| `$organizationId` | `?string` | `null` | Organization to search |
+
+Constants: `TIME_EXECUTED` (`executedTime`), `TIME_REPORT_FRAME` (`reportTimeFrame`).
+
+### DownloadReportRequest
+`Hyprpay\Payments\Domain\Command\DownloadReportRequest` — fetches a generated report file (`GET /reporting/v3/report-downloads`). Keyed by name and date, **not** report id. The date is the *end* of the period covered, in the report's timezone — a report running midnight-to-midnight on the 9th downloads under the 10th; getting this wrong is the usual cause of a 404 on a report that exists. Prefer `Report::downloadRequest()`, which derives it.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$name` | `string` | — | Name of the report to download |
+| `$reportDate` | `string` | — | `YYYY-MM-DD` end date of the period covered, in the report's timezone |
+| `$format` | `ReportFormat` | `Csv` | Format the report was generated in; sent as the `Accept` header |
+| `$organizationId` | `?string` | `null` | Organization the report belongs to |
+
+### CreateReportSubscriptionRequest
+`Hyprpay\Payments\Domain\Command\CreateReportSubscriptionRequest` — schedules a recurring report (`PUT /reporting/v3/report-subscriptions`). The endpoint is keyed by report name, so creating one under an existing name **replaces** that schedule — the same call creates and updates.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$name` | `string` | — | Unique subscription name; re-using one replaces that subscription |
+| `$definitionName` | `ReportDefinitionName\|string` | — | Report definition to run — an enum case, or a raw name for a custom definition |
+| `$fields` | `array<int,string>` | — | Columns to include in each generated report |
+| `$startTime` | `string` | — | Time of day each run starts, as `hhmm` (e.g. `0200`) — not a date |
+| `$frequency` | `ReportFrequency` | `Daily` | How often the report is generated |
+| `$format` | `ReportFormat` | `Csv` | File format each run is generated in |
+| `$timezone` | `?string` | `null` | Timezone the schedule runs in |
+| `$startDay` | `?int` | `null` | 1-7 weekly (1 is Sunday) or 1-31 monthly; ignored for other cadences |
+| `$interval` | `?string` | `null` | ISO 8601 duration for a `UserDefined` cadence (e.g. `PT2H30M`) |
+| `$filters` | `array<string,array<int,string>>` | `[]` | Report filters as field => allowed values |
+| `$groupName` | `?string` | `null` | Report group to file the subscription under |
+| `$organizationId` | `?string` | `null` | Organization the subscription belongs to |
+
+`startDay` and `interval` are emitted only for the cadences that use them, so a daily subscription does not carry fields the gateway would reject.
+
+The read/delete operations take no DTO — `listReportSubscriptions(?string $organizationId = null)`, `getReportSubscription(string $reportName, ?string $organizationId = null)`, and `deleteReportSubscription(string $reportName, ?string $organizationId = null)`.
+
+## Bank account validation
+
+### ValidateBankAccountRequest
+`Hyprpay\Payments\Domain\Command\ValidateBankAccountRequest` — Visa Bank Account Validation Service (`POST /bavs/v1/account-validations`). Checks a routing/account pair is a real, open account **before** an ACH debit, satisfying Nacha's account-validation mandate for WEB debits. It authorises nothing and moves no money. Supply either the raw bank details or a vault token — with a token the bank fields become optional and the raw numbers never leave the vault.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$routingNumber` | `?string` | `null` | Bank routing (transit) number, digits only |
+| `$accountNumber` | `?string` | `null` | Bank account number, digits only |
+| `$customerId` | `?string` | `null` | Vault customer token holding the account, used instead of raw details |
+| `$paymentInstrumentId` | `?string` | `null` | Vault payment-instrument token for the account |
+| `$instrumentIdentifierId` | `?string` | `null` | Vault instrument-identifier token for the account |
+| `$orderReference` | `?string` | `null` | Merchant reference for reconciling the validation |
+| `$validationLevel` | `int` | `1` | Depth of validation; `LEVEL_ROUTING_AND_ACCOUNT` checks both numbers |
+
+A half-supplied bank pair (routing without account, or vice versa) is dropped rather than sent as a block the service would reject. Routing and account numbers are sensitive: the operation sits outside `PaymentGatewayInterface`, so the logging decorator never sees them.
+
+## Vault lifecycle
+
+### UpdatePaymentInstrumentRequest
+`Hyprpay\Payments\Domain\Command\UpdatePaymentInstrumentRequest` — amends a vaulted payment instrument in place (`PATCH /tms/v2/customers/{id}/payment-instruments/{id}`). A partial update; only the fields supplied are sent. The card **number** is never updatable — it belongs to the instrument identifier behind the instrument — so a genuinely different card is vaulted afresh.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$customerId` | `string` | — | Vault customer the instrument is stored under |
+| `$paymentInstrumentId` | `string` | — | Vault payment-instrument identifier to amend |
+| `$expirationMonth` | `?string` | `null` | New two-digit expiry month (`MM`) |
+| `$expirationYear` | `?string` | `null` | New four-digit expiry year (`YYYY`) |
+| `$cardType` | `?string` | `null` | New gateway card-network code (e.g. `001` Visa) |
+| `$billTo` | `?BillingAddress` | `null` | Replacement billing address |
+| `$makeDefault` | `?bool` | `null` | Makes this the customer's default instrument |
+
+The common use is re-dating a reissued card: it keeps every subscription and stored-credential charge already pointing at the instrument working with no re-collection. `makeDefault` is also the prerequisite for deleting whichever instrument is currently the default.
+
+The read/delete operations take no DTO — `getPaymentInstrument(string $customerId, string $paymentInstrumentId)`, `listPaymentInstruments(string $customerId, int $limit = 20, int $offset = 0)`, `deletePaymentInstrument(string $customerId, string $paymentInstrumentId)`, `getCustomer(string $customerId)`, `deleteCustomer(string $customerId)`, and `deleteInstrumentIdentifier(string $instrumentIdentifierId)`.
+
+## Plans
+
+### CreatePlanRequest
+`Hyprpay\Payments\Domain\Command\CreatePlanRequest` — creates the reusable template a subscription is built from (`POST /rbs/v1/plans`), which `CreateSubscriptionRequest::$planId` then references.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$name` | `string` | — | Plan name shown in the back office |
+| `$billingPeriod` | `BillingPeriod` | — | How often a subscription on this plan charges |
+| `$billingAmount` | `?Money` | `null` | Amount charged each cycle |
+| `$setupFee` | `?Money` | `null` | One-off fee on the first cycle, same currency |
+| `$billingCycles` | `?int` | `null` | Cycles before completing; null bills until cancelled |
+| `$description` | `?string` | `null` | Human-readable description |
+| `$code` | `?string` | `null` | Merchant-assigned plan code; the gateway generates one when omitted |
+| `$status` | `?PlanStatus` | `null` | `Draft` to stage it, `Active` to publish; the gateway defaults to Active |
+
+### UpdatePlanRequest
+`Hyprpay\Payments\Domain\Command\UpdatePlanRequest` — amends a plan (`PATCH /rbs/v1/plans/{id}`). A partial update. **Unlike a subscription, a plan's billing period can be changed here** — a plan is a template with nothing billing against it. The change governs subscriptions created afterwards; it does not retroactively re-price those already running.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$planId` | `string` | — | Plan to amend |
+| `$name` | `?string` | `null` | New plan name |
+| `$description` | `?string` | `null` | New description |
+| `$billingPeriod` | `?BillingPeriod` | `null` | New cadence for future subscriptions |
+| `$billingCycles` | `?int` | `null` | New total cycle count |
+| `$billingAmount` | `?Money` | `null` | New per-cycle amount |
+| `$setupFee` | `?Money` | `null` | New one-off setup fee |
+
+The remaining plan operations take no DTO — `getPlan(string)`, `listPlans()`, `activatePlan(string)`, `deactivatePlan(string)`, `deletePlan(string)`, `generatePlanCode()`, and `listSubscriptionPayments(string $subscriptionId)`.
+
+## Account Updater
+
+### CreateAccountUpdaterBatchRequest
+`Hyprpay\Payments\Domain\Command\CreateAccountUpdaterBatchRequest` — submits vaulted cards for network refresh (`POST /accountupdater/v1/batches`). Only token ids are sent; no card number leaves the vault. Submission is asynchronous — the call returns a batch id to poll, not results.
+
+| param | type | default | meaning |
+|---|---|---|---|
+| `$tokens` | `list<AccountUpdaterToken>` | — | Vault tokens to refresh |
+| `$type` | `AccountUpdaterBatchType` | `OneOff` | Network flow; Amex cards must use `AmexRegistration` |
+| `$merchantReference` | `?string` | `null` | Reference echoed back on the batch |
+
+Named constructor:
+- `static forTokenIds(array $tokenIds, AccountUpdaterBatchType $type = OneOff, ?string $merchantReference = null): self` — the common case, a batch of plain token ids with no stored expiry to send alongside.
+
+The poll/report operations take no DTO — `getAccountUpdaterBatchStatus(string $batchId)`, `getAccountUpdaterBatchReport(string $batchId)`, and `listAccountUpdaterBatches(int $limit = 20, int $offset = 0, ?string $fromDate = null, ?string $toDate = null)` (dates in ISO 8601 basic format, `yyyyMMddTHHmmssZ`).

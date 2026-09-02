@@ -452,51 +452,6 @@
       </div>
     </section>
 
-    <section id="device-fingerprint" class="doc-section" data-gws="cyber">
-      <p class="doc-eyebrow">Fraud screening</p>
-      <h2>Device fingerprinting</h2>
-      <p>Decision Manager profiles the shopper's device so a charge can be fraud-screened. It has two
-         halves: a profiling tag you embed on the checkout page, and a session id you send on the request.
-         The browser tag is yours to embed — this package never renders HTML.</p>
-      <p><code>org_id</code> is CyberSource's standard Decision Manager profiling org id (shared, not a
-         per-merchant secret): <code>1snn5n9w</code> in test, <code>k8vif92e</code> in production.
-         <code>session_id</code> is your merchant id concatenated with a fresh per-page-load
-         <code>crypto.randomUUID()</code> (max 88 chars, <code>[A-Za-z0-9_-]</code>). Add it above
-         <code>&lt;/body&gt;</code> — <code>tags.js</code> supersedes the legacy <code>check.js</code>:</p>
-      <div class="code">
-<pre><code><span class="k">const</span> <span class="v">orgId</span>      = <span class="v">isTestMode</span> ? <span class="s">'1snn5n9w'</span> : <span class="s">'k8vif92e'</span>;
-<span class="k">const</span> <span class="v">sessionId</span>  = <span class="v">crypto</span>.<span class="fn">randomUUID</span>();               <span class="c">// the &lt;session id&gt;; send THIS to the API</span>
-<span class="k">const</span> <span class="v">tag</span>        = <span class="v">document</span>.<span class="fn">createElement</span>(<span class="s">'script'</span>);
-<span class="v">tag</span>.src = <span class="s">'https://h.online-metrix.net/fp/tags.js?org_id='</span> + <span class="v">orgId</span> +
-          <span class="s">'&amp;session_id='</span> + <span class="fn">encodeURIComponent</span>(<span class="v">merchantId</span> + <span class="v">sessionId</span>);
-<span class="v">document</span>.head.<span class="fn">appendChild</span>(<span class="v">tag</span>);</code></pre>
-      </div>
-      <p>On the request, send <code>only</code> the <code>&lt;session id&gt;</code> part as
-         <code>deviceFingerprintId</code> — it maps to <code>deviceInformation.fingerprintSessionId</code>.
-         It is accepted on <code>charge</code>, <code>chargeStoredCredential</code>,
-         <code>chargeWallet</code>, and <code>enrollPayerAuth</code>:</p>
-      <div class="code">
-<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="k">new</span> <span class="t">ChargeRequest</span>(
-    <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>,
-    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'EGP'</span>),
-    <span class="a">deviceFingerprintId:</span> <span class="v">$sessionId</span>, <span class="c">// the UUID from the tag (the &lt;session id&gt; part), NOT merchantId + UUID</span>
-));</code></pre>
-      </div>
-      <p>Set <code>useRawFingerprintSessionId: true</code> only when you sent the session id to the tag
-         <em>without</em> the merchant-id prefix; for the standard tag above, leave it <code>false</code>.</p>
-      <p>In the <em>orchestrated</em> flow (a <code>completeMandate</code> on
-         <code>createCheckoutSession</code>) there is no <code>fingerprintSessionId</code> to send — the
-         widget runs Decision Manager itself. Toggle it with <code>decisionManager</code> on
-         <code>CheckoutSessionRequest</code> (default <code>true</code>), emitted as
-         <code>completeMandate.decisionManager</code>. Likewise <code>enable3ds</code> (default
-         <code>true</code>) is emitted as <code>completeMandate.consumerAuthentication</code> so the
-         widget runs 3-D Secure as part of the mandate — it applies to the orchestrated flow only;
-         the manual transient-token flow runs 3DS through <code>enrollPayerAuth</code> /
-         <code>validatePayerAuth</code>. The widget's collected fields (billing/email/phone/shipping,
-         accepted-network icons) come from a <code>CybersourceCheckoutOptions</code> on
-         <code>options</code>, which maps to the capture context's <code>captureMandate</code>.</p>
-    </section>
-
     <section id="capture" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara">
       <p class="doc-eyebrow">Payment flow</p>
       <h2>Capture</h2>
@@ -553,6 +508,51 @@
     <span class="a">idempotencyKey:</span> <span class="s">'reverse:auth-123'</span>,
 ));</code></pre>
       </div>
+    </section>
+
+    <section id="device-fingerprint" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Fraud screening</p>
+      <h2>Device fingerprinting</h2>
+      <p>Decision Manager profiles the shopper's device so a charge can be fraud-screened. It has two
+         halves: a profiling tag you embed on the checkout page, and a session id you send on the request.
+         The browser tag is yours to embed — this package never renders HTML.</p>
+      <p><code>org_id</code> is CyberSource's standard Decision Manager profiling org id (shared, not a
+         per-merchant secret): <code>1snn5n9w</code> in test, <code>k8vif92e</code> in production.
+         <code>session_id</code> is your merchant id concatenated with a fresh per-page-load
+         <code>crypto.randomUUID()</code> (max 88 chars, <code>[A-Za-z0-9_-]</code>). Add it above
+         <code>&lt;/body&gt;</code> — <code>tags.js</code> supersedes the legacy <code>check.js</code>:</p>
+      <div class="code">
+<pre><code><span class="k">const</span> <span class="v">orgId</span>      = <span class="v">isTestMode</span> ? <span class="s">'1snn5n9w'</span> : <span class="s">'k8vif92e'</span>;
+<span class="k">const</span> <span class="v">sessionId</span>  = <span class="v">crypto</span>.<span class="fn">randomUUID</span>();               <span class="c">// the &lt;session id&gt;; send THIS to the API</span>
+<span class="k">const</span> <span class="v">tag</span>        = <span class="v">document</span>.<span class="fn">createElement</span>(<span class="s">'script'</span>);
+<span class="v">tag</span>.src = <span class="s">'https://h.online-metrix.net/fp/tags.js?org_id='</span> + <span class="v">orgId</span> +
+          <span class="s">'&amp;session_id='</span> + <span class="fn">encodeURIComponent</span>(<span class="v">merchantId</span> + <span class="v">sessionId</span>);
+<span class="v">document</span>.head.<span class="fn">appendChild</span>(<span class="v">tag</span>);</code></pre>
+      </div>
+      <p>On the request, send <code>only</code> the <code>&lt;session id&gt;</code> part as
+         <code>deviceFingerprintId</code> — it maps to <code>deviceInformation.fingerprintSessionId</code>.
+         It is accepted on <code>charge</code>, <code>chargeStoredCredential</code>,
+         <code>chargeWallet</code>, and <code>enrollPayerAuth</code>:</p>
+      <div class="code">
+<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="k">new</span> <span class="t">ChargeRequest</span>(
+    <span class="a">transientToken:</span> <span class="v">$tokenFromWidget</span>,
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">10000</span>, <span class="s">'EGP'</span>),
+    <span class="a">deviceFingerprintId:</span> <span class="v">$sessionId</span>, <span class="c">// the UUID from the tag (the &lt;session id&gt; part), NOT merchantId + UUID</span>
+));</code></pre>
+      </div>
+      <p>Set <code>useRawFingerprintSessionId: true</code> only when you sent the session id to the tag
+         <em>without</em> the merchant-id prefix; for the standard tag above, leave it <code>false</code>.</p>
+      <p>In the <em>orchestrated</em> flow (a <code>completeMandate</code> on
+         <code>createCheckoutSession</code>) there is no <code>fingerprintSessionId</code> to send — the
+         widget runs Decision Manager itself. Toggle it with <code>decisionManager</code> on
+         <code>CheckoutSessionRequest</code> (default <code>true</code>), emitted as
+         <code>completeMandate.decisionManager</code>. Likewise <code>enable3ds</code> (default
+         <code>true</code>) is emitted as <code>completeMandate.consumerAuthentication</code> so the
+         widget runs 3-D Secure as part of the mandate — it applies to the orchestrated flow only;
+         the manual transient-token flow runs 3DS through <code>enrollPayerAuth</code> /
+         <code>validatePayerAuth</code>. The widget's collected fields (billing/email/phone/shipping,
+         accepted-network icons) come from a <code>CybersourceCheckoutOptions</code> on
+         <code>options</code>, which maps to the capture context's <code>captureMandate</code>.</p>
     </section>
 
     <section id="get-transaction" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara">
@@ -1206,6 +1206,206 @@
       </div>
     </section>
 
+    <section id="subscriptions" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Stored credentials</p>
+      <h2>Subscriptions</h2>
+      <p class="doc-sig"><span class="fn">createSubscription</span>(CreateSubscriptionRequest): <span class="rt">SubscriptionResult</span></p>
+      <p>Hands the billing schedule to CyberSource Recurring Billing instead of running it yourself.
+         Where <code>chargeStoredCredential</code> bills a saved token once per call from your own
+         scheduler, a subscription enrols a vaulted TMS customer on a cadence CyberSource charges
+         on its own. Vault the card first — the request references
+         <code>paymentInformation.customer.id</code> and never carries card data — and nothing is
+         charged here: the first charge falls on <code>startDate</code>. Take the cadence from a
+         <code>planId</code>, from an inline <code>billingPeriod</code>/<code>billingCycles</code>,
+         or from both with the inline values winning. Like <code>confirmOrchestratedPayment</code>,
+         these are CyberSource-specific methods outside the shared
+         <code>PaymentGatewayInterface</code>.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="c">// 1. Vault the card first — the subscription bills a TMS customer token.</span>
+<span class="v">$vaulted</span> = <span class="v">$gateway</span>-&gt;<span class="fn">vaultInstrument</span>(<span class="k">new</span> <span class="t">TokenizeInstrumentRequest</span>(<span class="a">transientToken:</span> <span class="v">$transientToken</span>));
+
+<span class="c">// 2. Enrol it on a schedule CyberSource runs itself.</span>
+<span class="v">$subscription</span> = <span class="v">$gateway</span>-&gt;<span class="fn">createSubscription</span>(<span class="k">new</span> <span class="t">CreateSubscriptionRequest</span>(
+    <span class="a">name:</span> <span class="s">'Pro monthly'</span>,
+    <span class="a">customerId:</span> <span class="v">$vaulted</span>-&gt;customerId,
+    <span class="a">startDate:</span> <span class="s">'2026-10-01'</span>,                    <span class="c">// UTC; a bare date becomes midnight UTC</span>
+    <span class="a">billingPeriod:</span> <span class="t">BillingPeriod</span>::<span class="fn">monthly</span>(),      <span class="c">// or ::monthly(3) / ::weekly() / ::yearly()</span>
+    <span class="a">billingCycles:</span> <span class="n">12</span>,                          <span class="c">// omit to bill until cancelled</span>
+    <span class="a">billingAmount:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">4999</span>, <span class="s">'USD'</span>),
+    <span class="a">orderReference:</span> <span class="s">'ORDER-9'</span>,
+));
+
+<span class="c">// $subscription->status is Pending until the first billing date, then Active.</span>
+<span class="c">// $subscription->requestStatus is CyberSource's verdict on the call itself (COMPLETED).</span>
+
+<span class="c">// 3. Drive it afterwards by id.</span>
+<span class="v">$gateway</span>-&gt;<span class="fn">getSubscription</span>(<span class="v">$subscription</span>-&gt;subscriptionId);
+<span class="v">$gateway</span>-&gt;<span class="fn">suspendSubscription</span>(<span class="v">$id</span>);                              <span class="c">// pause — reversible</span>
+<span class="v">$gateway</span>-&gt;<span class="fn">activateSubscription</span>(<span class="v">$id</span>, <span class="a">processMissedPayments:</span> <span class="k">false</span>); <span class="c">// resume without a catch-up bill</span>
+<span class="v">$gateway</span>-&gt;<span class="fn">cancelSubscription</span>(<span class="v">$id</span>);                               <span class="c">// terminal — cannot be reactivated</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="update-subscription" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Stored credentials</p>
+      <h2>Update subscription</h2>
+      <p class="doc-sig"><span class="fn">updateSubscription</span>(UpdateSubscriptionRequest): <span class="rt">SubscriptionResult</span></p>
+      <p>Amends a live subscription in place — a partial update, so any field you leave out keeps
+         its current value. Its reach is narrower than a create's by CyberSource's own schema: the
+         cycle count and the amounts can change, but <strong>the billing period and the currency
+         cannot</strong>. Switching monthly to annual means cancelling and re-creating, and a
+         subscription always bills in the currency it was created with — so a <code>Money</code>
+         here contributes its amount and its currency is ignored. The customer token cannot be
+         swapped either; to move the subscription onto another card, update the payment instrument
+         behind the existing TMS customer. An update can also come back
+         <code>PENDING_REVIEW</code>: accepted, but held rather than applied.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$updated</span> = <span class="v">$gateway</span>-&gt;<span class="fn">updateSubscription</span>(<span class="k">new</span> <span class="t">UpdateSubscriptionRequest</span>(
+    <span class="a">subscriptionId:</span> <span class="v">$id</span>,
+    <span class="a">billingAmount:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">5999</span>, <span class="s">'USD'</span>), <span class="c">// re-price — currency is fixed at create</span>
+    <span class="a">billingCycles:</span> <span class="n">24</span>,                        <span class="c">// extend the run</span>
+    <span class="a">name:</span> <span class="s">'Pro annual'</span>,
+));
+
+<span class="c">// Accepted but held for review rather than applied:</span>
+<span class="v">$heldForReview</span> = <span class="v">$updated</span>-&gt;requestStatus === <span class="s">'PENDING_REVIEW'</span>;</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="list-subscriptions" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Stored credentials</p>
+      <h2>List subscriptions</h2>
+      <p class="doc-sig"><span class="fn">listSubscriptions</span>(ListSubscriptionsRequest): <span class="rt">SubscriptionPage</span></p>
+      <p>CyberSource's <code>getAllSubscriptions</code>, returning a <em>page</em> rather than the
+         whole book: the records plus <code>totalCount</code> for the entire filtered set and the
+         window they came from. CyberSource defaults to 20 records and caps a page at 100, so a
+         merchant with hundreds of subscriptions silently gets only the first 20 unless you page
+         through. Filters are optional and combine — filtering by
+         <code>SubscriptionStatus::Delinquent</code> is the practical way to find the subscriptions
+         whose last rebill failed and need dunning.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$request</span> = <span class="k">new</span> <span class="t">ListSubscriptionsRequest</span>(
+    <span class="a">status:</span> <span class="t">SubscriptionStatus</span>::<span class="cn">Delinquent</span>, <span class="c">// last rebill failed</span>
+    <span class="a">limit:</span> <span class="n">100</span>,                             <span class="c">// CyberSource caps a page at 100</span>
+);
+
+<span class="k">do</span> {
+    <span class="v">$page</span> = <span class="v">$gateway</span>-&gt;<span class="fn">listSubscriptions</span>(<span class="v">$request</span>);
+
+    <span class="k">foreach</span> (<span class="v">$page</span>-&gt;subscriptions <span class="k">as</span> <span class="v">$subscription</span>) {
+        <span class="c">// each is a SubscriptionResult — the same shape getSubscription() returns</span>
+    }
+
+    <span class="v">$request</span> = <span class="v">$request</span>-&gt;<span class="fn">nextPage</span>(); <span class="c">// keeps every filter and the page size</span>
+} <span class="k">while</span> (<span class="v">$page</span>-&gt;<span class="fn">hasMore</span>());       <span class="c">// $page->totalCount spans the whole filtered set</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="plans" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Stored credentials</p>
+      <h2>Plans</h2>
+      <p class="doc-sig"><span class="fn">createPlan</span>(CreatePlanRequest): <span class="rt">PlanResult</span></p>
+      <p>A plan is the reusable template a subscription is built from — cadence, cycle count, and
+         price — and is what <code>CreateSubscriptionRequest::$planId</code> points at. One asymmetry
+         to keep straight: <strong><code>updatePlan</code> can change the billing period,
+         <code>updateSubscription</code> cannot.</strong> A plan is a template with nothing billing
+         against it; a subscription is a live agreement. A plan change governs subscriptions created
+         afterwards — it does not retroactively re-price those already running.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$plan</span> = <span class="v">$gateway</span>-&gt;<span class="fn">createPlan</span>(<span class="k">new</span> <span class="t">CreatePlanRequest</span>(
+    <span class="a">name:</span> <span class="s">'Pro monthly'</span>,
+    <span class="a">billingPeriod:</span> <span class="t">BillingPeriod</span>::<span class="fn">monthly</span>(),
+    <span class="a">billingAmount:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">4999</span>, <span class="s">'USD'</span>),
+    <span class="a">billingCycles:</span> <span class="n">12</span>,
+    <span class="a">status:</span> <span class="t">PlanStatus</span>::<span class="cn">Draft</span>, <span class="c">// stage it; only an Active plan is subscribable</span>
+));
+
+<span class="v">$gateway</span>-&gt;<span class="fn">activatePlan</span>(<span class="v">$plan</span>-&gt;planId);
+<span class="v">$gateway</span>-&gt;<span class="fn">deactivatePlan</span>(<span class="v">$plan</span>-&gt;planId); <span class="c">// closes it to NEW sign-ups only</span>
+<span class="v">$gateway</span>-&gt;<span class="fn">deletePlan</span>(<span class="v">$plan</span>-&gt;planId);     <span class="c">// only when nothing depends on it</span>
+
+<span class="c">// Diagnose a DELINQUENT subscription without waiting for the webhook.</span>
+<span class="v">$payments</span> = <span class="v">$gateway</span>-&gt;<span class="fn">listSubscriptionPayments</span>(<span class="v">$subscriptionId</span>);</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="vault-lifecycle" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Stored credentials</p>
+      <h2>Vault lifecycle</h2>
+      <p class="doc-sig"><span class="fn">getPaymentInstrument</span> &middot; <span class="fn">listPaymentInstruments</span> &middot; <span class="fn">updatePaymentInstrument</span> &middot; <span class="fn">deletePaymentInstrument</span></p>
+      <p><code>vaultInstrument</code> creates tokens; the rest of their life is managed separately.
+         Reading a stored instrument back catches a dead card <strong>at rest</strong> rather than at
+         charge time — an expired or closed card behind a subscription otherwise fails every rebill
+         permanently, and you only learn of it from the decline. When a card is reissued,
+         <strong>re-dating beats re-collecting</strong>: updating the stored expiry keeps every
+         subscription already pointing at that instrument working. The card <em>number</em> is not
+         updatable — it belongs to the instrument identifier behind the instrument.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$instrument</span> = <span class="v">$gateway</span>-&gt;<span class="fn">getPaymentInstrument</span>(<span class="v">$customerId</span>, <span class="v">$paymentInstrumentId</span>);
+
+<span class="v">$instrument</span>-&gt;<span class="fn">expiry</span>();                <span class="c">// "12/2030"</span>
+<span class="v">$instrument</span>-&gt;<span class="fn">isExpired</span>();             <span class="c">// no network call — the vault already told us</span>
+<span class="v">$instrument</span>-&gt;state?-&gt;<span class="fn">isChargeable</span>(); <span class="c">// false once the issuer closes the account</span>
+
+<span class="c">// Every card a customer holds (paged: 20 default, 100 max).</span>
+<span class="v">$page</span> = <span class="v">$gateway</span>-&gt;<span class="fn">listPaymentInstruments</span>(<span class="v">$customerId</span>, <span class="a">limit:</span> <span class="n">100</span>);
+<span class="v">$page</span>-&gt;<span class="fn">default</span>();                     <span class="c">// the instrument payments fall back to</span>
+
+<span class="c">// Reissued card — keep every existing subscription working, no new checkout.</span>
+<span class="v">$gateway</span>-&gt;<span class="fn">updatePaymentInstrument</span>(<span class="k">new</span> <span class="t">UpdatePaymentInstrumentRequest</span>(
+    <span class="a">customerId:</span> <span class="v">$customerId</span>,
+    <span class="a">paymentInstrumentId:</span> <span class="v">$paymentInstrumentId</span>,
+    <span class="a">expirationMonth:</span> <span class="s">'01'</span>,
+    <span class="a">expirationYear:</span> <span class="s">'2032'</span>,
+));
+
+<span class="c">// Erasure. A customer's DEFAULT instrument can't be deleted while they hold others —</span>
+<span class="c">// promote another first with makeDefault: true.</span>
+<span class="v">$gateway</span>-&gt;<span class="fn">deletePaymentInstrument</span>(<span class="v">$customerId</span>, <span class="v">$paymentInstrumentId</span>);
+<span class="v">$gateway</span>-&gt;<span class="fn">deleteCustomer</span>(<span class="v">$customerId</span>); <span class="c">// and every instrument under them</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="account-updater" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Stored credentials</p>
+      <h2>Account Updater</h2>
+      <p class="doc-sig"><span class="fn">createAccountUpdaterBatch</span>(CreateAccountUpdaterBatchRequest): <span class="rt">AccountUpdaterBatch</span></p>
+      <p>The standing fix for recurring-billing churn. Account Updater asks the card networks whether
+         the cards behind your stored tokens have been reissued, re-dated, or closed, and pushes the
+         answers back into the vault. Only token ids are sent — <strong>no card number leaves the
+         vault</strong>. Without it, a reissued card fails every scheduled charge permanently.
+         Processing is asynchronous (hours to days), so the create returns a batch id to poll, not
+         results. Amex is a separate network flow and needs a registration batch.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$batch</span> = <span class="v">$gateway</span>-&gt;<span class="fn">createAccountUpdaterBatch</span>(
+    <span class="t">CreateAccountUpdaterBatchRequest</span>::<span class="fn">forTokenIds</span>(<span class="v">$tokenIds</span>, <span class="a">merchantReference:</span> <span class="s">'NIGHTLY-2026-09-01'</span>),
+);
+
+<span class="c">// Hours to days later — the networks answer on their own schedule.</span>
+<span class="v">$status</span> = <span class="v">$gateway</span>-&gt;<span class="fn">getAccountUpdaterBatchStatus</span>(<span class="v">$batch</span>-&gt;batchId);
+
+<span class="k">if</span> (<span class="v">$status</span>-&gt;<span class="fn">isComplete</span>() &amp;&amp; <span class="v">$status</span>-&gt;<span class="fn">hasUpdates</span>()) {
+    <span class="v">$report</span> = <span class="v">$gateway</span>-&gt;<span class="fn">getAccountUpdaterBatchReport</span>(<span class="v">$batch</span>-&gt;batchId);
+    <span class="c">// reconcile per-card changes; retire closed accounts instead of retrying them</span>
+}
+
+<span class="c">// Amex must go in its own registration batch, not the oneOff one:</span>
+<span class="c">// CreateAccountUpdaterBatchRequest::forTokenIds($amexTokens, AccountUpdaterBatchType::AmexRegistration)</span></code></pre>
+        </div>
+      </div>
+    </section>
+
     <section id="charge-wallet" class="doc-section" data-gws="cyber">
       <p class="doc-eyebrow">Digital wallets</p>
       <h2>Charge wallet</h2>
@@ -1237,42 +1437,275 @@
       </div>
     </section>
 
+    <section id="reports" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Reporting</p>
+      <h2>Reports</h2>
+      <p class="doc-sig"><span class="fn">createReport</span>(CreateReportRequest): <span class="rt">bool</span> &middot; <span class="fn">listReports</span>(ListReportsRequest): <span class="rt">Report[]</span> &middot; <span class="fn">downloadReport</span>(DownloadReportRequest): <span class="rt">ReportFile</span></p>
+      <p>Reconciliation and settlement files from CyberSource Reporting. Generation is
+         <strong>asynchronous</strong>: <code>createReport</code> only queues the work and CyberSource
+         answers with an empty 201, so there is no report id to return — find the queued report with
+         <code>listReports</code> and download it once its status is ready. The download is keyed by
+         report <strong>name and date</strong>, never by report id, and that date is the <em>end</em> of
+         the period covered in the report's own timezone — the usual cause of a 404 on a report that
+         plainly exists. <code>Report::downloadRequest()</code> derives the name, date, and format for
+         you. The file comes back unparsed, because a report's columns depend on its definition.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="c">// 1. Queue a one-off report (returns bool — CyberSource replies with an empty 201).</span>
+<span class="v">$gateway</span>-&gt;<span class="fn">createReport</span>(<span class="k">new</span> <span class="t">CreateReportRequest</span>(
+    <span class="a">name:</span> <span class="s">'settlement-sept'</span>,
+    <span class="a">definitionName:</span> <span class="t">ReportDefinitionName</span>::<span class="cn">TransactionRequest</span>, <span class="c">// or a raw string for a custom report</span>
+    <span class="a">startTime:</span> <span class="s">'2026-09-01'</span>,                    <span class="c">// a bare date becomes midnight UTC</span>
+    <span class="a">endTime:</span> <span class="s">'2026-09-30'</span>,
+    <span class="a">fields:</span> [<span class="s">'Request.RequestID'</span>, <span class="s">'Request.TransactionDate'</span>],
+));
+
+<span class="c">// 2. Find it, then download once ready.</span>
+<span class="v">$reports</span> = <span class="v">$gateway</span>-&gt;<span class="fn">listReports</span>(<span class="k">new</span> <span class="t">ListReportsRequest</span>(
+    <span class="a">startTime:</span> <span class="s">'2026-09-01'</span>,
+    <span class="a">endTime:</span> <span class="s">'2026-09-30'</span>,
+    <span class="a">status:</span> <span class="t">ReportStatus</span>::<span class="cn">Completed</span>,
+    <span class="a">name:</span> <span class="s">'settlement-sept'</span>,
+));
+
+<span class="k">foreach</span> (<span class="v">$reports</span> <span class="k">as</span> <span class="v">$report</span>) {
+    <span class="v">$download</span> = <span class="v">$report</span>-&gt;<span class="fn">downloadRequest</span>(); <span class="c">// null while still generating</span>
+
+    <span class="k">if</span> (<span class="v">$download</span> !== <span class="k">null</span>) {
+        <span class="v">$file</span> = <span class="v">$gateway</span>-&gt;<span class="fn">downloadReport</span>(<span class="v">$download</span>);
+        <span class="fn">file_put_contents</span>(<span class="v">$file</span>-&gt;<span class="fn">filename</span>(), <span class="v">$file</span>-&gt;content); <span class="c">// raw CSV/XML</span>
+    }
+}
+
+<span class="c">// ReportStatus tells the three outcomes apart:</span>
+<span class="c">//   isInProgress() -> PENDING/QUEUED/RUNNING, keep polling</span>
+<span class="c">//   NO_DATA        -> a SUCCESSFUL run that matched nothing (no file to fetch)</span>
+<span class="c">//   isFailed()     -> ERROR, the only real failure</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="report-subscriptions" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Reporting</p>
+      <h2>Report subscriptions</h2>
+      <p class="doc-sig"><span class="fn">createReportSubscription</span>(CreateReportSubscriptionRequest): <span class="rt">bool</span> &middot; <span class="fn">listReportSubscriptions</span>(): <span class="rt">ReportSubscription[]</span></p>
+      <p>For files you need on a cadence, subscribe instead of polling: the gateway generates the
+         report on a schedule and leaves each run waiting to be downloaded. The endpoint is a
+         <code>PUT</code> keyed by report name, so creating a subscription under a name that already
+         exists <strong>replaces</strong> that schedule. <code>startTime</code> is a clock time of day
+         as <code>hhmm</code>, not a date; weekly and monthly cadences also need
+         <code>startDay</code>, and a user-defined one needs an ISO 8601 <code>interval</code> — the
+         SDK sends each only for the cadence that uses it.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$gateway</span>-&gt;<span class="fn">createReportSubscription</span>(<span class="k">new</span> <span class="t">CreateReportSubscriptionRequest</span>(
+    <span class="a">name:</span> <span class="s">'nightly-settlement'</span>,
+    <span class="a">definitionName:</span> <span class="t">ReportDefinitionName</span>::<span class="cn">TransactionRequest</span>,
+    <span class="a">fields:</span> [<span class="s">'Request.RequestID'</span>],
+    <span class="a">startTime:</span> <span class="s">'0200'</span>,                     <span class="c">// 2am, as hhmm — not a date</span>
+    <span class="a">frequency:</span> <span class="t">ReportFrequency</span>::<span class="cn">Daily</span>,
+    <span class="a">timezone:</span> <span class="s">'GMT'</span>,
+));
+
+<span class="v">$gateway</span>-&gt;<span class="fn">listReportSubscriptions</span>();
+<span class="v">$gateway</span>-&gt;<span class="fn">getReportSubscription</span>(<span class="s">'nightly-settlement'</span>);
+<span class="v">$gateway</span>-&gt;<span class="fn">deleteReportSubscription</span>(<span class="s">'nightly-settlement'</span>); <span class="c">// stops future runs only</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="report-definitions" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Reporting</p>
+      <h2>Report definitions</h2>
+      <p class="doc-sig"><span class="fn">listReportDefinitions</span>(): <span class="rt">ReportDefinition[]</span> &middot; <span class="fn">getReportDefinition</span>(name): <span class="rt">ReportDefinition</span></p>
+      <p>The 19 reports CyberSource documents as standard are typed as
+         <code>ReportDefinitionName</code>, and <code>CreateReportRequest::$definitionName</code>
+         accepts either that enum or a raw string — because a merchant's real catalogue depends on
+         their entitlements and may hold custom definitions. The <strong>fields</strong> are not
+         enumerable at all: they are a property of each definition, so a transaction report's columns
+         are not a chargeback report's. Discover both from the gateway.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="c">// What can this merchant actually run?</span>
+<span class="k">foreach</span> (<span class="v">$gateway</span>-&gt;<span class="fn">listReportDefinitions</span>(<span class="t">ReportSubscriptionType</span>::<span class="cn">Custom</span>) <span class="k">as</span> <span class="v">$definition</span>) {
+    <span class="v">$definition</span>-&gt;name;                <span class="c">// pass as CreateReportRequest::$definitionName</span>
+    <span class="v">$definition</span>-&gt;<span class="fn">definitionName</span>();     <span class="c">// the enum case, or null for a custom report</span>
+}
+
+<span class="c">// Which columns may this report carry?</span>
+<span class="v">$definition</span> = <span class="v">$gateway</span>-&gt;<span class="fn">getReportDefinition</span>(
+    <span class="t">ReportDefinitionName</span>::<span class="cn">TransactionRequest</span>,
+    <span class="a">format:</span> <span class="t">ReportFormat</span>::<span class="cn">Csv</span>,
+);
+
+<span class="v">$definition</span>-&gt;<span class="fn">fieldNames</span>();         <span class="c">// everything on offer -> CreateReportRequest::$fields</span>
+<span class="v">$definition</span>-&gt;<span class="fn">requiredFieldNames</span>(); <span class="c">// columns the report always carries</span>
+<span class="v">$definition</span>-&gt;<span class="fn">supports</span>(<span class="t">ReportFormat</span>::<span class="cn">Xml</span>);
+
+<span class="c">// ReportSubscriptionType picks the family a name resolves against (Custom | Standard | Classic)</span>
+<span class="c">// — asking under the wrong one is why a name that plainly exists comes back not found.</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="validate-bank-account" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Bank accounts</p>
+      <h2>Validate bank account</h2>
+      <p class="doc-sig"><span class="fn">validateBankAccount</span>(ValidateBankAccountRequest): <span class="rt">BankAccountValidationResult</span></p>
+      <p>The Visa Bank Account Validation Service checks that a routing / account pair is a real,
+         open account <strong>before</strong> an ACH debit is attempted — how Nacha's
+         account-validation mandate for WEB debits is met. It authorises nothing and moves no money.
+         Read the two codes separately: <code>resultCode</code> is the verdict on the account and only
+         <code>00</code> is a documented pass, while <code>rawValidationCode</code> says whether the
+         check could run at all — <code>-1</code> and <code>-2</code> are <em>inconclusive</em>, so
+         retry them rather than rejecting the customer's details. Routing and account numbers never
+         reach the SDK's logs.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$result</span> = <span class="v">$gateway</span>-&gt;<span class="fn">validateBankAccount</span>(<span class="k">new</span> <span class="t">ValidateBankAccountRequest</span>(
+    <span class="a">routingNumber:</span> <span class="s">'071000013'</span>,
+    <span class="a">accountNumber:</span> <span class="s">'4100'</span>,
+    <span class="a">orderReference:</span> <span class="s">'ORDER-1'</span>,
+));
+
+<span class="k">match</span> (<span class="k">true</span>) {
+    <span class="v">$result</span>-&gt;<span class="fn">isValid</span>()        =&gt; <span class="v">$this</span>-&gt;<span class="fn">debitByAch</span>(),
+    <span class="v">$result</span>-&gt;<span class="fn">isInconclusive</span>() =&gt; <span class="v">$this</span>-&gt;<span class="fn">retryLater</span>(),   <span class="c">// service down — not a bad account</span>
+    <span class="k">default</span>                   =&gt; <span class="v">$this</span>-&gt;<span class="fn">askForAnotherAccount</span>(),
+};
+
+<span class="c">// Or validate an already-vaulted account, so the raw numbers never leave the vault:</span>
+<span class="c">// new ValidateBankAccountRequest(customerId: $vaulted->customerId)</span></code></pre>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- ═══════════  RIGHT: one entry per action  ═══════════ -->
   <aside class="tree" aria-label="Actions">
     <p class="tree-title">≡ Actions</p>
-    <ul class="tree-flat">
-      <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#overview" data-spy="overview">Overview</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs airwallex tamara"><a href="#create-checkout" data-spy="create-checkout">Create checkout</a></li>
-      <li data-gws="cyber"><a href="#confirm-orchestrated" data-spy="confirm-orchestrated">Confirm orchestrated</a></li>
-      <li data-gws="cyber"><a href="#microform-session" data-spy="microform-session">Microform session</a></li>
-      <li data-gws="cyber"><a href="#dcc-rate" data-spy="dcc-rate">DCC rate</a></li>
-      <li data-gws="cyber"><a href="#installments" data-spy="installments">Installments</a></li>
-      <li data-gws="cyber paytabs paypal mpgs authorizenet airwallex"><a href="#charge" data-spy="charge">Charge</a></li>
-      <li data-gws="cyber"><a href="#declines" data-spy="declines">Declines &amp; messages</a></li>
-      <li data-gws="cyber"><a href="#device-fingerprint" data-spy="device-fingerprint">Device fingerprinting</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#capture" data-spy="capture">Capture</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#void" data-spy="void">Void</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#refund" data-spy="refund">Refund</a></li>
-      <li data-gws="cyber paylink paytabs mpgs airwallex tamara"><a href="#reverse-authorization" data-spy="reverse-authorization">Reverse authorization</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#get-transaction" data-spy="get-transaction">Get transaction</a></li>
-      <li data-gws="cyber fawry paymob paylink mpgs airwallex tamara"><a href="#search-transaction" data-spy="search-transaction">Search transaction</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#reconcile" data-spy="reconcile">Reconcile</a></li>
-      <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#verify-webhook" data-spy="verify-webhook">Verify webhook</a></li>
-      <li data-gws="misc"><a href="#events" data-spy="events">Events</a></li>
-      <li data-gws="misc"><a href="#operation-logging" data-spy="operation-logging">Operation logging</a></li>
-      <li data-gws="misc"><a href="#credential-resolver" data-spy="credential-resolver">Credential resolver</a></li>
-      <li data-gws="misc"><a href="#http-client" data-spy="http-client">HTTP client</a></li>
-      <li data-gws="misc"><a href="#configuration" data-spy="configuration">Configuration</a></li>
-      <li data-gws="misc"><a href="#ai-docs" data-spy="ai-docs">AI docs &amp; MCP</a></li>
-      <li data-gws="cyber"><a href="#setup-payer-auth" data-spy="setup-payer-auth">Setup payer auth</a></li>
-      <li data-gws="cyber mpgs"><a href="#enroll-payer-auth" data-spy="enroll-payer-auth">Enroll payer auth</a></li>
-      <li data-gws="cyber mpgs"><a href="#validate-payer-auth" data-spy="validate-payer-auth">Validate payer auth</a></li>
-      <li data-gws="cyber paypal mpgs paylink authorizenet airwallex"><a href="#vault-instrument" data-spy="vault-instrument">Vault instrument</a></li>
-      <li data-gws="cyber paytabs paypal mpgs paylink authorizenet airwallex"><a href="#charge-stored-credential" data-spy="charge-stored-credential">Charge stored credential</a></li>
-      <li data-gws="cyber"><a href="#charge-wallet" data-spy="charge-wallet">Charge wallet</a></li>
-    </ul>
+    <div class="tree-groups">
+      <div class="tree-group" data-group="start-here">
+        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-start-here">
+          <span class="caret" aria-hidden="true">▾</span>
+          <span class="tree-label-text">Start here</span>
+        </button>
+        <ul id="tree-start-here">
+          <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#overview" data-spy="overview">Overview</a></li>
+        </ul>
+      </div>
+      <div class="tree-group" data-group="payment-flow">
+        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-payment-flow">
+          <span class="caret" aria-hidden="true">▾</span>
+          <span class="tree-label-text">Payment flow</span>
+        </button>
+        <ul id="tree-payment-flow">
+          <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs airwallex tamara"><a href="#create-checkout" data-spy="create-checkout">Create checkout</a></li>
+          <li data-gws="cyber"><a href="#confirm-orchestrated" data-spy="confirm-orchestrated">Confirm orchestrated</a></li>
+          <li data-gws="cyber"><a href="#microform-session" data-spy="microform-session">Microform session</a></li>
+          <li data-gws="cyber"><a href="#dcc-rate" data-spy="dcc-rate">DCC rate</a></li>
+          <li data-gws="cyber"><a href="#installments" data-spy="installments">Installments</a></li>
+          <li data-gws="cyber paytabs paypal mpgs authorizenet airwallex"><a href="#charge" data-spy="charge">Charge</a></li>
+          <li data-gws="cyber"><a href="#declines" data-spy="declines">Declines &amp; messages</a></li>
+          <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#capture" data-spy="capture">Capture</a></li>
+          <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#void" data-spy="void">Void</a></li>
+          <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#refund" data-spy="refund">Refund</a></li>
+          <li data-gws="cyber paylink paytabs mpgs airwallex tamara"><a href="#reverse-authorization" data-spy="reverse-authorization">Reverse authorization</a></li>
+        </ul>
+      </div>
+      <div class="tree-group" data-group="fraud-screening">
+        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-fraud-screening">
+          <span class="caret" aria-hidden="true">▾</span>
+          <span class="tree-label-text">Fraud screening</span>
+        </button>
+        <ul id="tree-fraud-screening">
+          <li data-gws="cyber"><a href="#device-fingerprint" data-spy="device-fingerprint">Device fingerprinting</a></li>
+        </ul>
+      </div>
+      <div class="tree-group" data-group="after-the-payment">
+        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-after-the-payment">
+          <span class="caret" aria-hidden="true">▾</span>
+          <span class="tree-label-text">After the payment</span>
+        </button>
+        <ul id="tree-after-the-payment">
+          <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#get-transaction" data-spy="get-transaction">Get transaction</a></li>
+          <li data-gws="cyber fawry paymob paylink mpgs airwallex tamara"><a href="#search-transaction" data-spy="search-transaction">Search transaction</a></li>
+          <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#reconcile" data-spy="reconcile">Reconcile</a></li>
+          <li data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara"><a href="#verify-webhook" data-spy="verify-webhook">Verify webhook</a></li>
+        </ul>
+      </div>
+      <div class="tree-group" data-group="cross-cutting">
+        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-cross-cutting">
+          <span class="caret" aria-hidden="true">▾</span>
+          <span class="tree-label-text">Cross-cutting</span>
+        </button>
+        <ul id="tree-cross-cutting">
+          <li data-gws="misc"><a href="#events" data-spy="events">Events</a></li>
+          <li data-gws="misc"><a href="#operation-logging" data-spy="operation-logging">Operation logging</a></li>
+          <li data-gws="misc"><a href="#credential-resolver" data-spy="credential-resolver">Credential resolver</a></li>
+          <li data-gws="misc"><a href="#http-client" data-spy="http-client">HTTP client</a></li>
+          <li data-gws="misc"><a href="#configuration" data-spy="configuration">Configuration</a></li>
+          <li data-gws="misc"><a href="#ai-docs" data-spy="ai-docs">AI docs &amp; MCP</a></li>
+        </ul>
+      </div>
+      <div class="tree-group" data-group="3-d-secure">
+        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-3-d-secure">
+          <span class="caret" aria-hidden="true">▾</span>
+          <span class="tree-label-text">3-D Secure</span>
+        </button>
+        <ul id="tree-3-d-secure">
+          <li data-gws="cyber"><a href="#setup-payer-auth" data-spy="setup-payer-auth">Setup payer auth</a></li>
+          <li data-gws="cyber mpgs"><a href="#enroll-payer-auth" data-spy="enroll-payer-auth">Enroll payer auth</a></li>
+          <li data-gws="cyber mpgs"><a href="#validate-payer-auth" data-spy="validate-payer-auth">Validate payer auth</a></li>
+        </ul>
+      </div>
+      <div class="tree-group" data-group="stored-credentials">
+        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-stored-credentials">
+          <span class="caret" aria-hidden="true">▾</span>
+          <span class="tree-label-text">Stored credentials</span>
+        </button>
+        <ul id="tree-stored-credentials">
+          <li data-gws="cyber paypal mpgs paylink authorizenet airwallex"><a href="#vault-instrument" data-spy="vault-instrument">Vault instrument</a></li>
+          <li data-gws="cyber paytabs paypal mpgs paylink authorizenet airwallex"><a href="#charge-stored-credential" data-spy="charge-stored-credential">Charge stored credential</a></li>
+          <li data-gws="cyber"><a href="#subscriptions" data-spy="subscriptions">Subscriptions</a></li>
+          <li data-gws="cyber"><a href="#update-subscription" data-spy="update-subscription">Update subscription</a></li>
+          <li data-gws="cyber"><a href="#list-subscriptions" data-spy="list-subscriptions">List subscriptions</a></li>
+          <li data-gws="cyber"><a href="#plans" data-spy="plans">Plans</a></li>
+          <li data-gws="cyber"><a href="#vault-lifecycle" data-spy="vault-lifecycle">Vault lifecycle</a></li>
+          <li data-gws="cyber"><a href="#account-updater" data-spy="account-updater">Account Updater</a></li>
+        </ul>
+      </div>
+      <div class="tree-group" data-group="digital-wallets">
+        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-digital-wallets">
+          <span class="caret" aria-hidden="true">▾</span>
+          <span class="tree-label-text">Digital wallets</span>
+        </button>
+        <ul id="tree-digital-wallets">
+          <li data-gws="cyber"><a href="#charge-wallet" data-spy="charge-wallet">Charge wallet</a></li>
+        </ul>
+      </div>
+      <div class="tree-group" data-group="reporting">
+        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-reporting">
+          <span class="caret" aria-hidden="true">▾</span>
+          <span class="tree-label-text">Reporting</span>
+        </button>
+        <ul id="tree-reporting">
+          <li data-gws="cyber"><a href="#reports" data-spy="reports">Reports</a></li>
+          <li data-gws="cyber"><a href="#report-subscriptions" data-spy="report-subscriptions">Report subscriptions</a></li>
+          <li data-gws="cyber"><a href="#report-definitions" data-spy="report-definitions">Report definitions</a></li>
+        </ul>
+      </div>
+      <div class="tree-group" data-group="bank-accounts">
+        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-bank-accounts">
+          <span class="caret" aria-hidden="true">▾</span>
+          <span class="tree-label-text">Bank accounts</span>
+        </button>
+        <ul id="tree-bank-accounts">
+          <li data-gws="cyber"><a href="#validate-bank-account" data-spy="validate-bank-account">Validate bank account</a></li>
+        </ul>
+      </div>
+    </div>
   </aside>
 
 </div>
@@ -1286,7 +1719,7 @@
     <a href="https://packagist.org/packages/hyprpay/payments">Packagist</a>
     <a href="https://github.com/MHJaafar9869/hyprpay/blob/main/README.md">README</a>
   </nav>
-  <p class="foot-note">Domain-driven · ports &amp; adapters · deterministic · exact money · <a href="https://packagist.org/packages/hyprpay/payments">v0.13.0</a></p>
+  <p class="foot-note">Domain-driven · ports &amp; adapters · deterministic · exact money · <a href="https://packagist.org/packages/hyprpay/payments">v0.15.0</a></p>
 </footer>
 
 <button class="to-top" type="button" aria-label="Back to top" title="Back to top">↑</button>

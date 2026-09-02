@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
+use Hyprpay\Payments\Domain\Enum\SubscriptionStatus;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
+use Hyprpay\Payments\Domain\Result\SubscriptionResult;
 use Hyprpay\Payments\Infrastructure\Gateway\CybersourceUnifiedCheckout\DeclineClassifier;
 
 it('marks a permanent decline reason as not retryable', function (): void {
@@ -98,3 +100,53 @@ it('maps decline reasons to safe, specific customer messages', function (string 
     'malformed request' => ['', 'INVALID_REQUEST', 'Your payment could not be processed. Please try again in a moment.'],
     'unclassified' => ['', '', 'Your payment could not be completed. Please try again or use a different card.'],
 ]);
+
+it('classifies a declined subscription create from its raw recurring billing response', function (): void {
+    $result = new SubscriptionResult(
+        success: false,
+        status: SubscriptionStatus::Failed,
+        subscriptionId: 'sub_1',
+        requestStatus: 'DECLINED',
+        raw: [
+            'id' => 'sub_1',
+            'status' => 'DECLINED',
+            'errorInformation' => ['reason' => 'EXPIRED_CARD'],
+            'subscriptionInformation' => ['status' => 'FAILED'],
+        ],
+    );
+
+    $outcome = DeclineClassifier::fromResult($result);
+
+    expect($outcome->isPermanent)->toBeTrue()
+        ->and($outcome->isRetryable())->toBeFalse()
+        ->and($outcome->reason)->toBe('EXPIRED_CARD')
+        ->and($outcome->transactionId)->toBe('sub_1')
+        ->and($outcome->customerMessage())->toBe('Your card appears to be expired. Please use a different card.');
+});
+
+it('treats a transiently declined subscription create as worth retrying', function (): void {
+    $result = new SubscriptionResult(
+        success: false,
+        status: SubscriptionStatus::Failed,
+        requestStatus: 'DECLINED',
+        raw: [
+            'status' => 'DECLINED',
+            'errorInformation' => ['reason' => 'INSUFFICIENT_FUND'],
+            'subscriptionInformation' => ['status' => 'FAILED'],
+        ],
+    );
+
+    expect(DeclineClassifier::fromResult($result)->isRetryable())->toBeTrue();
+});
+
+it('classifies a failed subscription rebill straight from a verified webhook payload', function (): void {
+    $outcome = DeclineClassifier::classify([
+        'id' => 'PAY9',
+        'status' => 'DECLINED',
+        'errorInformation' => ['reason' => 'GENERIC_DECLINE'],
+        'processorInformation' => ['merchantAdvice' => ['code' => '01']],
+    ]);
+
+    expect($outcome->isPermanent)->toBeTrue()
+        ->and($outcome->isRetryable())->toBeFalse();
+});

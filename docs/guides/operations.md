@@ -263,6 +263,17 @@ if (! $result->success) {
 }
 ```
 
+`fromResult()` takes a `SubscriptionResult` as readily as a `PaymentResult`, so a CyberSource
+Recurring Billing subscription the gateway refuses at create time is triaged by the same rules —
+stop and re-collect the card on a permanent refusal, retry a transient one. And `classify()`
+reads a raw response array directly, which is how you triage the failed rebill that turns a
+live subscription `DELINQUENT`:
+
+```php
+$event   = $gateway->verifyWebhook($rawBody, $headers);
+$outcome = DeclineClassifier::classify($event->payload);
+```
+
 ## Capture-context endpoint
 
 The Unified Checkout session is created at `/up/v1/capture-contexts` by default. If your
