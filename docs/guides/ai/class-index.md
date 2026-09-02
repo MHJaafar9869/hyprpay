@@ -33,6 +33,8 @@ Every class, interface, enum, and trait in `hyprpay/payments`, grouped by namesp
 - **`ListReportsRequest`** _class_ — Input DTO for finding the reports available over a period.
 - **`ListSubscriptionsRequest`** _class_ — Input DTO for listing subscriptions, one page at a time.
 - **`PayerAuthEnrollRequest`** _class_ — Input DTO for enrolling a card into 3-D Secure payer authentication.
+- **`PullFundsRequest`** _class_ — Input DTO for debiting a card to fund a transfer (an AFT).
+- **`PushFundsRequest`** _class_ — Input DTO for crediting a card — the push half of a funds transfer (an OCT).
 - **`RefundRequest`** _class_ — Input DTO for refunding funds from a settled/captured transaction.
 - **`ReversalRequest`** _class_ — Input DTO for reversing (releasing) a prior authorisation.
 - **`StoredCredentialChargeRequest`** _class_ — Input DTO for charging a previously vaulted payment instrument (stored credential).
@@ -67,6 +69,7 @@ Every class, interface, enum, and trait in `hyprpay/payments`, grouped by namesp
 - **`ReportStatus`** _enum_ — Generation status of a gateway report.
 - **`ReportSubscriptionType`** _enum_ — Which family of report definitions a definition name resolves against.
 - **`BinLookupStatus`** _enum_ — Outcome of a BIN lookup (resolved, ambiguous, or unknown).
+- **`BusinessApplicationId`** _enum_ — What a funds transfer is for, declared to the card networks.
 - **`CardFundingSource`** _enum_ — How the account behind a card is funded.
 - **`CardPlatform`** _enum_ — Whether a card was issued to a person or an organisation.
 - **`CredentialInitiator`** _enum_ — Identifies who initiated a stored-credential (card-on-file) transaction.
@@ -76,6 +79,7 @@ Every class, interface, enum, and trait in `hyprpay/payments`, grouped by namesp
 - **`MandateCompletionType`** _enum_ — Orchestration mode requested from the CyberSource Unified Checkout v1 widget.
 - **`PaymentStatus`** _enum_ — Normalized, gateway-agnostic lifecycle status of a payment.
 - **`SubscriptionStatus`** _enum_ — Normalized, gateway-agnostic lifecycle status of a recurring subscription.
+- **`TransferPartyType`** _enum_ — Whether a party to a funds transfer is a person or an organisation.
 - **`WalletType`** _enum_ — The digital wallet (Apple Pay / Google Pay) whose device-encrypted token is charged via `chargeWallet`.
 - **`WebhookRetryAlgorithm`** _enum_ — How the delay between webhook delivery retries grows.
 - **`WebhookSecurityType`** _enum_ — How the gateway authenticates itself when calling your webhook endpoint.
@@ -117,6 +121,7 @@ Every class, interface, enum, and trait in `hyprpay/payments`, grouped by namesp
 - **`BinLookupResult`** _class_ — Result DTO describing what a card actually is, from a BIN lookup.
 - **`CheckoutSession`** _class_ — Result DTO describing how the customer completes a started payment.
 - **`DccQuote`** _class_ — Result DTO describing a Dynamic Currency Conversion (DCC) rate quote.
+- **`FundsTransferResult`** _class_ — Result DTO for one leg of a funds transfer — a push (OCT) or a pull (AFT).
 - **`OrchestratedPaymentResult`** _class_ — Outcome of a verified Unified Checkout v1 orchestrated (autoProcessing) payment.
 - **`PayerAuthResult`** _class_ — Result DTO returned by a 3-D Secure enrol or validate operation.
 - **`PaymentResult`** _class_ — Result DTO describing the normalised outcome of a charge, capture, void, or reversal.
@@ -153,6 +158,7 @@ Every class, interface, enum, and trait in `hyprpay/payments`, grouped by namesp
 - **`Money`** _class_ — Immutable money value object holding an amount in minor units plus its currency.
 - **`WebhookProduct`** _class_ — One product a webhook subscription listens to, and which of its events it wants.
 - **`WebhookRetryPolicy`** _class_ — How the gateway retries a webhook your endpoint failed to accept.
+- **`TransferParty`** _class_ — One side of a funds transfer — who is sending, or who is receiving.
 - **`WalletToken`** _interface_ — A digital-wallet payment token in one of two shapes (encrypted or decrypted) for a wallet charge.
 
 ## `Infrastructure`
@@ -251,6 +257,7 @@ Every class, interface, enum, and trait in `hyprpay/payments`, grouped by namesp
 - **`ReversalPayload`** _class_ — Builds the CyberSource authorization reversal request body.
 - **`SearchPayload`** _class_ — Builds the CyberSource Transaction Search (TSS) request body.
 - **`StoredCredentialPayload`** _class_ — Builds the CyberSource payments request body for a stored-credential charge.
+- **`FundsTransferPayload`** _class_ — Builds the CyberSource funds-transfer request bodies (push OCT and pull AFT).
 - **`IncrementAuthPayload`** _class_ — Builds the CyberSource incremental-authorization request body.
 - **`PaymentInstrumentPayload`** _class_ — Builds the TMS request body for amending a stored payment instrument.
 - **`PlanPayload`** _class_ — Builds the CyberSource Recurring Billing request bodies for the plan endpoints.

@@ -862,6 +862,138 @@
       </div>
     </section>
 
+    <section id="pull-funds" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Money transfer</p>
+      <h2>Pull funds (AFT)</h2>
+      <p class="doc-sig"><span class="fn">pullFunds</span>(PullFundsRequest): <span class="rt">FundsTransferResult</span></p>
+      <p>Debits the sender&#39;s card to fund a transfer — an Account Funding Transaction. It is
+         <strong>not a purchase</strong> and must not be modelled as one: the cardholder is buying
+         nothing, the networks price and rule it differently, and declaring a funding transaction
+         as a sale is the usual reason a transfer programme gets shut down.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$pull</span> = <span class="v">$gateway</span>-&gt;<span class="fn">pullFunds</span>(<span class="k">new</span> <span class="t">PullFundsRequest</span>(
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">25000</span>, <span class="s">'USD'</span>),
+    <span class="a">cardNumber:</span> <span class="v">$senderCard</span>,
+    <span class="a">expirationMonth:</span> <span class="s">'01'</span>, <span class="a">expirationYear:</span> <span class="s">'2030'</span>,
+    <span class="a">businessApplicationId:</span> <span class="t">BusinessApplicationId</span>::<span class="cn">PersonToPerson</span>,
+    <span class="a">sender:</span> <span class="v">$sender</span>,
+    <span class="a">merchantTransactionId:</span> <span class="s">'mtid-pull-1'</span>,
+));</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="push-funds" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Money transfer</p>
+      <h2>Push funds (OCT)</h2>
+      <p class="doc-sig"><span class="fn">pushFunds</span>(PushFundsRequest): <span class="rt">FundsTransferResult</span></p>
+      <p>Credits the recipient&#39;s card — an Original Credit Transaction, usually within seconds.
+         That is what separates it from a refund or a credit: those move money back along the rail
+         a sale arrived on, while this pushes funds to any eligible card whether or not it ever
+         paid you.</p>
+      <p>Carry the <strong>same</strong> <code>businessApplicationId</code> as the matching pull,
+         so the networks see one coherent transfer rather than an unrelated debit and credit.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$push</span> = <span class="v">$gateway</span>-&gt;<span class="fn">pushFunds</span>(<span class="k">new</span> <span class="t">PushFundsRequest</span>(
+    <span class="a">money:</span> <span class="t">Money</span>::<span class="fn">minor</span>(<span class="n">25000</span>, <span class="s">'USD'</span>),
+    <span class="a">cardNumber:</span> <span class="v">$recipientCard</span>,     <span class="c">// or paymentInstrumentId for a vaulted card</span>
+    <span class="a">expirationMonth:</span> <span class="s">'12'</span>, <span class="a">expirationYear:</span> <span class="s">'2031'</span>,
+    <span class="a">businessApplicationId:</span> <span class="t">BusinessApplicationId</span>::<span class="cn">PersonToPerson</span>,
+    <span class="a">sender:</span> <span class="v">$sender</span>,         <span class="c">// screened by the networks — see below</span>
+    <span class="a">recipient:</span> <span class="v">$recipient</span>,
+    <span class="a">merchantTransactionId:</span> <span class="s">'mtid-push-1'</span>,
+));
+
+<span class="v">$push</span>-&gt;reconciliationId; <span class="c">// what a support conversation will turn on — keep it</span>
+<span class="v">$push</span>-&gt;approvalCode;</code></pre>
+        </div>
+      </div>
+      <h3>The two legs fail independently</h3>
+      <p>A pull that succeeds followed by a push that declines leaves the sender debited and the
+         recipient unpaid. That is a reconciliation problem, not a failed transfer: the pull must be
+         <strong>reversed, not retried</strong>. Record both legs as separate facts.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="k">if</span> (! <span class="v">$push</span>-&gt;success) {
+    <span class="v">$gateway</span>-&gt;<span class="fn">reversePullFunds</span>(<span class="v">$pull</span>-&gt;transferId); <span class="c">// before it settles</span>
+    <span class="c">// … or refundPullFunds() once it has</span>
+}</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="transfer-purpose" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Money transfer</p>
+      <h2>Transfer purpose</h2>
+      <p class="doc-sig"><span class="t">BusinessApplicationId</span> — 20 documented values</p>
+      <p>The business application id tells the networks what a transfer is <em>for</em>. It is not
+         a label: it drives interchange, the rules the transfer is judged against, and in some
+         markets whether it is permitted at all. Declaring a payroll disbursement as a
+         person-to-person transfer is a compliance problem, not a mislabelling.</p>
+      <p>The set divides in two. <strong>Money transfer</strong> moves funds between parties and
+         the networks expect sender identification with it. <strong>Funds disbursement</strong> pays
+         money out from a business and generally does not.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="t">BusinessApplicationId</span>::<span class="cn">PersonToPerson</span>-&gt;<span class="fn">isMoneyTransfer</span>();      <span class="c">// true</span>
+<span class="t">BusinessApplicationId</span>::<span class="cn">PayrollAndPension</span>-&gt;<span class="fn">isFundsDisbursement</span>(); <span class="c">// true</span>
+
+<span class="t">BusinessApplicationId</span>::<span class="fn">moneyTransfers</span>();      <span class="c">// AA BI CD FT LA PP WT</span>
+<span class="t">BusinessApplicationId</span>::<span class="fn">fundsDisbursements</span>();  <span class="c">// BB BP CP FD GD GP LO MD MI OG PD RP TU</span></code></pre>
+        </div>
+      </div>
+      <p>Which ids an account may actually use varies by gateway and configuration; CyberSource
+         falls back to the merchant&#39;s configured default when none is sent.</p>
+    </section>
+
+    <section id="transfer-parties" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Money transfer</p>
+      <h2>Transfer parties</h2>
+      <p class="doc-sig"><span class="t">TransferParty</span> — who is sending, who is receiving</p>
+      <p>Card transfers are not anonymous. For a money transfer the networks require the parties to
+         be identified, and that is a <strong>regulatory obligation</strong> rather than a gateway
+         preference: name, address, and often date of birth and a government id travel with the
+         transaction so it can be screened against sanctions and AML rules. A transfer that omits
+         them is refused <em>at the network</em>, not declined by the issuer.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$sender</span> = <span class="k">new</span> <span class="t">TransferParty</span>(
+    <span class="a">firstName:</span> <span class="s">'Ada'</span>, <span class="a">lastName:</span> <span class="s">'Lovelace'</span>,
+    <span class="a">type:</span> <span class="t">TransferPartyType</span>::<span class="cn">Individual</span>,
+    <span class="a">address1:</span> <span class="s">'1 Market St'</span>, <span class="a">locality:</span> <span class="s">'London'</span>,
+    <span class="a">country:</span> <span class="s">'GB'</span>, <span class="a">postalCode:</span> <span class="s">'EC1A 1BB'</span>,
+    <span class="a">dateOfBirth:</span> <span class="s">'19151210'</span>,              <span class="c">// sender only — YYYYMMDD</span>
+    <span class="a">personalIdentification:</span> [<span class="s">'type'</span> =&gt; <span class="s">'PASSPORT'</span>, <span class="s">'id'</span> =&gt; <span class="s">'X1234567'</span>],
+);</code></pre>
+        </div>
+      </div>
+      <p>Which fields are mandatory varies by corridor, processor, and the transfer&#39;s purpose, so
+         everything is optional and only what you supply is sent. As a rule card transfers need at
+         minimum a name and an address; cross-border and higher-value transfers need date of birth
+         and identification too. Date of birth, reference number, and tax id are
+         <strong>sender-only</strong> — the recipient block does not accept them, and the SDK drops
+         them there rather than letting the gateway reject the call.</p>
+    </section>
+
+    <section id="transfer-fx" class="doc-section" data-gws="cyber">
+      <p class="doc-eyebrow">Money transfer</p>
+      <h2>Transfer FX and lookup</h2>
+      <p class="doc-sig"><span class="fn">payoutFxRates</span>(array): <span class="rt">array</span> &middot; <span class="fn">queryPayout</span>(string): <span class="rt">array</span></p>
+      <p>Cross-border transfers settle at the network&#39;s rate, not yours, so quoting first is how a
+         sender is shown what the recipient will actually receive before the transfer is committed.
+         <code>queryPayout</code> looks a transfer up by id, for reconciling one whose outcome is
+         unclear. Both take and return raw arrays: the shapes vary by corridor, so the SDK does not
+         invent a DTO it cannot verify.</p>
+      <div class="gw-variant" data-gw="cyber">
+        <div class="code">
+<pre><code><span class="v">$gateway</span>-&gt;<span class="fn">payoutFxRates</span>([<span class="s">'fxQuote'</span> =&gt; [<span class="s">'currency'</span> =&gt; <span class="s">'GBP'</span>]]);
+<span class="v">$gateway</span>-&gt;<span class="fn">queryPayout</span>(<span class="v">$transferId</span>);</code></pre>
+        </div>
+      </div>
+    </section>
+
     <section id="get-transaction" class="doc-section" data-gws="cyber fawry paymob paylink paytabs paypal mpgs authorizenet airwallex tamara">
       <p class="doc-eyebrow">After the payment</p>
       <h2>Get transaction</h2>
@@ -2277,6 +2409,19 @@
           <li data-gws="cyber"><a href="#void-refund" data-spy="void-refund">Void a refund</a></li>
           <li data-gws="cyber"><a href="#timeout-void" data-spy="timeout-void">Timeout void</a></li>
           <li data-gws="cyber"><a href="#timeout-reversal" data-spy="timeout-reversal">Timeout reversal</a></li>
+        </ul>
+      </div>
+      <div class="tree-group" data-group="money-transfer">
+        <button type="button" class="tree-label" aria-expanded="false" aria-controls="tree-money-transfer">
+          <span class="caret" aria-hidden="true">▾</span>
+          <span class="tree-label-text">Money transfer</span>
+        </button>
+        <ul id="tree-money-transfer">
+          <li data-gws="cyber"><a href="#pull-funds" data-spy="pull-funds">Pull funds (AFT)</a></li>
+          <li data-gws="cyber"><a href="#push-funds" data-spy="push-funds">Push funds (OCT)</a></li>
+          <li data-gws="cyber"><a href="#transfer-purpose" data-spy="transfer-purpose">Transfer purpose</a></li>
+          <li data-gws="cyber"><a href="#transfer-parties" data-spy="transfer-parties">Transfer parties</a></li>
+          <li data-gws="cyber"><a href="#transfer-fx" data-spy="transfer-fx">Transfer FX and lookup</a></li>
         </ul>
       </div>
       <div class="tree-group" data-group="after-the-payment">
