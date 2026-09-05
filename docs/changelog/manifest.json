@@ -1,6 +1,12 @@
 {
   "releases": [
     {
+      "version": "0.17.0",
+      "date": "2026-09-05",
+      "title": "Recorded gateway API responses, 3-D Secure visibility, and store retention",
+      "file": "v0.17.0.md"
+    },
+    {
       "version": "0.16.0",
       "date": "2026-09-02",
       "title": "CyberSource BIN lookup, webhook management, and payment corrections",
