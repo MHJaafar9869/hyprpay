@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\Result\PaymentActivityRecord;
+use Hyprpay\Payments\Infrastructure\Dashboard\Actions\PruneActivityInDatabase;
 use Hyprpay\Payments\Infrastructure\Dashboard\Actions\RecordActivityToDatabase;
 use Hyprpay\Payments\Infrastructure\Dashboard\Queries\RecentActivityFromDatabase;
 use Illuminate\Database\Capsule\Manager as Capsule;
@@ -72,6 +73,7 @@ function databaseActivityStore(): array
         $table->string('currency', 3)->nullable();
         $table->unsignedTinyInteger('scale')->nullable();
         $table->string('recorded_at', 40);
+        $table->json('api_responses')->nullable();
         $table->timestamp('created_at')->nullable();
     });
 
@@ -92,6 +94,7 @@ function databaseActivityStore(): array
         new RecordActivityToDatabase($manager, 'default', 'hyprpay_'),
         new RecentActivityFromDatabase($manager, 'default', 'hyprpay_'),
         $capsule->getConnection('default'),
+        new PruneActivityInDatabase($manager, 'default', 'hyprpay_'),
     ];
 }
 
@@ -170,4 +173,56 @@ it('returns a reference lifecycle oldest first, by order or transaction id', fun
 
     expect($read->lifecycle('t3'))->toHaveCount(1)
         ->and($read->lifecycle('t3')[0]->transactionId)->toBe('t3');
+});
+
+it('stamps each attempt with a monotonic sequence the feed can poll from', function (): void {
+    [$write, $read] = databaseActivityStore();
+    $write->record(dbRecord('a'));
+    $write->record(dbRecord('b'));
+
+    $recent = $read->recent(10);
+
+    expect($recent[0]->sequence)->toBeInt()
+        ->and($recent[1]->sequence)->toBeInt()
+        ->and($recent[0]->sequence)->toBeGreaterThan($recent[1]->sequence);
+});
+
+it('returns only what landed after the cursor', function (): void {
+    [$write, $read] = databaseActivityStore();
+    $write->record(dbRecord('a'));
+    $write->record(dbRecord('b'));
+
+    $cursor = $read->recent(10)[0]->sequence;
+
+    expect($read->recent(10, $cursor))->toBe([]);
+
+    $write->record(dbRecord('c'));
+
+    $fresh = $read->recent(10, $cursor);
+
+    expect($fresh)->toHaveCount(1)
+        ->and($fresh[0]->transactionId)->toBe('c');
+});
+
+it('prunes activity older than the cutoff and leaves the rest', function (): void {
+    [$write, $read, $connection, $prune] = databaseActivityStore();
+    $write->record(dbRecord('old'));
+    $write->record(dbRecord('new', 'ORD-2'));
+
+    $connection->table('hyprpay_payment_attempts')
+        ->where('transaction_id', 'old')
+        ->update(['recorded_at' => '2020-01-01T00:00:00+00:00']);
+
+    $pruned = $prune->prune(new DateTimeImmutable('2021-01-01T00:00:00+00:00'));
+
+    expect($pruned)->toBeGreaterThan(0)
+        ->and(array_map(static fn (PaymentActivityRecord $r): ?string => $r->transactionId, $read->recent(10)))->toBe(['new']);
+});
+
+it('prunes nothing when everything is inside the window', function (): void {
+    [$write, $read, , $prune] = databaseActivityStore();
+    $write->record(dbRecord('keep'));
+
+    expect($prune->prune(new DateTimeImmutable('2000-01-01T00:00:00+00:00')))->toBe(0)
+        ->and($read->recent(10))->toHaveCount(1);
 });

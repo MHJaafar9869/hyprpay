@@ -8,11 +8,13 @@ use Hyprpay\Payments\Application\PaymentGatewayFactory;
 use Hyprpay\Payments\Domain\Contract\CredentialResolver;
 use Hyprpay\Payments\Domain\Contract\EventDispatcher;
 use Hyprpay\Payments\Domain\Contract\HttpClient;
+use Hyprpay\Payments\Domain\Contract\PrunesPaymentActivity;
 use Hyprpay\Payments\Domain\Contract\ReadsLog;
 use Hyprpay\Payments\Domain\Contract\ReadsPaymentActivity;
 use Hyprpay\Payments\Domain\Contract\RecordsPaymentActivity;
 use Hyprpay\Payments\Domain\Event\PaymentEvent;
 use Hyprpay\Payments\Infrastructure\Console\InstallCommand;
+use Hyprpay\Payments\Infrastructure\Console\PruneCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcileAirwallexCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcileAuthorizeNetCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcileCybersourceCommand;
@@ -25,6 +27,8 @@ use Hyprpay\Payments\Infrastructure\Console\ReconcilePaytabsCommand;
 use Hyprpay\Payments\Infrastructure\Console\ReconcileTamaraCommand;
 use Hyprpay\Payments\Infrastructure\Credentials\ConfigCredentialResolver;
 use Hyprpay\Payments\Infrastructure\Dashboard\Actions\DiscardActivity;
+use Hyprpay\Payments\Infrastructure\Dashboard\Actions\PruneActivityInDatabase;
+use Hyprpay\Payments\Infrastructure\Dashboard\Actions\PruneNothing;
 use Hyprpay\Payments\Infrastructure\Dashboard\Actions\RecordActivityToCache;
 use Hyprpay\Payments\Infrastructure\Dashboard\Actions\RecordActivityToDatabase;
 use Hyprpay\Payments\Infrastructure\Dashboard\Queries\NoRecentActivity;
@@ -34,10 +38,12 @@ use Hyprpay\Payments\Infrastructure\Dashboard\Queries\RecentLogEntries;
 use Hyprpay\Payments\Infrastructure\Events\LaravelEventDispatcher;
 use Hyprpay\Payments\Infrastructure\Events\LoggingPaymentEventListener;
 use Hyprpay\Payments\Infrastructure\Events\RecordingPaymentEventListener;
+use Hyprpay\Payments\Infrastructure\Http\ApiResponseRecorder;
 use Hyprpay\Payments\Infrastructure\Http\LaravelHttpClient;
 use Hyprpay\Payments\Infrastructure\Http\LoggingHttpClient;
 use Hyprpay\Payments\Infrastructure\Http\Middleware\AuthorizeDashboard;
 use Hyprpay\Payments\Infrastructure\Http\RateLimitingHttpClient;
+use Hyprpay\Payments\Infrastructure\Http\RecordingHttpClient;
 use Hyprpay\Payments\Infrastructure\Http\RetryingHttpClient;
 use Hyprpay\Payments\Infrastructure\Support\Value;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -74,6 +80,11 @@ final class GatewayServiceProvider extends ServiceProvider
 
         $this->registerPackageLogChannel($this->app);
 
+        /* scoped, not singleton: a queue worker or Octane server keeps one container alive across
+           many jobs/requests, and a singleton buffer would carry a call recorded during one
+           payment into the next one's activity record. Scoped bindings are flushed between them. */
+        $this->app->scoped(ApiResponseRecorder::class, static fn (): ApiResponseRecorder => new ApiResponseRecorder);
+
         $this->app->bind(HttpClient::class, static function (Application $app): HttpClient {
             $config = $app->make(ConfigRepository::class);
 
@@ -92,6 +103,10 @@ final class GatewayServiceProvider extends ServiceProvider
 
             if (Value::bool($config->get('gateway.http.logging'))) {
                 $transport = new LoggingHttpClient($transport, $app->make(LoggerInterface::class));
+            }
+
+            if (Value::bool($config->get('gateway.dashboard.store.api_responses'))) {
+                $transport = new RecordingHttpClient($transport, $app->make(ApiResponseRecorder::class));
             }
 
             return new RetryingHttpClient(
@@ -131,6 +146,20 @@ final class GatewayServiceProvider extends ServiceProvider
                     Value::string($config->get('gateway.dashboard.store.database.prefix'), 'hyprpay_'),
                 ),
             };
+        });
+
+        $this->app->bind(PrunesPaymentActivity::class, static function (Application $app): PrunesPaymentActivity {
+            $config = $app->make(ConfigRepository::class);
+
+            if (! Value::bool($config->get('gateway.dashboard.store.enabled')) || self::storeDriver($config) !== 'database') {
+                return new PruneNothing;
+            }
+
+            return new PruneActivityInDatabase(
+                $app->make(ConnectionResolverInterface::class),
+                Value::nullableString($config->get('gateway.dashboard.store.database.connection')),
+                Value::string($config->get('gateway.dashboard.store.database.prefix'), 'hyprpay_'),
+            );
         });
 
         $this->app->bind(ReadsPaymentActivity::class, static function (Application $app): ReadsPaymentActivity {
@@ -251,7 +280,7 @@ final class GatewayServiceProvider extends ServiceProvider
             __DIR__.'/../../database/migrations' => $this->app->databasePath('migrations'),
         ], 'gateway-migrations');
 
-        $this->commands([InstallCommand::class]);
+        $this->commands([InstallCommand::class, PruneCommand::class]);
 
         if (Value::bool($config->get('gateway.commands.reconcile', true))) {
             $this->commands([

@@ -27,7 +27,7 @@ final readonly class RecentActivityFromCache implements ReadsPaymentActivity
         private string $key,
     ) {}
 
-    public function recent(int $limit): array
+    public function recent(int $limit, ?int $after = null): array
     {
         return array_values(array_slice($this->records(), 0, max(0, $limit)));
     }

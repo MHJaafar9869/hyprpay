@@ -7,7 +7,7 @@
     <title>@yield('title', 'Hyprpay')</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0&display=swap">
     <style>
         :root {
             --bg: #0c0c0c;
@@ -27,8 +27,8 @@
             --ok: #5aa62a; --ok-soft: rgba(90, 166, 42, .16);
             --warn: #d7a13f; --warn-soft: rgba(215, 161, 63, .14);
             --bad: #d9534f; --bad-soft: rgba(217, 83, 79, .14);
-            --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-            --sans: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, Helvetica, Arial, sans-serif;
+            --mono: "JetBrains Mono", ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+            --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, Helvetica, Arial, sans-serif;
             --display: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
             --radius: 5px;
         }
@@ -309,9 +309,38 @@
         .attempt-time { color: var(--faint); font: 500 11.5px/1 var(--mono); min-width: 58px; text-align: right; }
         .attempt-chev { color: var(--faint); font-size: 20px; transition: transform .18s ease; }
         .attempt.open .attempt-chev { transform: rotate(180deg); }
-        .attempt-body { padding: 0 2px 15px 24px; }
+        /* the dot hangs into the gutter on -18px, so the head's text starts 4px in;
+           match that here and the expanded detail lines up under its own title */
+        .attempt-body { padding: 0 2px 15px 4px; }
         .tl-meta { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); font: 500 12px/1.6 var(--mono); }
         .tl-meta b { color: #c7c7c7; font-weight: 500; }
+
+        /* recorded gateway API response — status, headers, body, and the request behind it */
+        .apires { margin-top: 12px; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
+        .apires + .apires { margin-top: 8px; }
+        .apires-head { display: flex; align-items: center; gap: 9px; flex-wrap: nowrap; padding: 9px 11px; background: var(--panel-2); border-bottom: 1px solid var(--border); font: 600 11px/1.4 var(--mono); }
+        .apires-method { flex: none; }
+        .apires-method { color: var(--text); letter-spacing: .06em; }
+        /* one line always — the status and timing stay put, and the full URL is on the title attribute */
+        .apires-url { color: var(--muted); font-weight: 500; flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: left; }
+        .apires-url bdi { direction: ltr; }
+        /* icon-only, so the row stays compact — the tooltip carries the wording */
+        .apires-copy { flex: none; display: inline-flex; align-items: center; justify-content: center; padding: 3px; background: transparent; border: 0; border-radius: 3px; color: var(--faint); cursor: pointer; transition: color .15s ease, background .15s ease; }
+        .apires-copy:hover { color: var(--text); background: rgba(255, 255, 255, .07); }
+        .apires-copy.ok { color: var(--ok); }
+        .apires-copy .mi { font-size: 14px; }
+        /* pulled in vertically so it never makes its label row taller than the others */
+        .apires-label .apires-copy { margin: -4px 0; }
+        .apires-status { flex: none; padding: 1px 6px; border-radius: 3px; background: var(--ok-soft); color: var(--ok); }
+        .apires-status.bad { background: var(--bad-soft); color: var(--bad); }
+        .apires-ms { flex: none; color: var(--faint); font-weight: 500; }
+        .apires-part { border-top: 1px solid var(--border); }
+        .apires-part:first-of-type { border-top: 0; }
+        .apires-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 9px 5px 11px; color: var(--faint); font: 600 9px/1.4 var(--sans); letter-spacing: .16em; text-transform: uppercase; }
+        .apires pre { margin: 0; padding: 0 11px 10px; overflow-x: auto; color: #c7c7c7; font: 500 11.5px/1.65 var(--mono); white-space: pre; tab-size: 2; }
+        .apires pre.headers { color: var(--muted); }
+        .apires .redacted { color: var(--bad); }
+        .apires-empty { padding: 0 11px 10px; color: var(--faint); font: 500 11.5px/1.6 var(--mono); }
 
         .btn-ghost, .btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 5px; padding: 9px 14px; font: 600 13px/1 var(--sans); cursor: pointer; transition: border-color .15s ease, background .15s ease; }
         .btn-ghost { background: var(--panel-2); border: 1px solid var(--border-strong); color: var(--text); }

@@ -5,17 +5,30 @@ declare(strict_types=1);
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\Enum\WalletType;
+use Hyprpay\Payments\Domain\Event\DccRateQuoted;
 use Hyprpay\Payments\Domain\Event\InstrumentVaulted;
+use Hyprpay\Payments\Domain\Event\PayerAuthenticationEnrolled;
+use Hyprpay\Payments\Domain\Event\PayerAuthenticationSetUp;
+use Hyprpay\Payments\Domain\Event\PayerAuthenticationValidated;
 use Hyprpay\Payments\Domain\Event\PaymentCharged;
 use Hyprpay\Payments\Domain\Event\PaymentRefunded;
 use Hyprpay\Payments\Domain\Event\WalletCharged;
 use Hyprpay\Payments\Domain\Event\WebhookReceived;
+use Hyprpay\Payments\Domain\Http\HttpRequest;
+use Hyprpay\Payments\Domain\Http\HttpResponse;
+use Hyprpay\Payments\Domain\Result\DccQuote;
+use Hyprpay\Payments\Domain\Result\PayerAuthResult;
+use Hyprpay\Payments\Domain\Result\PayerAuthSetupResult;
+use Hyprpay\Payments\Domain\Result\PaymentActivityRecord;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
 use Hyprpay\Payments\Domain\Result\RefundResult;
 use Hyprpay\Payments\Domain\Result\VaultedInstrument;
 use Hyprpay\Payments\Domain\Result\WebhookEvent;
 use Hyprpay\Payments\Domain\ValueObject\Money;
 use Hyprpay\Payments\Infrastructure\Events\RecordingPaymentEventListener;
+use Hyprpay\Payments\Infrastructure\Http\ApiResponseRecorder;
+use Hyprpay\Payments\Infrastructure\Http\FakeHttpClient;
+use Hyprpay\Payments\Infrastructure\Http\RecordingHttpClient;
 use Hyprpay\Payments\Tests\Support\InMemoryPaymentActivity;
 use Illuminate\Support\Carbon;
 
@@ -136,4 +149,123 @@ it('stamps the record with the current time', function (): void {
     expect($activity->records[0]->recordedAt)->toBe(Carbon::now()->toIso8601String());
 
     Carbon::setTestNow();
+});
+
+it('keeps the api-response list empty when no recorder is wired in', function (): void {
+    $activity = new InMemoryPaymentActivity;
+
+    (new RecordingPaymentEventListener($activity))->handle(new PaymentCharged(
+        GatewayName::Fawry, 'ORD-1', Money::minor(100, 'EGP'), new PaymentResult(true, PaymentStatus::Pending),
+    ));
+
+    expect($activity->records[0]->apiResponses)->toBe([]);
+});
+
+it('attaches the calls made since the last event to the record', function (): void {
+    $activity = new InMemoryPaymentActivity;
+    $recorder = new ApiResponseRecorder;
+    $client = new RecordingHttpClient((new FakeHttpClient)->queue(new HttpResponse(200, '{"ok":true}')), $recorder);
+    $listener = new RecordingPaymentEventListener($activity, $recorder);
+
+    $client->send(new HttpRequest('POST', 'https://gateway.test/charge'));
+
+    $listener->handle(new PaymentCharged(
+        GatewayName::Fawry, 'ORD-1', Money::minor(100, 'EGP'), new PaymentResult(true, PaymentStatus::Pending),
+    ));
+
+    expect($activity->records[0]->apiResponses)->toHaveCount(1)
+        ->and($activity->records[0]->apiResponses[0]->url)->toBe('https://gateway.test/charge');
+});
+
+it('gives each event only its own calls, because draining clears the buffer', function (): void {
+    $activity = new InMemoryPaymentActivity;
+    $recorder = new ApiResponseRecorder;
+    $client = new RecordingHttpClient(new FakeHttpClient, $recorder);
+    $listener = new RecordingPaymentEventListener($activity, $recorder);
+
+    $client->send(new HttpRequest('POST', 'https://gateway.test/first'));
+    $listener->handle(new PaymentCharged(
+        GatewayName::Fawry, 'ORD-1', Money::minor(100, 'EGP'), new PaymentResult(true, PaymentStatus::Pending),
+    ));
+
+    $client->send(new HttpRequest('POST', 'https://gateway.test/second'));
+    $listener->handle(new PaymentCharged(
+        GatewayName::Fawry, 'ORD-2', Money::minor(200, 'EGP'), new PaymentResult(true, PaymentStatus::Pending),
+    ));
+
+    // the double prepends, so records[0] is the most recent event
+    expect($activity->records[0]->apiResponses)->toHaveCount(1)
+        ->and($activity->records[0]->apiResponses[0]->url)->toBe('https://gateway.test/second')
+        ->and($activity->records[1]->apiResponses)->toHaveCount(1)
+        ->and($activity->records[1]->apiResponses[0]->url)->toBe('https://gateway.test/first');
+});
+
+it('records a DCC quote as an informational step, with whether a rate was offered', function (): void {
+    $activity = new InMemoryPaymentActivity;
+
+    (new RecordingPaymentEventListener($activity))->handle(new DccRateQuoted(
+        GatewayName::CybersourceUnifiedCheckout,
+        'ORD-1',
+        Money::minor(12030, 'EGP'),
+        new DccQuote(offered: true, id: 'dcc_1', exchangeRate: '48.00'),
+    ));
+
+    $record = $activity->records[0];
+
+    expect($record->operation)->toBe('DccRateQuoted')
+        ->and($record->transactionId)->toBe('dcc_1')
+        ->and($record->reference)->toBe('offered')
+        ->and($record->status)->toBeNull()
+        ->and($record->amountMinor)->toBe(12030);
+});
+
+it('marks a quote the card was not eligible for without calling it a failure', function (): void {
+    $activity = new InMemoryPaymentActivity;
+
+    (new RecordingPaymentEventListener($activity))->handle(new DccRateQuoted(
+        GatewayName::CybersourceUnifiedCheckout, 'ORD-1', Money::minor(100, 'EGP'), new DccQuote(offered: false),
+    ));
+
+    expect($activity->records[0]->reference)->toBe('not offered')
+        ->and($activity->records[0]->success)->toBeNull();
+});
+
+it('records each 3-D Secure leg as pending while it is in flight', function (): void {
+    $activity = new InMemoryPaymentActivity;
+    $listener = new RecordingPaymentEventListener($activity);
+    $money = Money::minor(12030, 'EGP');
+
+    $listener->handle(new PayerAuthenticationSetUp(
+        GatewayName::CybersourceUnifiedCheckout, 'ORD-1',
+        new PayerAuthSetupResult(true, 'COMPLETED', referenceId: 'ref_1'),
+    ));
+    $listener->handle(new PayerAuthenticationEnrolled(
+        GatewayName::CybersourceUnifiedCheckout, 'ORD-1', $money,
+        new PayerAuthResult(true, 'PENDING_AUTHENTICATION', stepUpUrl: 'https://gw/step', authenticationTransactionId: 'auth_1'),
+    ));
+    $listener->handle(new PayerAuthenticationValidated(
+        GatewayName::CybersourceUnifiedCheckout, 'ORD-1', $money,
+        new PayerAuthResult(true, 'AUTHENTICATION_SUCCESSFUL', authenticationTransactionId: 'auth_1'),
+    ));
+
+    // the double prepends, so records read newest-first
+    expect(array_map(static fn (PaymentActivityRecord $r): string => $r->operation, $activity->records))
+        ->toBe(['PayerAuthenticationValidated', 'PayerAuthenticationEnrolled', 'PayerAuthenticationSetUp'])
+        ->and(array_map(static fn (PaymentActivityRecord $r): ?PaymentStatus => $r->status, $activity->records))
+        ->each->toBe(PaymentStatus::Pending)
+        ->and($activity->records[0]->transactionId)->toBe('auth_1')
+        ->and($activity->records[0]->reference)->toBe('AUTHENTICATION_SUCCESSFUL')
+        ->and($activity->records[2]->transactionId)->toBe('ref_1');
+});
+
+it('records a failed authentication leg as failed', function (): void {
+    $activity = new InMemoryPaymentActivity;
+
+    (new RecordingPaymentEventListener($activity))->handle(new PayerAuthenticationEnrolled(
+        GatewayName::CybersourceUnifiedCheckout, 'ORD-1', Money::minor(100, 'EGP'),
+        new PayerAuthResult(false, 'AUTHENTICATION_FAILED'),
+    ));
+
+    expect($activity->records[0]->status)->toBe(PaymentStatus::Failed)
+        ->and($activity->records[0]->success)->toBeFalse();
 });

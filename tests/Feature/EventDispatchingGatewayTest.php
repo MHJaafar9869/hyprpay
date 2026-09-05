@@ -6,10 +6,14 @@ use Hyprpay\Payments\Domain\AbstractPaymentGateway;
 use Hyprpay\Payments\Domain\Command\CaptureRequest;
 use Hyprpay\Payments\Domain\Command\ChargeRequest;
 use Hyprpay\Payments\Domain\Command\CheckoutSessionRequest;
+use Hyprpay\Payments\Domain\Command\DccRateRequest;
+use Hyprpay\Payments\Domain\Command\PayerAuthEnrollRequest;
+use Hyprpay\Payments\Domain\Command\PayerAuthSetupRequest;
 use Hyprpay\Payments\Domain\Command\RefundRequest;
 use Hyprpay\Payments\Domain\Command\ReversalRequest;
 use Hyprpay\Payments\Domain\Command\StoredCredentialChargeRequest;
 use Hyprpay\Payments\Domain\Command\TokenizeInstrumentRequest;
+use Hyprpay\Payments\Domain\Command\ValidatePayerAuthRequest;
 use Hyprpay\Payments\Domain\Command\VoidRequest;
 use Hyprpay\Payments\Domain\Command\WalletChargeRequest;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
@@ -17,7 +21,11 @@ use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\Enum\WalletType;
 use Hyprpay\Payments\Domain\Event\AuthorizationReversed;
 use Hyprpay\Payments\Domain\Event\CheckoutSessionCreated;
+use Hyprpay\Payments\Domain\Event\DccRateQuoted;
 use Hyprpay\Payments\Domain\Event\InstrumentVaulted;
+use Hyprpay\Payments\Domain\Event\PayerAuthenticationEnrolled;
+use Hyprpay\Payments\Domain\Event\PayerAuthenticationSetUp;
+use Hyprpay\Payments\Domain\Event\PayerAuthenticationValidated;
 use Hyprpay\Payments\Domain\Event\PaymentCaptured;
 use Hyprpay\Payments\Domain\Event\PaymentCharged;
 use Hyprpay\Payments\Domain\Event\PaymentRefunded;
@@ -27,6 +35,9 @@ use Hyprpay\Payments\Domain\Event\WalletCharged;
 use Hyprpay\Payments\Domain\Event\WebhookReceived;
 use Hyprpay\Payments\Domain\Exception\GatewayRequestException;
 use Hyprpay\Payments\Domain\Result\CheckoutSession;
+use Hyprpay\Payments\Domain\Result\DccQuote;
+use Hyprpay\Payments\Domain\Result\PayerAuthResult;
+use Hyprpay\Payments\Domain\Result\PayerAuthSetupResult;
 use Hyprpay\Payments\Domain\Result\PaymentResult;
 use Hyprpay\Payments\Domain\Result\RefundResult;
 use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
@@ -108,6 +119,26 @@ function eventStubGateway(): AbstractPaymentGateway
         public function verifyWebhook(string $rawBody, array $headers): WebhookEvent
         {
             return new WebhookEvent(true, 'PAYMENT.CAPTURE.COMPLETED', 'WT-1', PaymentStatus::Captured);
+        }
+
+        public function requestDccRate(DccRateRequest $request): DccQuote
+        {
+            return new DccQuote(offered: true, id: 'DCC-1', exchangeRate: '48.00');
+        }
+
+        public function setupPayerAuth(PayerAuthSetupRequest $request): PayerAuthSetupResult
+        {
+            return new PayerAuthSetupResult(true, 'COMPLETED', referenceId: 'PA-REF-1');
+        }
+
+        public function enrollPayerAuth(PayerAuthEnrollRequest $request): PayerAuthResult
+        {
+            return new PayerAuthResult(true, 'PENDING_AUTHENTICATION', stepUpUrl: 'https://gw/step', authenticationTransactionId: 'PA-1');
+        }
+
+        public function validatePayerAuth(ValidatePayerAuthRequest $request): PayerAuthResult
+        {
+            return new PayerAuthResult(true, 'AUTHENTICATION_SUCCESSFUL', authenticationTransactionId: 'PA-1');
         }
     };
 }
@@ -269,4 +300,33 @@ it('exposes the inner name and credentials', function (): void {
 
     expect($gateway->name())->toBe(GatewayName::PayPal)
         ->and($gateway->credentials())->toBeInstanceOf(GatewayCredentials::class);
+});
+
+it('dispatches DccRateQuoted so a quote that never becomes a charge is still visible', function (): void {
+    [$gateway, $events] = eventGateway();
+
+    $quote = $gateway->requestDccRate(new DccRateRequest(money: usd(), cardNumber: '4111111111111111', orderReference: 'ORD-1'));
+
+    $event = $events->last();
+    expect($event)->toBeInstanceOf(DccRateQuoted::class)
+        ->and($event->gateway())->toBe(GatewayName::PayPal)
+        ->and($event->orderReference)->toBe('ORD-1')
+        ->and($event->quote)->toBe($quote)
+        ->and($event->quote->id)->toBe('DCC-1');
+});
+
+it('dispatches an event for each 3-D Secure leg', function (): void {
+    [$gateway, $events] = eventGateway();
+
+    $gateway->setupPayerAuth(new PayerAuthSetupRequest(transientToken: 'tok', orderReference: 'ORD-1'));
+    $gateway->enrollPayerAuth(new PayerAuthEnrollRequest(transientToken: 'tok', money: usd(), orderReference: 'ORD-1'));
+    $gateway->validatePayerAuth(new ValidatePayerAuthRequest(authenticationTransactionId: 'PA-1', money: usd(), orderReference: 'ORD-1'));
+
+    expect($events->count())->toBe(3)
+        ->and($events->dispatched()[0])->toBeInstanceOf(PayerAuthenticationSetUp::class)
+        ->and($events->dispatched()[1])->toBeInstanceOf(PayerAuthenticationEnrolled::class)
+        ->and($events->dispatched()[2])->toBeInstanceOf(PayerAuthenticationValidated::class)
+        ->and($events->dispatched()[0]->result->referenceId)->toBe('PA-REF-1')
+        ->and($events->dispatched()[1]->result->stepUpUrl)->toBe('https://gw/step')
+        ->and($events->dispatched()[2]->result->authenticationTransactionId)->toBe('PA-1');
 });

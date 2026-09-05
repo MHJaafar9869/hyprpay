@@ -10,6 +10,7 @@ use Hyprpay\Payments\Domain\Contract\ReadsPaymentActivity;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Enum\PaymentStatus;
 use Hyprpay\Payments\Domain\Exception\GatewayException;
+use Hyprpay\Payments\Domain\Http\ApiResponse;
 use Hyprpay\Payments\Domain\Result\PaymentActivityRecord;
 use Hyprpay\Payments\Domain\Result\TransactionSnapshot;
 use Hyprpay\Payments\Domain\ValueObject\Money;
@@ -40,7 +41,7 @@ final readonly class DashboardData
     /**
      * Build the full view model for the dashboard index page.
      *
-     * @return array{gateways: list<array{key: string, label: string, configured: bool, testMode: bool, default: bool}>, stats: array{total: int, successful: int, successRate: int, byStatus: list<array{label: string, count: int}>, byGateway: list<array{label: string, count: int}>}, recent: list<array<string, mixed>>, gatewayOptions: list<array{value: string, label: string}>}
+     * @return array{gateways: list<array{key: string, label: string, configured: bool, testMode: bool, default: bool}>, stats: array{total: int, successful: int, successRate: int, byStatus: list<array{label: string, count: int}>, byGateway: list<array{label: string, count: int}>}, recent: list<array<string, mixed>>, feedLimit: int, gatewayOptions: list<array{value: string, label: string}>}
      */
     public function overview(int $limit): array
     {
@@ -50,6 +51,7 @@ final readonly class DashboardData
             'gateways' => $this->gatewayHealth(),
             'stats' => $this->stats($records),
             'recent' => array_map($this->present(...), $records),
+            'feedLimit' => $limit,
             'gatewayOptions' => array_map(
                 static fn (GatewayName $gateway): array => ['value' => $gateway->value, 'label' => $gateway->label()],
                 GatewayName::cases(),
@@ -62,9 +64,9 @@ final readonly class DashboardData
      *
      * @return list<array<string, mixed>>
      */
-    public function recentActivity(int $limit): array
+    public function recentActivity(int $limit, ?int $after = null): array
     {
-        return array_map($this->present(...), $this->activity->recent($limit));
+        return array_map($this->present(...), $this->activity->recent($limit, $after));
     }
 
     /**
@@ -98,7 +100,7 @@ final readonly class DashboardData
             'reference' => $reference,
             'found' => $records !== [],
             'summary' => $this->lifecycleSummary($records),
-            'events' => array_map($this->present(...), $records),
+            'events' => array_map($this->presentWithCalls(...), $records),
         ];
     }
 
@@ -202,6 +204,22 @@ final readonly class DashboardData
             'reference' => $record->reference,
             'amount' => $this->formatAmount($record->amountMinor, $record->currency, $record->scale),
             'recordedAt' => $record->recordedAt,
+            'sequence' => $record->sequence,
+        ];
+    }
+
+    /**
+     * The same record plus the gateway calls behind it — for the payment drawer, which is the
+     * only view that renders them. The feed deliberately leaves them out: it never shows a
+     * payload, and carrying one per row would multiply a poll that runs every few seconds.
+     *
+     * @return array<string, mixed>
+     */
+    private function presentWithCalls(PaymentActivityRecord $record): array
+    {
+        return [
+            ...$this->present($record),
+            'apiResponses' => array_map(static fn (ApiResponse $call): array => $call->toArray(), $record->apiResponses),
         ];
     }
 
