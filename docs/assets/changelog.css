@@ -6,6 +6,11 @@
 
 :root { --nav-h: 64px; }
 
+/* the version index slides in step with the header instead of snapping */
+@media (prefers-reduced-motion: no-preference) {
+  .log-side { transition: top 0.28s ease; }
+}
+
 /* ── hero ─────────────────────────────────────────────────── */
 .log-hero {
   max-width: 1080px;
@@ -53,7 +58,7 @@
 /* ── sticky version index ─────────────────────────────────── */
 .log-side {
   position: sticky;
-  top: calc(var(--nav-h) + 24px);
+  top: calc(var(--nav-offset) + 24px);
   align-self: start;
   max-height: calc(100vh - var(--nav-h) - 40px);
   overflow-y: auto;

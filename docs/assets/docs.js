@@ -22,6 +22,25 @@
   var ctx      = document.getElementById('gw-context');
   var toTop    = document.querySelector('.to-top');
 
+  /** The gateway named by ?gw= in the URL, falling back to the default when it names none we know. */
+  function gatewayFromUrl() {
+    var asked = new URLSearchParams(window.location.search).get('gw');
+    return GW[asked] ? asked : 'cyber';
+  }
+
+  /**
+   * Keep ?gw= in step with the selected tab, so the scoped page survives a reload
+   * and can be linked to. Wrapped because a file:// preview forbids replaceState —
+   * the tab still switches there, the URL just doesn't follow.
+   */
+  function syncUrl(gw) {
+    try {
+      var url = new URL(window.location.href);
+      url.searchParams.set('gw', gw);
+      history.replaceState(null, '', url);
+    } catch (e) {}
+  }
+
   /** Whether `el` applies to gateway `gw` (no data-gws attribute means all gateways). */
   function supports(el, gw) { var g = el.getAttribute('data-gws'); return !g || g.split(' ').indexOf(gw) !== -1; }
 
@@ -82,6 +101,7 @@
     treeItems.forEach(function (li) { li.hidden = !supports(li, gw); });
     syncGroups();
     variants.forEach(function (v) { v.classList.toggle('active', v.getAttribute('data-gw') === gw); });
+    syncUrl(gw);
     if (userInitiated) window.scrollTo({ top: 0, behavior: 'instant' });
     spyLocked = false;
     updateSpy();
@@ -239,6 +259,6 @@
     });
   }
 
-  select('cyber');
+  select(gatewayFromUrl());
   updateSpy();
 })();

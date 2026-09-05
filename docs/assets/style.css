@@ -181,6 +181,8 @@
   .to-top { transition: opacity 0.2s; }
   .fab-changelog { animation: none; }
   .fab-changelog .fab-ping::before { animation: none; }
+  /* the header still gets out of the way, it just does it without the slide */
+  .nav { transition: none; }
 }
 
 * { box-sizing: border-box; }
@@ -286,7 +288,14 @@ code:not(pre code) {
      nor color-mix, and a translucent bar with no blur lets content bleed through */
   background: var(--ink);
   border-bottom: 1px solid var(--line);
+  transition: transform 0.28s ease;
 }
+/* nav.js sets .nav-hidden while the reader is scrolling down, and clears it on the
+   first upward move — the page gets its full height back without the bar going away
+   for good. Panes pinned under the header follow it via --nav-offset. */
+:root { --nav-offset: var(--nav-h, 64px); }
+:root.nav-hidden { --nav-offset: 0px; }
+.nav-hidden .nav { transform: translateY(-100%); }
 /* frosted glass only where the blur actually renders, so the bar is never see-through */
 @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
   .nav {
@@ -824,8 +833,76 @@ code:not(pre code) {
 .js .hero .reveal[data-d="3"].in { transition-delay: 0.28s; }
 .js .hero .reveal[data-d="4"].in { transition-delay: 0.38s; }
 .js .hero .reveal[data-d="5"].in { transition-delay: 0.48s; }
+/* ── 03 · the matrix reads like a ledger printing itself ──────
+   Same architecture as .pt-row: the row opts out of the shared reveal and only
+   its contents move, so the two never fight over specificity. Each row is
+   observed on its own, so it fills in as it crosses the fold — the name arrives
+   from the left, then the support dots land left-to-right. Fast and granular on
+   purpose: 02 converges, this one tallies. */
+.js .of-row.reveal { opacity: 1; transform: none; }
+.js .of-row > .of-name {
+  opacity: 0;
+  transform: translateX(-16px);
+  transition: opacity 0.45s var(--ease), transform 0.55s var(--ease);
+}
+.js .of-row .of-dot {
+  opacity: 0;
+  transform: translateY(9px);
+  transition: opacity 0.38s var(--ease), transform 0.44s var(--ease);
+}
+.js .of-row.in > .of-name { opacity: 1; transform: none; }
+.js .of-row.in .of-dot { opacity: 1; transform: none; }
+.js .of-row.in .of-dot:nth-child(1) { transition-delay: 0.05s; }
+.js .of-row.in .of-dot:nth-child(2) { transition-delay: 0.08s; }
+.js .of-row.in .of-dot:nth-child(3) { transition-delay: 0.11s; }
+.js .of-row.in .of-dot:nth-child(4) { transition-delay: 0.14s; }
+.js .of-row.in .of-dot:nth-child(5) { transition-delay: 0.17s; }
+.js .of-row.in .of-dot:nth-child(6) { transition-delay: 0.20s; }
+.js .of-row.in .of-dot:nth-child(7) { transition-delay: 0.23s; }
+.js .of-row.in .of-dot:nth-child(8) { transition-delay: 0.26s; }
+.js .of-row.in .of-dot:nth-child(9) { transition-delay: 0.29s; }
+.js .of-row.in .of-dot:nth-child(10) { transition-delay: 0.32s; }
+
+/* ── 04 · the steps execute in order ──────────────────────────
+   Each step is observed on its own so it lights as the reader reaches it, and
+   --s adds a short index delay on top: imperceptible when they arrive one at a
+   time, a clean 1-2-3-4 cascade when a fast scroll brings several in at once.
+   The numbered badge lands a beat behind its own step. Vertical and deliberate,
+   so it never re-runs 02's lateral split. */
+.js .steps li:nth-child(1) { --s: 0; }
+.js .steps li:nth-child(2) { --s: 1; }
+.js .steps li:nth-child(3) { --s: 2; }
+.js .steps li:nth-child(4) { --s: 3; }
+.js .steps li.reveal.in { transition-delay: calc(var(--s, 0) * 0.07s); }
+.js .steps li.reveal h4 span {
+  opacity: 0;
+  transform: scale(0.72);
+  transition: opacity 0.4s var(--ease), transform 0.5s var(--ease);
+}
+.js .steps li.reveal.in h4 span {
+  opacity: 1;
+  transform: none;
+  transition-delay: calc(0.1s + var(--s, 0) * 0.07s);
+}
+/* opacity only, so the button keeps the hover transition it declares itself */
+.js .docs-cta.reveal { opacity: 0; transform: none; }
+.js .docs-cta.reveal.in {
+  opacity: 1;
+  transition: opacity 0.55s var(--ease), border-color 0.2s, background 0.2s, transform 0.2s var(--ease);
+}
+/* the finished file rises and settles rather than sliding in from the side */
+.js .start-grid > .code.reveal { transform: translateY(26px) scale(0.986); transform-origin: 50% 0; }
+.js .start-grid > .code.reveal.in {
+  transform: none;
+  transition: opacity 0.7s var(--ease), transform 0.85s var(--ease);
+  transition-delay: 0.1s;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .js .reveal { opacity: 1; transform: none; transition: none; }
+  .js .of-row > .of-name, .js .of-row .of-dot, .js .steps li.reveal h4 span {
+    opacity: 1; transform: none; transition: none;
+  }
 }
 
 /* ── responsive ───────────────────────────────────────────── */

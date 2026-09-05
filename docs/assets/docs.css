@@ -6,6 +6,11 @@
 
 :root { --nav-h: 64px; --doc-gap: 40px; }
 
+/* the pinned panes slide in step with the header instead of snapping */
+@media (prefers-reduced-motion: no-preference) {
+  .tree, .gw-nav { transition: top 0.28s ease; }
+}
+
 /* light-theme fixups for fixed light-greys on surfaces that flip to light */
 [data-theme="light"] .doc p,
 [data-theme="light"] .doc ul.prose { color: #333a30; }
@@ -27,7 +32,7 @@
 /* ═══════════════  LEFT — live tree  ═══════════════ */
 .tree {
   position: sticky;
-  top: calc(var(--nav-h) + 24px);
+  top: calc(var(--nav-offset) + 24px);
   align-self: start;
   max-height: calc(100vh - var(--nav-h) - 40px);
   overflow-y: auto;
@@ -241,7 +246,7 @@
 /* ═══════════════  RIGHT — gateway selector (Filament-style)  ═══════════════ */
 .gw-nav {
   position: sticky;
-  top: calc(var(--nav-h) + 24px);
+  top: calc(var(--nav-offset) + 24px);
   align-self: start;
   font-size: 14px;
 }
@@ -285,7 +290,7 @@
     grid-column: 1 / -1;
     grid-row: 1;
     position: sticky;
-    top: var(--nav-h); /* sit flush under the header nav */
+    top: var(--nav-offset); /* sit flush under the header nav, and follow it away */
     z-index: 60;
     /* opaque so content scrolling underneath doesn't bleed through the bar */
     background: var(--ink);

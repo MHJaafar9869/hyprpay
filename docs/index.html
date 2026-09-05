@@ -173,7 +173,7 @@
             <span class="pt-chip">3-DS</span>
             <span class="pt-chip">TMS vault</span>
           </div>
-          <a class="pt-link" href="./guide.html">Read the actions <span aria-hidden="true">&rarr;</span></a>
+          <a class="pt-link" href="./guide.html?gw=cyber">Read the actions <span aria-hidden="true">&rarr;</span></a>
         </div>
         <figure class="code big">
           <figcaption><span class="win" aria-hidden="true"><i></i><i></i><i></i></span><span class="file">cyber.php</span></figcaption>
@@ -207,7 +207,7 @@
             <span class="pt-chip">recurring</span>
             <span class="pt-chip">split</span>
           </div>
-          <a class="pt-link" href="./guide.html">Read the actions <span aria-hidden="true">&rarr;</span></a>
+          <a class="pt-link" href="./guide.html?gw=paytabs">Read the actions <span aria-hidden="true">&rarr;</span></a>
         </div>
         <figure class="code big">
           <figcaption><span class="win" aria-hidden="true"><i></i><i></i><i></i></span><span class="file">paytabs.php</span></figcaption>
@@ -241,7 +241,7 @@
             <span class="pt-chip">MIT/CIT</span>
             <span class="pt-chip">reporting</span>
           </div>
-          <a class="pt-link" href="./guide.html">Read the actions <span aria-hidden="true">&rarr;</span></a>
+          <a class="pt-link" href="./guide.html?gw=paypal">Read the actions <span aria-hidden="true">&rarr;</span></a>
         </div>
         <figure class="code big">
           <figcaption><span class="win" aria-hidden="true"><i></i><i></i><i></i></span><span class="file">paypal.php</span></figcaption>
@@ -262,13 +262,13 @@
     <div class="pt-rest reveal">
       <p class="pt-rest-label">Also shipping</p>
       <div class="pt-rest-grid">
-        <a class="pt-rest-item" href="./guide.html" style="--g:var(--fawry)"><strong><i aria-hidden="true"></i>Fawry</strong><em>SHA-256</em></a>
-        <a class="pt-rest-item" href="./guide.html" style="--g:var(--paymob)"><strong><i aria-hidden="true"></i>Paymob</strong><em>HMAC-SHA512</em></a>
-        <a class="pt-rest-item" href="./guide.html" style="--g:var(--paylink)"><strong><i aria-hidden="true"></i>PayLink</strong><em>HMAC-SHA256</em></a>
-        <a class="pt-rest-item" href="./guide.html" style="--g:var(--mpgs)"><strong><i aria-hidden="true"></i>Mastercard MPGS</strong><em>HTTP Basic</em></a>
-        <a class="pt-rest-item" href="./guide.html" style="--g:var(--authorizenet)"><strong><i aria-hidden="true"></i>Authorize.Net</strong><em>Name / Transaction Key</em></a>
-        <a class="pt-rest-item" href="./guide.html" style="--g:var(--airwallex)"><strong><i aria-hidden="true"></i>Airwallex</strong><em>API-access login</em></a>
-        <a class="pt-rest-item" href="./guide.html" style="--g:var(--tamara)"><strong><i aria-hidden="true"></i>Tamara</strong><em>Bearer API token</em></a>
+        <a class="pt-rest-item" href="./guide.html?gw=fawry" style="--g:var(--fawry)"><strong><i aria-hidden="true"></i>Fawry</strong><em>SHA-256</em></a>
+        <a class="pt-rest-item" href="./guide.html?gw=paymob" style="--g:var(--paymob)"><strong><i aria-hidden="true"></i>Paymob</strong><em>HMAC-SHA512</em></a>
+        <a class="pt-rest-item" href="./guide.html?gw=paylink" style="--g:var(--paylink)"><strong><i aria-hidden="true"></i>PayLink</strong><em>HMAC-SHA256</em></a>
+        <a class="pt-rest-item" href="./guide.html?gw=mpgs" style="--g:var(--mpgs)"><strong><i aria-hidden="true"></i>Mastercard MPGS</strong><em>HTTP Basic</em></a>
+        <a class="pt-rest-item" href="./guide.html?gw=authorizenet" style="--g:var(--authorizenet)"><strong><i aria-hidden="true"></i>Authorize.Net</strong><em>Name / Transaction Key</em></a>
+        <a class="pt-rest-item" href="./guide.html?gw=airwallex" style="--g:var(--airwallex)"><strong><i aria-hidden="true"></i>Airwallex</strong><em>API-access login</em></a>
+        <a class="pt-rest-item" href="./guide.html?gw=tamara" style="--g:var(--tamara)"><strong><i aria-hidden="true"></i>Tamara</strong><em>Bearer API token</em></a>
       </div>
     </div>
   </section>
@@ -295,8 +295,8 @@
       <span style="--g:var(--tamara)"><i aria-hidden="true"></i>Tamara</span>
     </div>
 
-    <div class="of reveal">
-      <div class="of-row">
+    <div class="of">
+      <div class="of-row reveal">
         <div class="of-name"><code>createCheckoutSession</code></div>
         <div class="of-dots">
           <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — capture context / orchestrated">CyberSource</span>
@@ -311,7 +311,7 @@
           <span class="of-dot" style="--g:var(--tamara)" title="Tamara — hosted BNPL redirect">Tamara</span>
         </div>
       </div>
-      <div class="of-row">
+      <div class="of-row reveal">
         <div class="of-name"><code>requestDccRate</code><small>Dynamic Currency Conversion</small></div>
         <div class="of-dots">
           <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — ✓">CyberSource</span>
@@ -326,7 +326,7 @@
           <span class="of-dot off" style="--g:var(--tamara)" title="Tamara — not implemented">Tamara<span class="vh"> — not implemented</span></span>
         </div>
       </div>
-      <div class="of-row">
+      <div class="of-row reveal">
         <div class="of-name"><code>charge</code><small>transient token</small></div>
         <div class="of-dots">
           <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — ✓">CyberSource</span>
@@ -341,7 +341,7 @@
           <span class="of-dot off" style="--g:var(--tamara)" title="Tamara — not implemented">Tamara<span class="vh"> — not implemented</span></span>
         </div>
       </div>
-      <div class="of-row">
+      <div class="of-row reveal">
         <div class="of-name"><code>chargeWallet</code><small>Apple Pay / Google Pay</small></div>
         <div class="of-dots">
           <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — tokenizedCard / fluidData">CyberSource</span>
@@ -356,7 +356,7 @@
           <span class="of-dot off" style="--g:var(--tamara)" title="Tamara — not implemented">Tamara<span class="vh"> — not implemented</span></span>
         </div>
       </div>
-      <div class="of-row">
+      <div class="of-row reveal">
         <div class="of-name"><code>confirmOrchestratedPayment</code><small>verify result JWT</small></div>
         <div class="of-dots">
           <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — RS256 · flx.jwk">CyberSource</span>
@@ -371,7 +371,7 @@
           <span class="of-dot off" style="--g:var(--tamara)" title="Tamara — not implemented">Tamara<span class="vh"> — not implemented</span></span>
         </div>
       </div>
-      <div class="of-row">
+      <div class="of-row reveal">
         <div class="of-name"><code>createMicroformSession</code><small>Flex Microform card fields</small></div>
         <div class="of-dots">
           <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — /microform/v2/sessions">CyberSource</span>
@@ -386,7 +386,7 @@
           <span class="of-dot off" style="--g:var(--tamara)" title="Tamara — not implemented">Tamara<span class="vh"> — not implemented</span></span>
         </div>
       </div>
-      <div class="of-row">
+      <div class="of-row reveal">
         <div class="of-name"><code>capture</code></div>
         <div class="of-dots">
           <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — ✓">CyberSource</span>
@@ -401,7 +401,7 @@
           <span class="of-dot" style="--g:var(--tamara)" title="Tamara — after authorise">Tamara</span>
         </div>
       </div>
-      <div class="of-row">
+      <div class="of-row reveal">
         <div class="of-name"><code>refund</code></div>
         <div class="of-dots">
           <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — ✓">CyberSource</span>
@@ -416,7 +416,7 @@
           <span class="of-dot" style="--g:var(--tamara)" title="Tamara — ✓">Tamara</span>
         </div>
       </div>
-      <div class="of-row">
+      <div class="of-row reveal">
         <div class="of-name"><code>void</code></div>
         <div class="of-dots">
           <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — ✓">CyberSource</span>
@@ -431,7 +431,7 @@
           <span class="of-dot" style="--g:var(--tamara)" title="Tamara — cancel">Tamara</span>
         </div>
       </div>
-      <div class="of-row">
+      <div class="of-row reveal">
         <div class="of-name"><code>reverseAuthorization</code></div>
         <div class="of-dots">
           <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — ✓">CyberSource</span>
@@ -446,7 +446,7 @@
           <span class="of-dot" style="--g:var(--tamara)" title="Tamara — cancel">Tamara</span>
         </div>
       </div>
-      <div class="of-row">
+      <div class="of-row reveal">
         <div class="of-name"><code>setupPayerAuth</code><small>3-DS device data collection</small></div>
         <div class="of-dots">
           <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — ✓">CyberSource</span>
@@ -461,7 +461,7 @@
           <span class="of-dot off" style="--g:var(--tamara)" title="Tamara — not implemented">Tamara<span class="vh"> — not implemented</span></span>
         </div>
       </div>
-      <div class="of-row">
+      <div class="of-row reveal">
         <div class="of-name"><code>enroll / validatePayerAuth</code><small>3-DS</small></div>
         <div class="of-dots">
           <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — ✓">CyberSource</span>
@@ -476,7 +476,7 @@
           <span class="of-dot off" style="--g:var(--tamara)" title="Tamara — not implemented">Tamara<span class="vh"> — not implemented</span></span>
         </div>
       </div>
-      <div class="of-row">
+      <div class="of-row reveal">
         <div class="of-name"><code>vault / chargeStoredCredential</code></div>
         <div class="of-dots">
           <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — TMS · MIT/CIT">CyberSource</span>
@@ -491,7 +491,7 @@
           <span class="of-dot off" style="--g:var(--tamara)" title="Tamara — not implemented">Tamara<span class="vh"> — not implemented</span></span>
         </div>
       </div>
-      <div class="of-row">
+      <div class="of-row reveal">
         <div class="of-name"><code>getTransaction / searchTransaction</code><small>+ full history</small></div>
         <div class="of-dots">
           <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — ✓ · history">CyberSource</span>
@@ -506,7 +506,7 @@
           <span class="of-dot" style="--g:var(--tamara)" title="Tamara — order / reference">Tamara</span>
         </div>
       </div>
-      <div class="of-row">
+      <div class="of-row reveal">
         <div class="of-name"><code>pushFunds / pullFunds</code><small>OCT + AFT money transfer</small></div>
         <div class="of-dots">
           <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — /pts/v1/push-funds-transfer · /pts/v1/pull-funds-transfer">CyberSource</span>
@@ -521,7 +521,7 @@
           <span class="of-dot off" style="--g:var(--tamara)" title="Tamara — not implemented">Tamara<span class="vh"> — not implemented</span></span>
         </div>
       </div>
-      <div class="of-row">
+      <div class="of-row reveal">
         <div class="of-name"><code>verifyWebhook</code></div>
         <div class="of-dots">
           <span class="of-dot" style="--g:var(--cyber)" title="CyberSource UC — ✓">CyberSource</span>
@@ -548,24 +548,24 @@
     </div>
 
     <div class="start-grid">
-      <div class="steps reveal">
+      <div class="steps">
         <ol>
-          <li>
+          <li class="reveal">
             <h4><span>1</span> Install</h4>
             <div class="code sm"><pre><code><span class="c"># Composer auto-discovers the service provider</span>
 composer require hyprpay/payments</code></pre></div>
           </li>
-          <li>
+          <li class="reveal">
             <h4><span>2</span> Configure <small>(optional)</small></h4>
             <div class="code sm"><pre><code>php artisan vendor:publish --tag=gateway-config</code></pre></div>
           </li>
-          <li>
+          <li class="reveal">
             <h4><span>3</span> Bind your ports</h4>
             <div class="code sm"><pre><code><span class="v">$this</span>-&gt;app-&gt;<span class="fn">bind</span>(<span class="t">HttpClient</span>::<span class="k">class</span>, <span class="t">MyHttpClient</span>::<span class="k">class</span>);
 <span class="v">$this</span>-&gt;app-&gt;<span class="fn">bind</span>(<span class="t">CredentialResolver</span>::<span class="k">class</span>, <span class="t">MyCredentialResolver</span>::<span class="k">class</span>);</code></pre></div>
             <p class="steps-note">External services are fully decoupled. <code>CredentialResolver</code> seamlessly resolves single-tenant static configs and multi-tenant per-tenant credentials.</p>
           </li>
-          <li>
+          <li class="reveal">
             <h4><span>4</span> Charge</h4>
             <div class="code sm"><pre><code><span class="v">$gateway</span> = <span class="v">$this</span>-&gt;gateways-&gt;<span class="fn">make</span>(<span class="t">GatewayName</span>::<span class="cn">Fawry</span>);
 <span class="v">$gateway</span>-&gt;<span class="fn">charge</span>(<span class="v">$request</span>);</code></pre></div>
@@ -573,7 +573,7 @@ composer require hyprpay/payments</code></pre></div>
           </li>
         </ol>
 
-        <a class="docs-cta" href="./guide.html" target="_blank" rel="noopener">Read the docs <span class="docs-cta-arrow" aria-hidden="true">→</span></a>
+        <a class="docs-cta reveal" href="./guide.html" target="_blank" rel="noopener">Read the docs <span class="docs-cta-arrow" aria-hidden="true">→</span></a>
       </div>
 
       <figure class="code big reveal" aria-label="Charging an invoice with the SDK">
@@ -654,6 +654,7 @@ composer require hyprpay/payments</code></pre></div>
 
 <script src="./assets/theme.js"></script>
 <script src="./assets/viewport.js"></script>
+<script src="./assets/nav.js"></script>
 <script src="./assets/app.js"></script>
 </body>
 </html>
