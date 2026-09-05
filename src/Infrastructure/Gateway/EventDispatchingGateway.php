@@ -22,7 +22,11 @@ use Hyprpay\Payments\Domain\Contract\PaymentGatewayInterface;
 use Hyprpay\Payments\Domain\Enum\GatewayName;
 use Hyprpay\Payments\Domain\Event\AuthorizationReversed;
 use Hyprpay\Payments\Domain\Event\CheckoutSessionCreated;
+use Hyprpay\Payments\Domain\Event\DccRateQuoted;
 use Hyprpay\Payments\Domain\Event\InstrumentVaulted;
+use Hyprpay\Payments\Domain\Event\PayerAuthenticationEnrolled;
+use Hyprpay\Payments\Domain\Event\PayerAuthenticationSetUp;
+use Hyprpay\Payments\Domain\Event\PayerAuthenticationValidated;
 use Hyprpay\Payments\Domain\Event\PaymentCaptured;
 use Hyprpay\Payments\Domain\Event\PaymentCharged;
 use Hyprpay\Payments\Domain\Event\PaymentEvent;
@@ -86,7 +90,11 @@ final readonly class EventDispatchingGateway implements PaymentGatewayInterface
 
     public function requestDccRate(DccRateRequest $request): DccQuote
     {
-        return $this->inner->requestDccRate($request);
+        $quote = $this->inner->requestDccRate($request);
+
+        $this->events->dispatch(new DccRateQuoted($this->name(), $request->orderReference, $request->money, $quote));
+
+        return $quote;
     }
 
     public function charge(ChargeRequest $request): PaymentResult
@@ -136,17 +144,29 @@ final readonly class EventDispatchingGateway implements PaymentGatewayInterface
 
     public function setupPayerAuth(PayerAuthSetupRequest $request): PayerAuthSetupResult
     {
-        return $this->inner->setupPayerAuth($request);
+        $result = $this->inner->setupPayerAuth($request);
+
+        $this->events->dispatch(new PayerAuthenticationSetUp($this->name(), $request->orderReference, $result));
+
+        return $result;
     }
 
     public function enrollPayerAuth(PayerAuthEnrollRequest $request): PayerAuthResult
     {
-        return $this->inner->enrollPayerAuth($request);
+        $result = $this->inner->enrollPayerAuth($request);
+
+        $this->events->dispatch(new PayerAuthenticationEnrolled($this->name(), $request->orderReference, $request->money, $result));
+
+        return $result;
     }
 
     public function validatePayerAuth(ValidatePayerAuthRequest $request): PayerAuthResult
     {
-        return $this->inner->validatePayerAuth($request);
+        $result = $this->inner->validatePayerAuth($request);
+
+        $this->events->dispatch(new PayerAuthenticationValidated($this->name(), $request->orderReference, $request->money, $result));
+
+        return $result;
     }
 
     public function vaultInstrument(TokenizeInstrumentRequest $request): VaultedInstrument

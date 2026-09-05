@@ -32,10 +32,11 @@ final readonly class RecentActivityFromDatabase implements ReadsPaymentActivity
         private string $prefix,
     ) {}
 
-    public function recent(int $limit): array
+    public function recent(int $limit, ?int $after = null): array
     {
         try {
             $rows = $this->connection()->table($this->prefix.'payment_attempts')
+                ->when($after !== null, static fn ($query) => $query->where('id', '>', $after))
                 ->orderByDesc('id')
                 ->limit(max(0, $limit))
                 ->get()
@@ -91,7 +92,21 @@ final readonly class RecentActivityFromDatabase implements ReadsPaymentActivity
             'currency' => $data['currency'] ?? null,
             'scale' => $data['scale'] ?? null,
             'recordedAt' => $data['recorded_at'] ?? null,
+            'apiResponses' => $this->apiResponses($data['api_responses'] ?? null),
+            'sequence' => $data['id'] ?? null,
         ];
+    }
+
+    /**
+     * Decode the attempt's stored API-response column, tolerating a null or a legacy row
+     * written before the column existed. Validating the individual rows is left to
+     * {@see PaymentActivityRecord::fromArray()}, which already skips anything malformed.
+     *
+     * @param  mixed  $stored  The raw column value.
+     */
+    private function apiResponses(mixed $stored): mixed
+    {
+        return is_string($stored) && filled($stored) ? json_decode($stored, true) : null;
     }
 
     /**

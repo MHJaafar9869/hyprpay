@@ -19,7 +19,7 @@ it('names and describes each reconcile command after its gateway', function (str
         ->and($command->getName())->toBe($name)
         ->and($command->getDescription())->toContain($label);
 })->with([
-    'cybersource' => [ReconcileCybersourceCommand::class, 'gateway:reconcile:cybersource_uc', 'CyberSource Unified Checkout'],
+    'cybersource' => [ReconcileCybersourceCommand::class, 'gateway:reconcile:cybersource_uc', 'CyberSource UC'],
     'fawry' => [ReconcileFawryCommand::class, 'gateway:reconcile:fawry', 'Fawry'],
     'paymob' => [ReconcilePaymobCommand::class, 'gateway:reconcile:paymob', 'Paymob'],
     'paylink' => [ReconcilePaylinkCommand::class, 'gateway:reconcile:paylink', 'PayLink'],

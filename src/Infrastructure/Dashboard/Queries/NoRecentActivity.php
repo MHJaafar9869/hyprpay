@@ -14,7 +14,7 @@ use Hyprpay\Payments\Domain\Contract\ReadsPaymentActivity;
  */
 final readonly class NoRecentActivity implements ReadsPaymentActivity
 {
-    public function recent(int $limit): array
+    public function recent(int $limit, ?int $after = null): array
     {
         return [];
     }

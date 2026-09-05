@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hyprpay\Payments\Infrastructure\Dashboard\Actions;
 
 use Hyprpay\Payments\Domain\Contract\RecordsPaymentActivity;
+use Hyprpay\Payments\Domain\Http\ApiResponse;
 use Hyprpay\Payments\Domain\Result\PaymentActivityRecord;
 use Hyprpay\Payments\Infrastructure\Support\Value;
 use Illuminate\Database\ConnectionInterface;
@@ -19,7 +20,8 @@ use Throwable;
  * current state, attempt count, paid status), appends it to the `payment_attempts` ledger
  * (the feed the dashboard reads), records a `payments` row for each successful outcome, and
  * captures webhook events in `webhooks`. Only PII-safe fields are written — never a card
- * number or a raw gateway payload.
+ * number. The one exception is `payment_attempts.api_responses`, which holds the operation's
+ * redacted gateway HTTP calls when API-response recording is switched on, and stays null otherwise.
  *
  * Best-effort: any database failure (a missing table, a dropped connection) is swallowed so
  * that capturing activity can never break the payment flow that produced it.
@@ -134,6 +136,7 @@ final readonly class RecordActivityToDatabase implements RecordsPaymentActivity
             'currency' => $record->currency,
             'scale' => $record->scale,
             'recorded_at' => $record->recordedAt,
+            'api_responses' => $this->apiResponses($record),
             'created_at' => $now,
         ];
     }
@@ -176,6 +179,20 @@ final readonly class RecordActivityToDatabase implements RecordsPaymentActivity
             'recorded_at' => $record->recordedAt,
             'created_at' => $now,
         ];
+    }
+
+    /**
+     * Encode the record's redacted API responses for the json column, or null when none.
+     */
+    private function apiResponses(PaymentActivityRecord $record): ?string
+    {
+        if ($record->apiResponses === []) {
+            return null;
+        }
+
+        $encoded = json_encode(array_map(static fn (ApiResponse $e): array => $e->toArray(), $record->apiResponses));
+
+        return $encoded === false ? null : $encoded;
     }
 
     /**

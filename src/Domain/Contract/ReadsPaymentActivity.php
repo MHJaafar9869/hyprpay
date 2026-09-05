@@ -18,10 +18,16 @@ interface ReadsPaymentActivity
     /**
      * Read the most recent records, newest first.
      *
+     * Passing `$after` returns only what has landed since that store position, which is how the
+     * dashboard tails the feed without refetching it. Stores with no monotonic position ignore
+     * the cursor and return the whole window; callers detect that from the records' null
+     * sequence and fall back to replacing what they hold.
+     *
      * @param  int  $limit  The maximum number of records to return.
+     * @param  int|null  $after  Return only records past this store position, or null for the latest window.
      * @return list<PaymentActivityRecord> The stored records, newest first, capped at $limit.
      */
-    public function recent(int $limit): array;
+    public function recent(int $limit, ?int $after = null): array;
 
     /**
      * Read every recorded event for one payment reference, oldest first (its full lifecycle).

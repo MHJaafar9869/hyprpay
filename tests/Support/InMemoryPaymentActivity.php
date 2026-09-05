@@ -25,7 +25,7 @@ final class InMemoryPaymentActivity implements ReadsPaymentActivity, RecordsPaym
         array_unshift($this->records, $record);
     }
 
-    public function recent(int $limit): array
+    public function recent(int $limit, ?int $after = null): array
     {
         return array_slice($this->records, 0, $limit);
     }

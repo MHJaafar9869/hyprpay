@@ -45,10 +45,18 @@ final readonly class DashboardController
 
     /**
      * Return the recent-activity feed as JSON for the page's live polling.
+     *
+     * With `?after=<sequence>` only what has landed since that position is returned, so a
+     * poll that finds nothing new costs an empty array rather than the whole window.
      */
-    public function activity(): JsonResponse
+    public function activity(Request $request): JsonResponse
     {
-        return new JsonResponse($this->data->recentActivity($this->limit()));
+        $after = $request->query('after');
+
+        return new JsonResponse($this->data->recentActivity(
+            $this->limit(),
+            is_numeric($after) ? (int) $after : null,
+        ));
     }
 
     /**

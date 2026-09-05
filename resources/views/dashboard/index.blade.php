@@ -238,6 +238,7 @@
             csrf: "{{ csrf_token() }}",
             palette: @json($palette),
             rows: @json($recent),
+            limit: {{ $feedLimit }},
         };
     </script>
     <script>
@@ -461,16 +462,37 @@
                 setText('f-count', view.length === rows.length ? rows.length + ' operations' : view.length + ' of ' + rows.length);
             }
 
+            /** The newest store position held, or null on a store that reports none. */
+            const cursorOf = (list) => {
+                const seqs = list.map((r) => r.sequence).filter((n) => typeof n === 'number');
+                return seqs.length ? Math.max(...seqs) : null;
+            };
+
+            let cursor = cursorOf(rows);
+
+            /**
+             * Tail the feed. With a cursor the request returns only what has landed since the
+             * last poll and the new rows are prepended, so an idle dashboard transfers an empty
+             * array instead of the whole window. Stores that report no sequence fall back to
+             * replacing what we hold, which is the original behaviour.
+             */
             async function pollActivity() {
                 try {
-                    const res = await fetch(window.HYPRPAY.activityUrl, { headers: { 'Accept': 'application/json' } });
-                    if (res.ok) {
-                        const data = await res.json();
-                        rows = Array.isArray(data) ? data : [];
-                        renderStats(rows);
-                        renderTable();
-                        stamp();
-                    }
+                    const url = cursor === null ? window.HYPRPAY.activityUrl : window.HYPRPAY.activityUrl + '?after=' + cursor;
+                    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                    if (!res.ok) return;
+
+                    const data = await res.json();
+                    const fresh = Array.isArray(data) ? data : [];
+                    const next = cursorOf(fresh);
+
+                    if (cursor !== null && next === null && !fresh.length) { stamp(); return; }
+
+                    rows = cursor === null ? fresh : fresh.concat(rows).slice(0, window.HYPRPAY.limit || 500);
+                    cursor = next === null ? cursor : Math.max(cursor === null ? next : cursor, next);
+                    renderStats(rows);
+                    renderTable();
+                    stamp();
                 } catch (e) {}
             }
 
@@ -614,6 +636,64 @@
                 return bits.map((h) => '<span>' + h + '</span>').join('');
             };
 
+            /** The path and query of a URL — the part worth reading in a row of calls. */
+            function endpointOf(url) {
+                try {
+                    const u = new URL(url);
+                    return (u.pathname || '/') + u.search;
+                } catch (e) {
+                    return url || '';
+                }
+            }
+
+            /** Render one header map as an aligned "name: value" block, masking marked out. */
+            function headerLines(headers) {
+                const names = Object.keys(headers || {});
+                if (!names.length) return '<div class="apires-empty">none</div>';
+                const pad = Math.max(...names.map((n) => n.length));
+                return '<pre class="headers">' + names.map((n) =>
+                    esc(n.padEnd(pad)) + ': ' + (headers[n] === '[redacted]'
+                        ? '<span class="redacted">[redacted]</span>'
+                        : esc(String(headers[n])))
+                ).join('\n') + '</pre>';
+            }
+
+            /** Render a request or response body, or a placeholder when the call carried none. */
+            function bodyBlock(body) {
+                if (!body) return '<div class="apires-empty">no body</div>';
+                return '<pre>' + (body === '[redacted]'
+                    ? '<span class="redacted">[redacted]</span>'
+                    : esc(body)) + '</pre>';
+            }
+
+            /**
+             * Render every gateway API response recorded for one attempt: the request line, the
+             * request headers and body, then the response status, headers and body.
+             */
+            function apiResponseBlocks(r, ei) {
+                if (!r.apiResponses || !r.apiResponses.length) return '';
+                return r.apiResponses.map((x, ci) =>
+                    '<div class="apires">'
+                    + '<div class="apires-head">'
+                    + '<span class="apires-method">' + esc(x.method || '') + '</span>'
+                    + '<span class="apires-url" title="' + attr(x.url || '') + '"><bdi>' + esc(endpointOf(x.url)) + '</bdi></span>'
+                    + '<button class="apires-copy" type="button" title="Copy full URL" aria-label="Copy full URL" data-url="' + attr(x.url || '') + '"><span class="mi">link</span></button>'
+                    + '<button class="apires-copy" type="button" title="Copy request and response" aria-label="Copy request and response" data-call="' + ei + ':' + ci + '" data-part="exchange"><span class="mi">content_copy</span></button>'
+                    + '<span class="apires-status' + (x.status >= 200 && x.status < 300 ? '' : ' bad') + '">' + esc(String(x.status)) + '</span>'
+                    + '<span class="apires-ms">' + esc(String(x.durationMs)) + 'ms</span>'
+                    + '</div>'
+                    + '<div class="apires-part"><div class="apires-label">Request headers'
+                    + '<button class="apires-copy" type="button" title="Copy full request" aria-label="Copy full request" data-call="' + ei + ':' + ci + '" data-part="request"><span class="mi">content_copy</span></button>'
+                    + '</div>' + headerLines(x.requestHeaders) + '</div>'
+                    + '<div class="apires-part"><div class="apires-label">Request body</div>' + bodyBlock(x.requestBody) + '</div>'
+                    + '<div class="apires-part"><div class="apires-label">Response headers'
+                    + '<button class="apires-copy" type="button" title="Copy full response" aria-label="Copy full response" data-call="' + ei + ':' + ci + '" data-part="response"><span class="mi">content_copy</span></button>'
+                    + '</div>' + headerLines(x.responseHeaders) + '</div>'
+                    + '<div class="apires-part"><div class="apires-label">Response body</div>' + bodyBlock(x.responseBody) + '</div>'
+                    + '</div>'
+                ).join('');
+            }
+
             function showTab(name) {
                 drawer.querySelectorAll('.dw-tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
                 document.getElementById('pane-summary').hidden = name !== 'summary';
@@ -640,7 +720,7 @@
                 if (!data.found || !data.events.length) {
                     return '<div class="drawer-empty">No recorded events for this reference yet.</div>';
                 }
-                return data.events.map((r) =>
+                return data.events.map((r, ei) =>
                     '<div class="attempt">'
                     + '<button class="attempt-head" type="button" aria-expanded="false">'
                     + '<span class="attempt-dot s-' + esc(r.tone) + '"></span>'
@@ -650,7 +730,7 @@
                     + '<span class="attempt-time">' + esc(r.recordedAt) + '</span>'
                     + '<span class="mi attempt-chev">expand_more</span>'
                     + '</button>'
-                    + '<div class="attempt-body" hidden><div class="tl-meta">' + (metaBits(r) || '<span>No further detail recorded.</span>') + '</div></div>'
+                    + '<div class="attempt-body" hidden><div class="tl-meta">' + (metaBits(r) || '<span>No further detail recorded.</span>') + '</div>' + apiResponseBlocks(r, ei) + '</div>'
                     + '</div>'
                 ).join('');
             }
@@ -698,6 +778,13 @@
 
             drawer.querySelectorAll('.dw-tab').forEach((tab) => tab.addEventListener('click', () => showTab(tab.dataset.tab)));
             document.getElementById('pane-history').addEventListener('click', (e) => {
+                const copy = e.target.closest('.apires-copy');
+                if (copy) {
+                    const call = copy.dataset.call ? callAt(copy.dataset.call) : null;
+                    copyIcon(copy, call ? partText(call, copy.dataset.part) : (copy.dataset.url || ''));
+                    return;
+                }
+
                 const head = e.target.closest('.attempt-head');
                 if (!head) return;
                 const item = head.parentElement;
@@ -745,6 +832,54 @@
                     return ok;
                 } catch (e) { return false; }
             };
+            /** Copy `text`, flashing the glyph — an icon-only button has no label to swap. */
+            const copyIcon = (btn, text) => {
+                const icon = btn.querySelector('.mi');
+                if (!icon.dataset.glyph) icon.dataset.glyph = icon.textContent;
+                const settle = (ok) => {
+                    icon.textContent = ok ? 'check' : 'error';
+                    btn.classList.toggle('ok', ok);
+                    setTimeout(() => { icon.textContent = icon.dataset.glyph; btn.classList.remove('ok'); }, 1400);
+                };
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(() => settle(true)).catch(() => settle(copyFallback(text)));
+                    return;
+                }
+                settle(copyFallback(text));
+            };
+
+            /** Resolve a button's "event:call" address back to the recorded call it points at. */
+            const callAt = (address) => {
+                const [ei, ci] = String(address || '').split(':').map(Number);
+                const event = currentLife && currentLife.events ? currentLife.events[ei] : null;
+                return event && event.apiResponses ? event.apiResponses[ci] : null;
+            };
+
+            /**
+             * One call's request as a plain HTTP message — request line, headers, blank line,
+             * body — so it pastes readably into a ticket or a chat. Values the Redactor masked
+             * stay masked, which is why this is not offered as a runnable curl command.
+             */
+            const requestText = (x) => {
+                const head = (x.method || '') + ' ' + (x.url || '');
+                const headers = Object.entries(x.requestHeaders || {}).map(([k, v]) => k + ': ' + v);
+                return [head].concat(headers, x.requestBody ? ['', x.requestBody] : []).join('\n');
+            };
+
+            /** The same treatment for the reply: status line, headers, blank line, body. */
+            const responseText = (x) => {
+                const head = 'HTTP ' + (x.status === null || x.status === undefined ? '' : x.status)
+                    + (x.durationMs || x.durationMs === 0 ? '  (' + x.durationMs + 'ms)' : '');
+                const headers = Object.entries(x.responseHeaders || {}).map(([k, v]) => k + ': ' + v);
+                return [head].concat(headers, x.responseBody ? ['', x.responseBody] : []).join('\n');
+            };
+
+            /** Both halves in one paste — what you want when handing a call to someone else. */
+            const exchangeText = (x) => requestText(x) + '\n\n' + responseText(x);
+
+            /** The text a copy button is asking for, by the part it names. */
+            const partText = (x, part) => (part === 'request' ? requestText(x) : part === 'response' ? responseText(x) : exchangeText(x));
+
             const copyText = (text, btn) => {
                 const lbl = btn.querySelector('.lbl') || btn;
                 if (!lbl.dataset.label) lbl.dataset.label = lbl.textContent;

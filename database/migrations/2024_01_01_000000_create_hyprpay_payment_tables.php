@@ -13,8 +13,10 @@ use Illuminate\Support\Facades\Schema;
  * the SDK's PII-safe payment events carry: `invoices` is the order (current rolled-up state),
  * `payments` records each successful payment, `payment_attempts` is the immutable per-operation
  * ledger the dashboard reads, and `webhooks` captures received notifications. Every table is
- * PII-safe — never a card number or a raw gateway payload. All tables share the configured
- * prefix (default "hyprpay_") and run on the configured connection.
+ * PII-safe — never a card number. The single exception is `payment_attempts.exchanges`, which
+ * holds the operation's redacted gateway HTTP calls when `dashboard.store.exchanges` is on and
+ * stays null otherwise. All tables share the configured prefix (default "hyprpay_") and run on
+ * the configured connection.
  */
 return new class extends Migration
 {
@@ -80,6 +82,7 @@ return new class extends Migration
             $table->string('currency', 3)->nullable();
             $table->unsignedTinyInteger('scale')->nullable();
             $table->string('recorded_at', 40);
+            $table->json('api_responses')->nullable();
             $table->timestamp('created_at')->nullable();
             $table->index(['gateway', 'transaction_id']);
             $table->foreign('invoice_id')->references('id')->on($prefix.'invoices')->nullOnDelete();

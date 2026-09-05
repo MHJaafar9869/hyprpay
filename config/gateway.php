@@ -146,6 +146,17 @@ return [
                 'connection' => env('GATEWAY_DASHBOARD_DB_CONNECTION'),
                 'prefix' => env('GATEWAY_DASHBOARD_DB_PREFIX', 'hyprpay_'),
             ],
+
+            /*
+             * Record the gateway API response behind each operation — status, headers and
+             * body, together with the request that produced it — and show it in the payment
+             * drawer. Off by default: it is the only part of the store that holds a real
+             * gateway payload. Credentials, signatures and cardholder fields are masked by
+             * the Redactor before anything is written, but the remaining payload is still
+             * far more than the rest of the store keeps, so turn it on deliberately and
+             * treat the tables accordingly.
+             */
+            'api_responses' => (bool) env('GATEWAY_DASHBOARD_API_RESPONSES', false),
         ],
     ],
 

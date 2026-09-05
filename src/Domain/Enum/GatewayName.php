@@ -32,7 +32,7 @@ enum GatewayName: string
     public function label(): string
     {
         return match ($this) {
-            self::CybersourceUnifiedCheckout => 'CyberSource Unified Checkout',
+            self::CybersourceUnifiedCheckout => 'CyberSource UC',
             self::Fawry => 'Fawry',
             self::Paymob => 'Paymob',
             self::Paylink => 'PayLink',
