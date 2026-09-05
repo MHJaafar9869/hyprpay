@@ -77,3 +77,18 @@ Payment signing is the security-critical surface. When you touch it:
 - Keep PRs focused and describe the "why".
 - Ensure `composer check` is green and include/update tests for your change.
 - Do not break existing public method signatures without a clear migration note.
+
+## Releasing
+
+The git tag is the single source of truth for the package version. `composer.json`
+carries **no `version` key** — Packagist infers it from the tag, and a hardcoded key
+that disagrees with the tag makes Packagist silently ignore that release.
+
+1. Add `docs/changelog/vX.Y.Z.md` and prepend the entry to `docs/changelog/manifest.json`.
+2. Merge to `main`, then tag and push — the tag push runs the quality gate and
+   publishes the GitHub release:
+
+   ```sh
+   git tag -a vX.Y.Z -m "vX.Y.Z"
+   git push origin vX.Y.Z
+   ```
